@@ -456,7 +456,13 @@ class CommandCentre:
                     "roads": s.latest.roads if s.latest else "",
                     "trend_per_10min": round(t, 3) if (t := s.trend()) is not None else None,
                     "held_minutes": round(s.held_for(moment).total_seconds() / 60, 1),
+                    "speed_kmh": round(s.latest.mean_speed_kmh, 1) if s.latest else None,
                     "choke_points": [c.as_dict() for c in (s.latest.choke_points if s.latest else ())],
+                    # The carriageway Google routed over, split at every change
+                    # of traffic classification. This is what lets the map draw
+                    # the road instead of a line between two dots.
+                    "runs": [r.as_dict() for r in (s.latest.speed_runs if s.latest else ())],
+                    "observed_at": s.latest.observed_at.isoformat(timespec="seconds") if s.latest else None,
                     "approximate_location": self.network.corridors[s.corridor_id].located_approximately,
                 }
                 for s in sorted(self.status.values(), key=lambda x: -(x.index or 0))

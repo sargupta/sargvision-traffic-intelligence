@@ -99,6 +99,30 @@ class ChokePoint:
 
 
 @dataclass(frozen=True)
+class SpeedRun:
+    """One stretch of the route at a single traffic classification.
+
+    The whole polyline, split at every change of speed. This is what makes a
+    map show the road rather than a line between two dots: the geometry is the
+    carriageway Google routed over, and the colour is what it measured on each
+    part of it.
+    """
+
+    speed: str                                  # NORMAL | SLOW | TRAFFIC_JAM
+    path: tuple[tuple[float, float], ...]
+    length_m: float
+
+    def as_dict(self) -> dict:
+        return {
+            "speed": self.speed,
+            # [lon, lat] — GeoJSON and deck.gl order, so the client never has
+            # to remember which way round a coordinate pair is.
+            "path": [[round(lon, 6), round(lat, 6)] for lat, lon in self.path],
+            "length_m": round(self.length_m),
+        }
+
+
+@dataclass(frozen=True)
 class CorridorReading:
     corridor_id: str
     observed_at: datetime
@@ -107,6 +131,7 @@ class CorridorReading:
     distance_m: float
     roads: str
     choke_points: tuple[ChokePoint, ...] = field(default_factory=tuple)
+    speed_runs: tuple[SpeedRun, ...] = field(default_factory=tuple)
     polyline: str = ""
 
     @property
@@ -132,18 +157,26 @@ class CorridorReading:
             key=lambda c: (SPEED_RANK.get(c.severity, 0), c.length_m),
         )
 
-    def as_dict(self) -> dict:
-        return {
+    @property
+    def mean_speed_kmh(self) -> float:
+        return (self.distance_m / 1000) / (self.duration_s / 3600) if self.duration_s else 0.0
+
+    def as_dict(self, geometry: bool = True) -> dict:
+        out = {
             "corridor_id": self.corridor_id,
             "observed_at": self.observed_at.isoformat(timespec="seconds"),
             "duration_minutes": round(self.duration_s / 60, 1),
             "typical_minutes": round(self.static_duration_s / 60, 1),
             "excess_minutes": round(self.excess_minutes, 1),
             "congestion_index": round(self.congestion_index, 3),
+            "speed_kmh": round(self.mean_speed_kmh, 1),
             "distance_m": round(self.distance_m),
             "roads": self.roads,
             "choke_points": [c.as_dict() for c in self.choke_points],
         }
+        if geometry:
+            out["runs"] = [r.as_dict() for r in self.speed_runs]
+        return out
 
 
 def _metres(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -212,6 +245,43 @@ class RoutesProbe:
         intervals = (route.get("travelAdvisory") or {}).get("speedReadingIntervals", []) or []
 
         total_m = float(route.get("distanceMeters") or 0)
+
+        # Split the decoded path at every change of classification. Intervals
+        # that Google does not classify are treated as NORMAL rather than
+        # dropped, so the drawn road has no gaps in it.
+        runs: list[SpeedRun] = []
+        if points:
+            covered: list[tuple[int, int, str]] = []
+            for interval in intervals:
+                lo = int(interval.get("startPolylinePointIndex", 0))
+                hi = int(interval.get("endPolylinePointIndex", lo))
+                if hi > lo:
+                    covered.append((lo, min(hi, len(points) - 1), interval.get("speed", "NORMAL")))
+            covered.sort()
+            cursor = 0
+            filled: list[tuple[int, int, str]] = []
+            for lo, hi, speed in covered:
+                if lo > cursor:
+                    filled.append((cursor, lo, "NORMAL"))
+                filled.append((lo, hi, speed))
+                cursor = hi
+            if cursor < len(points) - 1:
+                filled.append((cursor, len(points) - 1, "NORMAL"))
+            if not filled:
+                filled = [(0, len(points) - 1, "NORMAL")]
+
+            for lo, hi, speed in filled:
+                span = points[lo : hi + 1]
+                if len(span) < 2:
+                    continue
+                runs.append(
+                    SpeedRun(
+                        speed=speed,
+                        path=tuple(span),
+                        length_m=sum(_metres(span[i], span[i + 1]) for i in range(len(span) - 1)),
+                    )
+                )
+
         chokes: list[ChokePoint] = []
         for interval in intervals:
             speed = interval.get("speed")
@@ -243,6 +313,7 @@ class RoutesProbe:
             distance_m=total_m,
             roads=route.get("description") or "",
             choke_points=tuple(chokes),
+            speed_runs=tuple(runs),
             polyline=encoded,
         )
 

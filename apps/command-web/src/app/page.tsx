@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Chrome } from "@/components/Chrome";
-import { CommandMap } from "@/components/CommandMap";
+import { FlowMap } from "@/components/FlowMap";
+import { NetworkPlan } from "@/components/NetworkPlan";
 import { CorridorTable } from "@/components/CorridorTable";
 import { Empty } from "@/components/Bits";
 import { IncidentCard } from "@/components/IncidentCard";
@@ -15,6 +16,11 @@ const OFFICER = "DO-1";
 
 export default function Board() {
   const { board, connected, error, refresh } = useBoard();
+  const [animate, setAnimate] = useState(true);
+  // "plan" is not a downgrade. Without a basemap the only lines on screen are
+  // roads we actually measure, which is the better rendering on a projector,
+  // in a briefing pack, and on any machine where the map will not paint.
+  const [view, setView] = useState<"map" | "plan">("map");
   const [network, setNetwork] = useState<NetworkPayload | null>(null);
   const [roster, setRoster] = useState<Officer[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -95,13 +101,55 @@ export default function Board() {
             network unreadable and put the queue where the map belongs. */}
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.65fr)]">
           <div className="order-1 flex flex-col gap-4">
-            <div className="h-[24rem] xl:h-[calc(100dvh-13rem)] xl:min-h-[30rem]">
-              <CommandMap
-                board={board}
-                network={network}
-                selected={selected}
-                onSelectIncident={setSelected}
-              />
+            <div className="relative h-[24rem] xl:h-[calc(100dvh-13rem)] xl:min-h-[30rem]">
+              {view === "map" ? (
+                <FlowMap
+                  board={board}
+                  network={network}
+                  selected={selected}
+                  onSelectIncident={setSelected}
+                  animate={animate}
+                />
+              ) : (
+                <NetworkPlan
+                  board={board}
+                  network={network}
+                  selected={selected}
+                  onSelectIncident={setSelected}
+                  className="h-full w-full"
+                />
+              )}
+              <div className="absolute right-3 top-3 flex items-center gap-2 rounded-md border border-line bg-surface/95 px-2.5 py-1.5 shadow-[var(--shadow-card)] no-print">
+                <div role="group" aria-label="View" className="flex items-center gap-0.5">
+                  {(["map", "plan"] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setView(v)}
+                      aria-pressed={view === v}
+                      className={`rounded px-2 py-0.5 text-[length:var(--text-2xs)] font-medium transition-colors ${
+                        view === v ? "bg-navy text-white" : "text-ink-2 hover:bg-sunken"
+                      }`}
+                    >
+                      {v === "map" ? "Map" : "Plan"}
+                    </button>
+                  ))}
+                </div>
+                {view === "map" && (
+                <label className="flex cursor-pointer items-center gap-2 border-l border-line pl-2 text-[length:var(--text-2xs)] text-ink-2">
+                  <input
+                    type="checkbox"
+                    checked={animate}
+                    onChange={(e) => setAnimate(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-[var(--color-navy)]"
+                  />
+                  Show flow
+                </label>
+                )}
+                <span className="border-l border-line pl-2 tnum text-[length:var(--text-2xs)] text-ink-3">
+                  {board?.corridors.reduce((n, c) => n + c.runs.length, 0) ?? 0} stretches measured
+                </span>
+              </div>
             </div>
           </div>
 

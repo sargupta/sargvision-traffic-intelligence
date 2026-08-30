@@ -20,6 +20,14 @@ export interface ChokePoint {
   share_of_corridor: number;
 }
 
+/** One stretch of carriageway at a single traffic classification.
+ *  `path` is [lon, lat] — GeoJSON and deck.gl order. */
+export interface SpeedRun {
+  speed: "NORMAL" | "SLOW" | "TRAFFIC_JAM";
+  path: [number, number][];
+  length_m: number;
+}
+
 export interface CorridorRow {
   corridor_id: string;
   name: string;
@@ -28,12 +36,24 @@ export interface CorridorRow {
   excess_minutes: number | null;
   duration_minutes: number | null;
   typical_minutes: number | null;
+  speed_kmh: number | null;
   roads: string;
   trend_per_10min: number | null;
   held_minutes: number;
   choke_points: ChokePoint[];
+  runs: SpeedRun[];
+  observed_at: string | null;
   approximate_location: boolean;
 }
+
+/** What the traffic classification means on the road, and on screen.
+ *  Values are the same family the band tags use, so the map and the table
+ *  cannot disagree about what amber means. */
+export const RUN_COLOUR: Record<SpeedRun["speed"], [number, number, number]> = {
+  NORMAL: [21, 115, 71],       // --color-ok
+  SLOW: [181, 71, 8],          // --color-high
+  TRAFFIC_JAM: [179, 35, 24],  // --color-sev
+};
 
 export interface Note {
   at: string;
