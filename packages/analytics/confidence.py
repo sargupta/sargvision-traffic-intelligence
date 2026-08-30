@@ -23,6 +23,23 @@ MIN_PUBLISH = 30      # per BIN (unit x day_type x hour). Below this, nothing is
 # silently empties the preferred level -- which is exactly the bug this comment exists
 # to prevent recurring.
 
+# ── The unit matters, and it is not the same unit for every claim ───────────
+#
+# MIN_PUBLISH counts OBSERVATIONS, which is the right denominator for the 2019
+# retrospective: that window holds 143 days, so 30 observations in a bin are
+# drawn from many separate days and the median means something.
+#
+# It is the WRONG denominator for any claim about recurrence. A live collector
+# polling one corridor produces roughly five observations in an evening peak,
+# so 30 observations is under six days -- and "this happens every Tuesday
+# evening" asserted from six days is not a finding, it is a coincidence with a
+# confidence interval printed next to it.
+#
+# Recurrence claims must therefore be floored in DAYS, not observations. This
+# constant is stated here so the window engine cannot quietly inherit the wrong
+# one when it is built.
+MIN_DAYS_FOR_RECURRENCE = 12   # comparable days, matched on day type
+
 
 def annotate(baselines: pl.DataFrame, source: str = BaselineSource.UNIT_1KM) -> pl.DataFrame:
     """Attach confidence and baseline source to every bin."""

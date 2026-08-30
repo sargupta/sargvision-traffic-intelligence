@@ -85,11 +85,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="SARGVISION Traffic Command", version="2.0.0", lifespan=lifespan)
+# Fail closed. A missing CORS_ORIGINS used to default to "*", so a
+# misconfigured deployment silently served the command API to any origin on the
+# internet. An empty allowlist is a visible outage; a wildcard is an invisible
+# one.
+_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=_ORIGINS,
     allow_methods=["GET", "POST"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -222,7 +227,37 @@ def city_profile(day_type: str = Query("WEEKDAY")) -> dict:
 
 @app.get("/api/roster")
 def roster() -> dict:
-    return {"officers": ROSTER}
+    """Units available for assignment.
+
+    **Deployment status is deliberately withheld.** This endpoint has no
+    authentication in front of it, and `on_duty` per named officer is a live,
+    public map of which traffic guards are staffed and which are not — in a
+    city on an international border and the only land corridor to the
+    North-East. Names and duty state are operational security, not roster
+    convenience.
+
+    Until an identity provider sits in front of this API, the response carries
+    only what the assignment control genuinely needs: a unit to send. Restoring
+    names and duty state is gated on auth, not on a flag.
+    """
+    return {
+        "officers": [
+            {
+                "officer_id": o["officer_id"],
+                "name": o["unit"],
+                "rank": o["rank"],
+                "role": o["role"],
+                "unit": o["unit"],
+                "on_duty": True,
+            }
+            for o in ROSTER
+            if o["role"] != "DUTY_OFFICER"
+        ],
+        "note": (
+            "Officer names and duty status require authentication and are not "
+            "served here. Assignment is to a unit."
+        ),
+    }
 
 
 @app.get("/api/incidents")
@@ -310,7 +345,7 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
     """
     c = centre()
     moment = c.last_poll or now()
-    since = now - timedelta(hours=hours)
+    since = moment - timedelta(hours=hours)
     touched = [i for i in c.incidents.values() if i.detected_at >= since or i.is_open]
 
     def summarise(item) -> dict:
