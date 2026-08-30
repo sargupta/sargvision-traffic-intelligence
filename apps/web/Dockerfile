@@ -21,9 +21,14 @@ RUN npm run build
 # ── serve ────────────────────────────────────────────────────────────────────
 FROM nginx:1.27-alpine
 RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/default.conf
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
 COPY --from=build /app/out /usr/share/nginx/html
 
+# The CSP must name the API origin the bundle actually calls. Carrying it
+# through as one variable stops the two from disagreeing.
+ARG NEXT_PUBLIC_API_URL=""
+ENV API_ORIGIN=$NEXT_PUBLIC_API_URL
+
 EXPOSE 8080
-RUN nginx -t
-CMD ["nginx", "-g", "daemon off;"]
+# Only API_ORIGIN is substituted; nginx's own $uri and friends survive intact.
+CMD ["sh", "-c", "envsubst '${API_ORIGIN}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -t && nginx -g 'daemon off;'"]

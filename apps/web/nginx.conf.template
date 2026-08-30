@@ -40,7 +40,7 @@ http {
 
     # Google Maps needs its own script, image and connect origins; nothing else
     # is permitted to load. Fonts are self-hosted by next/font, so no font CDN.
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.ggpht.com; font-src 'self' data:; connect-src 'self' https://maps.googleapis.com https://*.googleapis.com; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.ggpht.com; font-src 'self' data:; connect-src 'self' ${API_ORIGIN} https://maps.googleapis.com https://*.googleapis.com; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'" always;
 
     # Hashed build assets never change under the same name.
     location /_next/static/ {
