@@ -6,6 +6,13 @@
 
 # Siliguri does not need more traffic data. It needs intelligence.
 
+<p align="center">
+  <img src="design/assets/positioning-statement@1x.png" width="640"
+       alt="Traffic Data struck through. Traffic Monitoring struck through. Traffic Intelligence." />
+</p>
+
+*Source: [`design/assets/positioning-statement.svg`](design/assets/positioning-statement.svg)*
+
 ```
                     TRAFFIC DATA
               What information do we have?

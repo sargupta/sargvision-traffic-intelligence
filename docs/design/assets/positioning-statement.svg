@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768" width="1024" height="768" role="img"
+     aria-label="Traffic Data struck through. Traffic Monitoring struck through. Traffic Intelligence.">
+  <title>SARGVISION — Traffic Intelligence positioning</title>
+  <desc>Not traffic data. Not traffic monitoring. Traffic intelligence.</desc>
+
+  <style>
+    .t      { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+              font-weight: 700; font-size: 86px; letter-spacing: -2px; }
+    .white  { fill: #FFFFFF; }
+    .red    { fill: #E0392B; }
+    .yellow { fill: #F5E76B; }
+    .strike { stroke: #E0392B; stroke-width: 9; stroke-linecap: butt; }
+  </style>
+
+  <rect fill="#000000" width="1024" height="768"/>
+
+  <!-- line 1 -->
+  <text class="t" x="512" y="330" text-anchor="middle">
+    <tspan class="white">Traffic</tspan><tspan class="red" dx="26">Data</tspan>
+  </text>
+  <line class="strike" x1="556" y1="302" x2="733" y2="302"/>
+
+  <!-- line 2 -->
+  <text class="t" x="512" y="404" text-anchor="middle">
+    <tspan class="white">Traffic</tspan><tspan class="red" dx="26">Monitoring</tspan>
+  </text>
+  <line class="strike" x1="437" y1="376" x2="848" y2="376"/>
+
+  <!-- line 3 — the one that stands -->
+  <text class="t" x="512" y="478" text-anchor="middle">
+    <tspan class="white">Traffic</tspan><tspan class="yellow" dx="26">Intelligence</tspan>
+  </text>
+</svg>
