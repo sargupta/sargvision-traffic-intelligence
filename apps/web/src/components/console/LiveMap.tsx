@@ -139,8 +139,14 @@ export function LiveMap({
         focusZones.includes(geo.origin_zone) ||
         focusZones.includes(geo.dest_zone);
       const isSelected = selected === m.movement_id;
+      // An operations display has to be readable at a glance from across a
+      // room. Normal is deliberately quiet and elevated is deliberately loud —
+      // rendering them at similar weight makes the map decorative rather than
+      // useful, which is the failure mode of most traffic dashboards.
+      const calm = m.status === "NORMAL" || m.status === "UNKNOWN";
       const colour = STATUS_COLOUR[m.status];
-      const weight = m.status === "NORMAL" || m.status === "UNKNOWN" ? 1.6 : 3.2;
+      const weight = calm ? 1.2 : m.status === "MODERATE" ? 3 : 4.5;
+      const baseOpacity = calm ? 0.3 : 0.95;
 
       let line = arcs.current.get(m.movement_id);
       if (!line) {
@@ -155,7 +161,7 @@ export function LiveMap({
 
       line.setOptions({
         strokeColor: colour,
-        strokeOpacity: inFocus ? (isSelected ? 1 : 0.82) : 0.1,
+        strokeOpacity: inFocus ? (isSelected ? 1 : baseOpacity) : 0.08,
         strokeWeight: isSelected ? weight + 2 : weight,
         zIndex: isSelected ? 300 : inFocus ? 200 : 50,
       });
