@@ -1,0 +1,369 @@
+[
+ {
+  "junction_id": "J_JALPAI_MORE",
+  "name": "Jalpai More",
+  "vc_ratio": 1.14,
+  "control": "NON_SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "CONFIRMED",
+  "match_note": "address names the junction, rooftop precision",
+  "lat": 26.699865,
+  "lon": 88.412014,
+  "formatted_address": "MCX6+WRV jalpai more, silalapara lane, opp. shaktigar, near sabji bazar, Ward 5, Saktigarh, Siliguri, West Bengal 734005, India",
+  "location_type": "ROOFTOP",
+  "place_id": "ChIJwcyRHFpB5DkR6y5kIWeHZy0",
+  "types": [
+   "premise",
+   "street_address"
+  ]
+ },
+ {
+  "junction_id": "J_MAHANANDA_BRIDGE",
+  "name": "Mahananda Bridge",
+  "vc_ratio": 1.13,
+  "control": "SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "NEAR",
+  "match_note": "address names the junction, centre precision",
+  "lat": 26.720314,
+  "lon": 88.419572,
+  "formatted_address": "Hill Cart Road & Mahananda Bridge, Ward 3, Janta Nagar, Siliguri, West Bengal 734003, India",
+  "location_type": "GEOMETRIC_CENTER",
+  "place_id": "EltIaWxsIENhcnQgUm9hZCAmIE1haGFuYW5kYSBCcmlkZ2UsIFdhcmQgMywgSmFudGEgTmFnYXIsIFNpbGlndXJpLCBXZXN0IEJlbmdhbCA3MzQwMDMsIEluZGlhImYiZAoUChIJMW3ctD9B5DkRdwqEqNpGRUYSFAoSCTFt3LQ_QeQ5EXcKhKjaRkVGGhQKEgmhzNfGakHkORGErQ0t1IcEcxoUChIJsVKStT9B5DkRj-qU3009VpwiCg1BMu0PFYTBszQ",
+  "types": [
+   "intersection"
+  ]
+ },
+ {
+  "junction_id": "J_CHAMPASARI_MORE",
+  "name": "Champasari More",
+  "vc_ratio": 1.09,
+  "control": "SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "NEAR",
+  "match_note": "address names the junction, centre precision",
+  "lat": 26.74178,
+  "lon": 88.428688,
+  "formatted_address": "Champasari More Rd, Siliguri, West Bengal, India",
+  "location_type": "GEOMETRIC_CENTER",
+  "place_id": "ChIJLfYp5iBB5DkRUK9lt2_keXM",
+  "types": [
+   "route"
+  ]
+ },
+ {
+  "junction_id": "J_DARJEELING_MORE",
+  "name": "Darjeeling More",
+  "vc_ratio": 1.03,
+  "control": "SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "CONFIRMED",
+  "match_note": "address names the junction, rooftop precision",
+  "lat": 26.73487,
+  "lon": 88.408939,
+  "formatted_address": "Darjeeling More, 12, near Loknath mandir, Shiv Nagar, Dagapur, Siliguri, Mallaguri, West Bengal 734003, India",
+  "location_type": "ROOFTOP",
+  "place_id": "ChIJqWVN1ShB5DkRbeYLBnBozsM",
+  "types": [
+   "premise",
+   "street_address"
+  ]
+ },
+ {
+  "junction_id": "J_PANI_TANKI_MORE",
+  "name": "Pani Tanki More",
+  "vc_ratio": 0.81,
+  "control": "SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "CONFIRMED",
+  "match_note": "address names the junction, rooftop precision",
+  "lat": 26.720098,
+  "lon": 88.426609,
+  "formatted_address": "Panitanki More, Sevoke Rd, Ward 11, Near Pani Tanki More (Clock Tower), Siliguri, West Bengal 734001, India",
+  "location_type": "ROOFTOP",
+  "place_id": "ChIJ71xYdhNB5DkRxmXqTRX8wjY",
+  "types": [
+   "premise",
+   "street_address"
+  ]
+ },
+ {
+  "junction_id": "J_CHECK_POST_MORE",
+  "name": "Check Post More",
+  "vc_ratio": 0.77,
+  "control": "SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "ROAD_ONLY",
+  "match_note": "matched a road or place, not the junction by name",
+  "lat": 26.687192,
+  "lon": 88.422812,
+  "formatted_address": "MCPF+V4F, Kashmir Colony, Babupara, Siliguri, West Bengal 734007, India",
+  "location_type": "ROOFTOP",
+  "place_id": "ChIJvyPxqI1D5DkRVwSMASUnTAw",
+  "types": [
+   "convenience_store",
+   "establishment",
+   "food",
+   "point_of_interest",
+   "store"
+  ]
+ },
+ {
+  "junction_id": "J_JHANKAAR_MORE",
+  "name": "Jhankaar More",
+  "vc_ratio": 0.75,
+  "control": "MIXED",
+  "in_siliguri_bbox": true,
+  "match_quality": "ROAD_ONLY",
+  "match_note": "matched a road or place, not the junction by name",
+  "lat": 26.729997,
+  "lon": 88.455156,
+  "formatted_address": "Sudip Roy, Iskcon Rd, Bankim Nagar, Siliguri, Dabgram, West Bengal 734001, India",
+  "location_type": "GEOMETRIC_CENTER",
+  "place_id": "ChIJqfRHNz1B5DkRPyvNFXtPcqg",
+  "types": [
+   "establishment",
+   "food",
+   "point_of_interest",
+   "store"
+  ]
+ },
+ {
+  "junction_id": "J_WALL_FORD_BYPASS_CROSSING",
+  "name": "Wall Ford Bypass Crossing",
+  "vc_ratio": 0.69,
+  "control": "NON_SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "NEAR",
+  "match_note": "address names the junction, centre precision",
+  "lat": 26.713371,
+  "lon": 88.457352,
+  "formatted_address": "Eastern Bypass, Siliguri, West Bengal, India",
+  "location_type": "GEOMETRIC_CENTER",
+  "place_id": "EixFYXN0ZXJuIEJ5cGFzcywgU2lsaWd1cmksIFdlc3QgQmVuZ2FsLCBJbmRpYSIuKiwKFAoSCXeGG66XQeQ5EWTgwAVNIbzhEhQKEgnNHUT1FEHkORH_7WMgcMS13g",
+  "types": [
+   "route"
+  ]
+ },
+ {
+  "junction_id": "J_AIR_VIEW_MORE",
+  "name": "Air View More",
+  "vc_ratio": 0.6,
+  "control": "SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "CONFIRMED",
+  "match_note": "address names the junction, rooftop precision",
+  "lat": 26.718516,
+  "lon": 88.420461,
+  "formatted_address": "SLG, AIR VIEW MORE, Ward 6, Janta Nagar, Siliguri, West Bengal 734001, India",
+  "location_type": "ROOFTOP",
+  "place_id": "ChIJeZnuaQBB5DkRDKbp4d98FSs",
+  "types": [
+   "establishment",
+   "point_of_interest"
+  ]
+ },
+ {
+  "junction_id": "J_THANA_MORE",
+  "name": "Thana More",
+  "vc_ratio": 0.52,
+  "control": "SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "ROAD_ONLY",
+  "match_note": "matched a road or place, not the junction by name",
+  "lat": 26.70554,
+  "lon": 88.424826,
+  "formatted_address": "PC4F+6W4, Ward 8, Khalpara, Siliguri, West Bengal 734005, India",
+  "location_type": "ROOFTOP",
+  "place_id": "ChIJqXwAa5xB5DkRC_HfNxwCrGo",
+  "types": [
+   "establishment",
+   "point_of_interest"
+  ]
+ },
+ {
+  "junction_id": "J_WALL_FORD_SEVOKE_CROSSING",
+  "name": "Wall Ford Sevoke Crossing",
+  "vc_ratio": 0.48,
+  "control": "SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "NEAR",
+  "match_note": "address names the junction, centre precision",
+  "lat": 26.75022,
+  "lon": 88.438984,
+  "formatted_address": "Sevoke Rd, Siliguri, West Bengal, India",
+  "location_type": "GEOMETRIC_CENTER",
+  "place_id": "EidTZXZva2UgUmQsIFNpbGlndXJpLCBXZXN0IEJlbmdhbCwgSW5kaWEiLiosChQKEgn9sM3UBEHkORF8mFN8AMNbohIUChIJzR1E9RRB5DkR_-1jIHDEtd4",
+  "types": [
+   "route"
+  ]
+ },
+ {
+  "junction_id": "J_SEVOKE_MORE",
+  "name": "Sevoke More",
+  "vc_ratio": 0.41,
+  "control": "SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "CONFIRMED",
+  "match_note": "address names the junction, rooftop precision",
+  "lat": 26.715675,
+  "lon": 88.422824,
+  "formatted_address": "Sevoke Rd, opp. City Plaza, Ward 11, Janta Nagar, Siliguri, West Bengal 734001, India",
+  "location_type": "ROOFTOP",
+  "place_id": "ChIJlRejegBB5DkRXGkQxDYldRg",
+  "types": [
+   "establishment",
+   "point_of_interest"
+  ]
+ },
+ {
+  "junction_id": "J_VENUS_MORE",
+  "name": "Venus More",
+  "vc_ratio": 0.39,
+  "control": "SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "CONFIRMED",
+  "match_note": "address names the junction, rooftop precision",
+  "lat": 26.710723,
+  "lon": 88.426211,
+  "formatted_address": "Venus more, 143, Hill Cart Rd, Ward 6, Siliguri, West Bengal 734001, India",
+  "location_type": "ROOFTOP",
+  "place_id": "ChIJG3LmsW5B5DkRCsAtFqG5byM",
+  "types": [
+   "premise",
+   "street_address"
+  ]
+ },
+ {
+  "junction_id": "J_ASHIGHAR_MORE",
+  "name": "Ashighar More",
+  "vc_ratio": 0.38,
+  "control": "NON_SIGNALISED",
+  "in_siliguri_bbox": true,
+  "match_quality": "ROAD_ONLY",
+  "match_note": "matched a road or place, not the junction by name",
+  "lat": 26.716092,
+  "lon": 88.456497,
+  "formatted_address": "PF84+CHQ, Ghogomali Rd, Telipara, Dabgram, Siliguri, West Bengal 734006, India",
+  "location_type": "ROOFTOP",
+  "place_id": "ChIJj_qXGABB5DkRbIvLw1Ij7SM",
+  "types": [
+   "establishment",
+   "point_of_interest",
+   "police"
+  ]
+ },
+ {
+  "junction_id": "J_MALLAGURI_CROSSING",
+  "name": "Mallaguri Crossing",
+  "vc_ratio": 0.08,
+  "control": "GRADE_SEPARATED",
+  "in_siliguri_bbox": true,
+  "match_quality": "ROAD_ONLY",
+  "match_note": "approximate match only",
+  "lat": 26.743765,
+  "lon": 88.413728,
+  "formatted_address": "Mallaguri, West Bengal, India",
+  "location_type": "APPROXIMATE",
+  "place_id": "ChIJpcVGhdhA5DkRykJosqew1Tw",
+  "types": [
+   "locality",
+   "political"
+  ]
+ },
+ {
+  "junction_id": "J_COURT_MORE",
+  "name": "Court More",
+  "vc_ratio": null,
+  "control": "UNKNOWN",
+  "in_siliguri_bbox": true,
+  "match_quality": "CONFIRMED",
+  "match_note": "address names the junction, rooftop precision",
+  "lat": 26.708356,
+  "lon": 88.428452,
+  "formatted_address": "PC5H+994 Court More, Kachari Road, Ward 18, Hakim Para, Siliguri, West Bengal 734001, India",
+  "location_type": "ROOFTOP",
+  "place_id": "ChIJLV6vq29B5DkRyPhASDBejps",
+  "types": [
+   "premise",
+   "street_address"
+  ]
+ },
+ {
+  "junction_id": "J_NAUKAGHAT",
+  "name": "Naukaghat",
+  "vc_ratio": null,
+  "control": "UNKNOWN",
+  "in_siliguri_bbox": true,
+  "match_quality": "ROAD_ONLY",
+  "match_note": "approximate match only",
+  "lat": 26.692823,
+  "lon": 88.411228,
+  "formatted_address": "Nauka Ghat, Babupara, Siliguri, West Bengal 734005, India",
+  "location_type": "APPROXIMATE",
+  "place_id": "ChIJuRBETf1D5DkRrujGoXenFFs",
+  "types": [
+   "neighborhood",
+   "political"
+  ]
+ },
+ {
+  "junction_id": "J_NJP_STATION",
+  "name": "NJP Station",
+  "vc_ratio": null,
+  "control": "UNKNOWN",
+  "in_siliguri_bbox": true,
+  "match_quality": "NEAR",
+  "match_note": "address names the junction, centre precision",
+  "lat": 26.684225,
+  "lon": 88.442801,
+  "formatted_address": "New Jalpaiguri, Ward 35, Nayapara, Siliguri, West Bengal 734007, India",
+  "location_type": "GEOMETRIC_CENTER",
+  "place_id": "ChIJvzMhhS1C5DkR2Lvj0IXsrHQ",
+  "types": [
+   "establishment",
+   "point_of_interest",
+   "train_station",
+   "transit_station"
+  ]
+ },
+ {
+  "junction_id": "J_SILIGURI_JUNCTION",
+  "name": "Siliguri Junction",
+  "vc_ratio": null,
+  "control": "UNKNOWN",
+  "in_siliguri_bbox": true,
+  "match_quality": "NEAR",
+  "match_note": "address names the junction, centre precision",
+  "lat": 26.723713,
+  "lon": 88.413896,
+  "formatted_address": "Siliguri Jn, Hill Cart Rd, Ward 1, Patiram Jote, Siliguri, West Bengal 734003, India",
+  "location_type": "GEOMETRIC_CENTER",
+  "place_id": "ChIJuSgA0TtB5DkRhOfphJKMCNU",
+  "types": [
+   "establishment",
+   "point_of_interest",
+   "train_station",
+   "transit_station"
+  ]
+ },
+ {
+  "junction_id": "J_BAGDOGRA_AIRPORT",
+  "name": "Bagdogra Airport",
+  "vc_ratio": null,
+  "control": "UNKNOWN",
+  "in_siliguri_bbox": true,
+  "match_quality": "NEAR",
+  "match_note": "address names the junction, centre precision",
+  "lat": 26.682033,
+  "lon": 88.329131,
+  "formatted_address": "Bagdogra Airport, Bagdogra, Siliguri, West Bengal 734421, India",
+  "location_type": "GEOMETRIC_CENTER",
+  "place_id": "ChIJnYDHEfpF5DkR9PWSk_cbVpU",
+  "types": [
+   "airport",
+   "establishment",
+   "point_of_interest"
+  ]
+ }
+]
