@@ -62,7 +62,40 @@ SILIGURI = Thresholds()
 
 # How many unowned open incidents may exist at once. Above this, a new
 # condition has to be worse than the weakest thing already waiting.
-ALERT_BUDGET = 6
+#
+# The arithmetic behind the number: 68 segments evaluated every cycle is
+# roughly 2,000 evaluations per six-hour shift. A rule with a 1% false-positive
+# rate — which sounds excellent — produces twenty spurious alerts a shift, one
+# every eighteen minutes, from noise alone. The duty officer is also on
+# wireless, taking public calls and clearing VIP movement, so the screen has
+# perhaps a fifth of their attention. The real currency is deployments, not
+# clicks, and nobody deploys twenty times a shift.
+ALERT_BUDGET = 5
+
+# Not every corridor deserves the same attention.
+#
+# Polling all 68 segments on a fixed three-minute clock is 980,000 requests a
+# month and treats a road running normally as though it were about to fail.
+# Cadence follows condition instead: a corridor that is quiet is asked rarely,
+# one that is deteriorating is watched closely. This costs less AND resolves
+# the thing that matters better, which is the rare case where those agree.
+CADENCE = {
+    "SEVERE": timedelta(minutes=3),
+    "HIGH": timedelta(minutes=3),
+    "ELEVATED": timedelta(minutes=6),
+    "NORMAL": timedelta(minutes=15),
+    "UNKNOWN": timedelta(minutes=2),   # never seen: get a first reading soon
+}
+
+# Overnight there is no sergeant to send. Conditions are still recorded so the
+# morning shift inherits them, but the network is asked far less often because
+# nothing turns on the answer until there is someone to act on it.
+QUIET_HOURS = range(23, 24), range(0, 5)
+QUIET_CADENCE = timedelta(minutes=30)
+
+
+def _is_quiet(at: datetime) -> bool:
+    return at.hour >= 23 or at.hour < 5
 
 # A condition must hold this long before it becomes an incident. Traffic
 # fluctuates; a single poll is not a problem. Tunable because the right value
@@ -88,6 +121,14 @@ class CorridorStatus:
     readings: deque[CorridorReading] = field(default_factory=lambda: deque(maxlen=180))
     band: str = "UNKNOWN"
     band_since: datetime | None = None
+    due_at: datetime | None = None
+
+    def is_due(self, now: datetime) -> bool:
+        return self.due_at is None or now >= self.due_at
+
+    def schedule(self, now: datetime) -> None:
+        interval = QUIET_CADENCE if _is_quiet(now) else CADENCE.get(self.band, CADENCE["NORMAL"])
+        self.due_at = now + interval
 
     @property
     def latest(self) -> CorridorReading | None:
@@ -159,7 +200,18 @@ class CommandCentre:
 
         chokes: dict[str, list] = {}
         read = 0
+        skipped = 0
         for cid, corridor in self.network.corridors.items():
+            status = self.status[cid]
+            if not status.is_due(now):
+                skipped += 1
+                # A corridor not polled this cycle keeps whatever choke points
+                # its last reading found, so a jam does not blink out of the
+                # incident view simply because its corridor was not due.
+                if status.latest and status.latest.choke_points:
+                    chokes[cid] = list(status.latest.choke_points)
+                continue
+
             reading = self.probe.read(
                 corridor,
                 self.network.junctions[corridor.from_junction],
@@ -167,9 +219,11 @@ class CommandCentre:
                 now,
             )
             if reading is None:
+                status.schedule(now)
                 continue
             read += 1
-            self.status[cid].observe(reading, self.thresholds)
+            status.observe(reading, self.thresholds)
+            status.schedule(now)
             if reading.choke_points:
                 chokes[cid] = list(reading.choke_points)
 
@@ -181,6 +235,8 @@ class CommandCentre:
             "at": now.isoformat(timespec="seconds"),
             "cycle": self.cycles,
             "corridors_read": read,
+            "corridors_skipped": skipped,
+            "quiet_hours": _is_quiet(now),
             "choke_clusters": len(clusters),
             "raised": raised,
             "lapsed": lapsed,
@@ -279,6 +335,13 @@ class CommandCentre:
                 continue
 
             if not self._worth_raising(cluster):
+                continue
+
+            # Overnight there is nobody to send. The condition is still tracked
+            # and appears in the handover, but it does not become an incident
+            # demanding an owner who does not exist. Alerting into an empty
+            # control room trains people to ignore the feed.
+            if _is_quiet(now):
                 continue
 
             priority = self._priority(cluster, cluster.corridors)

@@ -139,14 +139,19 @@ def main() -> None:
             continue
 
         seen.add(pair)
-        corridors.append(
-            {
-                "corridor_id": f"C_{a['junction_id'][2:]}__{b['junction_id'][2:]}",
-                "from_junction": a["junction_id"],
-                "from_name": a["name"],
-                "to_junction": b["junction_id"],
-                "to_name": b["name"],
-                "name": f"{a['name']} → {b['name']}",
+        # Both directions. "Hill Cart Road northbound into Mahananda Bridge"
+        # and the southbound approach are different problems with different
+        # fixes, and a single figure for the pair averages them into something
+        # that describes neither.
+        for src, dst in ((a, b), (b, a)):
+            corridors.append(
+                {
+                    "corridor_id": f"C_{src['junction_id'][2:]}__{dst['junction_id'][2:]}",
+                    "from_junction": src["junction_id"],
+                    "from_name": src["name"],
+                    "to_junction": dst["junction_id"],
+                    "to_name": dst["name"],
+                    "name": f"{src['name']} → {dst['name']}",
                 # Retained so the interface can say how sure it is of the pin at
                 # each end; the corridor is only as located as its junctions.
                 "pin_quality": min(

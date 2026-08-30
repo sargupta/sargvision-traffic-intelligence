@@ -13,12 +13,38 @@
   ]
  },
  {
+  "corridor_id": "C_ASHIGHAR_MORE__WALL_FORD_BYPASS_CROSSING",
+  "from_junction": "J_ASHIGHAR_MORE",
+  "from_name": "Ashighar More",
+  "to_junction": "J_WALL_FORD_BYPASS_CROSSING",
+  "to_name": "Wall Ford Bypass Crossing",
+  "name": "Ashighar More \u2192 Wall Ford Bypass Crossing",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "ROAD_ONLY",
+   "NEAR"
+  ]
+ },
+ {
   "corridor_id": "C_SEVOKE_MORE__AIR_VIEW_MORE",
   "from_junction": "J_SEVOKE_MORE",
   "from_name": "Sevoke More",
   "to_junction": "J_AIR_VIEW_MORE",
   "to_name": "Air View More",
   "name": "Sevoke More \u2192 Air View More",
+  "pin_quality": "CONFIRMED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "CONFIRMED"
+  ]
+ },
+ {
+  "corridor_id": "C_AIR_VIEW_MORE__SEVOKE_MORE",
+  "from_junction": "J_AIR_VIEW_MORE",
+  "from_name": "Air View More",
+  "to_junction": "J_SEVOKE_MORE",
+  "to_name": "Sevoke More",
+  "name": "Air View More \u2192 Sevoke More",
   "pin_quality": "CONFIRMED",
   "endpoints_quality": [
    "CONFIRMED",
@@ -39,6 +65,19 @@
   ]
  },
  {
+  "corridor_id": "C_VENUS_MORE__COURT_MORE",
+  "from_junction": "J_VENUS_MORE",
+  "from_name": "Venus More",
+  "to_junction": "J_COURT_MORE",
+  "to_name": "Court More",
+  "name": "Venus More \u2192 Court More",
+  "pin_quality": "CONFIRMED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "CONFIRMED"
+  ]
+ },
+ {
   "corridor_id": "C_MAHANANDA_BRIDGE__SEVOKE_MORE",
   "from_junction": "J_MAHANANDA_BRIDGE",
   "from_name": "Mahananda Bridge",
@@ -52,12 +91,38 @@
   ]
  },
  {
+  "corridor_id": "C_SEVOKE_MORE__MAHANANDA_BRIDGE",
+  "from_junction": "J_SEVOKE_MORE",
+  "from_name": "Sevoke More",
+  "to_junction": "J_MAHANANDA_BRIDGE",
+  "to_name": "Mahananda Bridge",
+  "name": "Sevoke More \u2192 Mahananda Bridge",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "NEAR"
+  ]
+ },
+ {
   "corridor_id": "C_VENUS_MORE__SEVOKE_MORE",
   "from_junction": "J_VENUS_MORE",
   "from_name": "Venus More",
   "to_junction": "J_SEVOKE_MORE",
   "to_name": "Sevoke More",
   "name": "Venus More \u2192 Sevoke More",
+  "pin_quality": "CONFIRMED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "CONFIRMED"
+  ]
+ },
+ {
+  "corridor_id": "C_SEVOKE_MORE__VENUS_MORE",
+  "from_junction": "J_SEVOKE_MORE",
+  "from_name": "Sevoke More",
+  "to_junction": "J_VENUS_MORE",
+  "to_name": "Venus More",
+  "name": "Sevoke More \u2192 Venus More",
   "pin_quality": "CONFIRMED",
   "endpoints_quality": [
    "CONFIRMED",
@@ -78,12 +143,38 @@
   ]
  },
  {
+  "corridor_id": "C_JALPAI_MORE__NAUKAGHAT",
+  "from_junction": "J_JALPAI_MORE",
+  "from_name": "Jalpai More",
+  "to_junction": "J_NAUKAGHAT",
+  "to_name": "Naukaghat",
+  "name": "Jalpai More \u2192 Naukaghat",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "ROAD_ONLY"
+  ]
+ },
+ {
   "corridor_id": "C_SILIGURI_JUNCTION__MAHANANDA_BRIDGE",
   "from_junction": "J_SILIGURI_JUNCTION",
   "from_name": "Siliguri Junction",
   "to_junction": "J_MAHANANDA_BRIDGE",
   "to_name": "Mahananda Bridge",
   "name": "Siliguri Junction \u2192 Mahananda Bridge",
+  "pin_quality": "NEAR",
+  "endpoints_quality": [
+   "NEAR",
+   "NEAR"
+  ]
+ },
+ {
+  "corridor_id": "C_MAHANANDA_BRIDGE__SILIGURI_JUNCTION",
+  "from_junction": "J_MAHANANDA_BRIDGE",
+  "from_name": "Mahananda Bridge",
+  "to_junction": "J_SILIGURI_JUNCTION",
+  "to_name": "Siliguri Junction",
+  "name": "Mahananda Bridge \u2192 Siliguri Junction",
   "pin_quality": "NEAR",
   "endpoints_quality": [
    "NEAR",
@@ -104,12 +195,38 @@
   ]
  },
  {
+  "corridor_id": "C_PANI_TANKI_MORE__VENUS_MORE",
+  "from_junction": "J_PANI_TANKI_MORE",
+  "from_name": "Pani Tanki More",
+  "to_junction": "J_VENUS_MORE",
+  "to_name": "Venus More",
+  "name": "Pani Tanki More \u2192 Venus More",
+  "pin_quality": "CONFIRMED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "CONFIRMED"
+  ]
+ },
+ {
   "corridor_id": "C_SEVOKE_MORE__COURT_MORE",
   "from_junction": "J_SEVOKE_MORE",
   "from_name": "Sevoke More",
   "to_junction": "J_COURT_MORE",
   "to_name": "Court More",
   "name": "Sevoke More \u2192 Court More",
+  "pin_quality": "CONFIRMED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "CONFIRMED"
+  ]
+ },
+ {
+  "corridor_id": "C_COURT_MORE__SEVOKE_MORE",
+  "from_junction": "J_COURT_MORE",
+  "from_name": "Court More",
+  "to_junction": "J_SEVOKE_MORE",
+  "to_name": "Sevoke More",
+  "name": "Court More \u2192 Sevoke More",
   "pin_quality": "CONFIRMED",
   "endpoints_quality": [
    "CONFIRMED",
@@ -130,12 +247,38 @@
   ]
  },
  {
+  "corridor_id": "C_SILIGURI_JUNCTION__AIR_VIEW_MORE",
+  "from_junction": "J_SILIGURI_JUNCTION",
+  "from_name": "Siliguri Junction",
+  "to_junction": "J_AIR_VIEW_MORE",
+  "to_name": "Air View More",
+  "name": "Siliguri Junction \u2192 Air View More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "NEAR",
+   "CONFIRMED"
+  ]
+ },
+ {
   "corridor_id": "C_CHAMPASARI_MORE__WALL_FORD_SEVOKE_CROSSING",
   "from_junction": "J_CHAMPASARI_MORE",
   "from_name": "Champasari More",
   "to_junction": "J_WALL_FORD_SEVOKE_CROSSING",
   "to_name": "Wall Ford Sevoke Crossing",
   "name": "Champasari More \u2192 Wall Ford Sevoke Crossing",
+  "pin_quality": "NEAR",
+  "endpoints_quality": [
+   "NEAR",
+   "NEAR"
+  ]
+ },
+ {
+  "corridor_id": "C_WALL_FORD_SEVOKE_CROSSING__CHAMPASARI_MORE",
+  "from_junction": "J_WALL_FORD_SEVOKE_CROSSING",
+  "from_name": "Wall Ford Sevoke Crossing",
+  "to_junction": "J_CHAMPASARI_MORE",
+  "to_name": "Champasari More",
+  "name": "Wall Ford Sevoke Crossing \u2192 Champasari More",
   "pin_quality": "NEAR",
   "endpoints_quality": [
    "NEAR",
@@ -156,12 +299,38 @@
   ]
  },
  {
+  "corridor_id": "C_THANA_MORE__JALPAI_MORE",
+  "from_junction": "J_THANA_MORE",
+  "from_name": "Thana More",
+  "to_junction": "J_JALPAI_MORE",
+  "to_name": "Jalpai More",
+  "name": "Thana More \u2192 Jalpai More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "ROAD_ONLY",
+   "CONFIRMED"
+  ]
+ },
+ {
   "corridor_id": "C_CHECK_POST_MORE__NAUKAGHAT",
   "from_junction": "J_CHECK_POST_MORE",
   "from_name": "Check Post More",
   "to_junction": "J_NAUKAGHAT",
   "to_name": "Naukaghat",
   "name": "Check Post More \u2192 Naukaghat",
+  "pin_quality": "ROAD_ONLY",
+  "endpoints_quality": [
+   "ROAD_ONLY",
+   "ROAD_ONLY"
+  ]
+ },
+ {
+  "corridor_id": "C_NAUKAGHAT__CHECK_POST_MORE",
+  "from_junction": "J_NAUKAGHAT",
+  "from_name": "Naukaghat",
+  "to_junction": "J_CHECK_POST_MORE",
+  "to_name": "Check Post More",
+  "name": "Naukaghat \u2192 Check Post More",
   "pin_quality": "ROAD_ONLY",
   "endpoints_quality": [
    "ROAD_ONLY",
@@ -182,12 +351,38 @@
   ]
  },
  {
+  "corridor_id": "C_COURT_MORE__PANI_TANKI_MORE",
+  "from_junction": "J_COURT_MORE",
+  "from_name": "Court More",
+  "to_junction": "J_PANI_TANKI_MORE",
+  "to_name": "Pani Tanki More",
+  "name": "Court More \u2192 Pani Tanki More",
+  "pin_quality": "CONFIRMED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "CONFIRMED"
+  ]
+ },
+ {
   "corridor_id": "C_ASHIGHAR_MORE__JHANKAAR_MORE",
   "from_junction": "J_ASHIGHAR_MORE",
   "from_name": "Ashighar More",
   "to_junction": "J_JHANKAAR_MORE",
   "to_name": "Jhankaar More",
   "name": "Ashighar More \u2192 Jhankaar More",
+  "pin_quality": "ROAD_ONLY",
+  "endpoints_quality": [
+   "ROAD_ONLY",
+   "ROAD_ONLY"
+  ]
+ },
+ {
+  "corridor_id": "C_JHANKAAR_MORE__ASHIGHAR_MORE",
+  "from_junction": "J_JHANKAAR_MORE",
+  "from_name": "Jhankaar More",
+  "to_junction": "J_ASHIGHAR_MORE",
+  "to_name": "Ashighar More",
+  "name": "Jhankaar More \u2192 Ashighar More",
   "pin_quality": "ROAD_ONLY",
   "endpoints_quality": [
    "ROAD_ONLY",
@@ -208,12 +403,38 @@
   ]
  },
  {
+  "corridor_id": "C_DARJEELING_MORE__SILIGURI_JUNCTION",
+  "from_junction": "J_DARJEELING_MORE",
+  "from_name": "Darjeeling More",
+  "to_junction": "J_SILIGURI_JUNCTION",
+  "to_name": "Siliguri Junction",
+  "name": "Darjeeling More \u2192 Siliguri Junction",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "NEAR"
+  ]
+ },
+ {
   "corridor_id": "C_THANA_MORE__CHECK_POST_MORE",
   "from_junction": "J_THANA_MORE",
   "from_name": "Thana More",
   "to_junction": "J_CHECK_POST_MORE",
   "to_name": "Check Post More",
   "name": "Thana More \u2192 Check Post More",
+  "pin_quality": "ROAD_ONLY",
+  "endpoints_quality": [
+   "ROAD_ONLY",
+   "ROAD_ONLY"
+  ]
+ },
+ {
+  "corridor_id": "C_CHECK_POST_MORE__THANA_MORE",
+  "from_junction": "J_CHECK_POST_MORE",
+  "from_name": "Check Post More",
+  "to_junction": "J_THANA_MORE",
+  "to_name": "Thana More",
+  "name": "Check Post More \u2192 Thana More",
   "pin_quality": "ROAD_ONLY",
   "endpoints_quality": [
    "ROAD_ONLY",
@@ -234,12 +455,38 @@
   ]
  },
  {
+  "corridor_id": "C_AIR_VIEW_MORE__JALPAI_MORE",
+  "from_junction": "J_AIR_VIEW_MORE",
+  "from_name": "Air View More",
+  "to_junction": "J_JALPAI_MORE",
+  "to_name": "Jalpai More",
+  "name": "Air View More \u2192 Jalpai More",
+  "pin_quality": "CONFIRMED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "CONFIRMED"
+  ]
+ },
+ {
   "corridor_id": "C_AIR_VIEW_MORE__DARJEELING_MORE",
   "from_junction": "J_AIR_VIEW_MORE",
   "from_name": "Air View More",
   "to_junction": "J_DARJEELING_MORE",
   "to_name": "Darjeeling More",
   "name": "Air View More \u2192 Darjeeling More",
+  "pin_quality": "CONFIRMED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "CONFIRMED"
+  ]
+ },
+ {
+  "corridor_id": "C_DARJEELING_MORE__AIR_VIEW_MORE",
+  "from_junction": "J_DARJEELING_MORE",
+  "from_name": "Darjeeling More",
+  "to_junction": "J_AIR_VIEW_MORE",
+  "to_name": "Air View More",
+  "name": "Darjeeling More \u2192 Air View More",
   "pin_quality": "CONFIRMED",
   "endpoints_quality": [
    "CONFIRMED",
@@ -260,6 +507,19 @@
   ]
  },
  {
+  "corridor_id": "C_MAHANANDA_BRIDGE__DARJEELING_MORE",
+  "from_junction": "J_MAHANANDA_BRIDGE",
+  "from_name": "Mahananda Bridge",
+  "to_junction": "J_DARJEELING_MORE",
+  "to_name": "Darjeeling More",
+  "name": "Mahananda Bridge \u2192 Darjeeling More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "NEAR",
+   "CONFIRMED"
+  ]
+ },
+ {
   "corridor_id": "C_DARJEELING_MORE__CHAMPASARI_MORE",
   "from_junction": "J_DARJEELING_MORE",
   "from_name": "Darjeeling More",
@@ -270,6 +530,19 @@
   "endpoints_quality": [
    "CONFIRMED",
    "NEAR"
+  ]
+ },
+ {
+  "corridor_id": "C_CHAMPASARI_MORE__DARJEELING_MORE",
+  "from_junction": "J_CHAMPASARI_MORE",
+  "from_name": "Champasari More",
+  "to_junction": "J_DARJEELING_MORE",
+  "to_name": "Darjeeling More",
+  "name": "Champasari More \u2192 Darjeeling More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "NEAR",
+   "CONFIRMED"
   ]
  },
  {
@@ -286,6 +559,19 @@
   ]
  },
  {
+  "corridor_id": "C_VENUS_MORE__CHECK_POST_MORE",
+  "from_junction": "J_VENUS_MORE",
+  "from_name": "Venus More",
+  "to_junction": "J_CHECK_POST_MORE",
+  "to_name": "Check Post More",
+  "name": "Venus More \u2192 Check Post More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "ROAD_ONLY"
+  ]
+ },
+ {
   "corridor_id": "C_COURT_MORE__ASHIGHAR_MORE",
   "from_junction": "J_COURT_MORE",
   "from_name": "Court More",
@@ -296,6 +582,19 @@
   "endpoints_quality": [
    "CONFIRMED",
    "ROAD_ONLY"
+  ]
+ },
+ {
+  "corridor_id": "C_ASHIGHAR_MORE__COURT_MORE",
+  "from_junction": "J_ASHIGHAR_MORE",
+  "from_name": "Ashighar More",
+  "to_junction": "J_COURT_MORE",
+  "to_name": "Court More",
+  "name": "Ashighar More \u2192 Court More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "ROAD_ONLY",
+   "CONFIRMED"
   ]
  },
  {
@@ -312,6 +611,19 @@
   ]
  },
  {
+  "corridor_id": "C_MAHANANDA_BRIDGE__MALLAGURI_CROSSING",
+  "from_junction": "J_MAHANANDA_BRIDGE",
+  "from_name": "Mahananda Bridge",
+  "to_junction": "J_MALLAGURI_CROSSING",
+  "to_name": "Mallaguri Crossing",
+  "name": "Mahananda Bridge \u2192 Mallaguri Crossing",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "NEAR",
+   "ROAD_ONLY"
+  ]
+ },
+ {
   "corridor_id": "C_MALLAGURI_CROSSING__SILIGURI_JUNCTION",
   "from_junction": "J_MALLAGURI_CROSSING",
   "from_name": "Mallaguri Crossing",
@@ -325,12 +637,38 @@
   ]
  },
  {
+  "corridor_id": "C_SILIGURI_JUNCTION__MALLAGURI_CROSSING",
+  "from_junction": "J_SILIGURI_JUNCTION",
+  "from_name": "Siliguri Junction",
+  "to_junction": "J_MALLAGURI_CROSSING",
+  "to_name": "Mallaguri Crossing",
+  "name": "Siliguri Junction \u2192 Mallaguri Crossing",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "NEAR",
+   "ROAD_ONLY"
+  ]
+ },
+ {
   "corridor_id": "C_SILIGURI_JUNCTION__CHAMPASARI_MORE",
   "from_junction": "J_SILIGURI_JUNCTION",
   "from_name": "Siliguri Junction",
   "to_junction": "J_CHAMPASARI_MORE",
   "to_name": "Champasari More",
   "name": "Siliguri Junction \u2192 Champasari More",
+  "pin_quality": "NEAR",
+  "endpoints_quality": [
+   "NEAR",
+   "NEAR"
+  ]
+ },
+ {
+  "corridor_id": "C_CHAMPASARI_MORE__SILIGURI_JUNCTION",
+  "from_junction": "J_CHAMPASARI_MORE",
+  "from_name": "Champasari More",
+  "to_junction": "J_SILIGURI_JUNCTION",
+  "to_name": "Siliguri Junction",
+  "name": "Champasari More \u2192 Siliguri Junction",
   "pin_quality": "NEAR",
   "endpoints_quality": [
    "NEAR",
@@ -351,6 +689,19 @@
   ]
  },
  {
+  "corridor_id": "C_PANI_TANKI_MORE__JHANKAAR_MORE",
+  "from_junction": "J_PANI_TANKI_MORE",
+  "from_name": "Pani Tanki More",
+  "to_junction": "J_JHANKAAR_MORE",
+  "to_name": "Jhankaar More",
+  "name": "Pani Tanki More \u2192 Jhankaar More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "ROAD_ONLY"
+  ]
+ },
+ {
   "corridor_id": "C_AIR_VIEW_MORE__NAUKAGHAT",
   "from_junction": "J_AIR_VIEW_MORE",
   "from_name": "Air View More",
@@ -361,6 +712,19 @@
   "endpoints_quality": [
    "CONFIRMED",
    "ROAD_ONLY"
+  ]
+ },
+ {
+  "corridor_id": "C_NAUKAGHAT__AIR_VIEW_MORE",
+  "from_junction": "J_NAUKAGHAT",
+  "from_name": "Naukaghat",
+  "to_junction": "J_AIR_VIEW_MORE",
+  "to_name": "Air View More",
+  "name": "Naukaghat \u2192 Air View More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "ROAD_ONLY",
+   "CONFIRMED"
   ]
  },
  {
@@ -377,6 +741,19 @@
   ]
  },
  {
+  "corridor_id": "C_NJP_STATION__THANA_MORE",
+  "from_junction": "J_NJP_STATION",
+  "from_name": "NJP Station",
+  "to_junction": "J_THANA_MORE",
+  "to_name": "Thana More",
+  "name": "NJP Station \u2192 Thana More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "NEAR",
+   "ROAD_ONLY"
+  ]
+ },
+ {
   "corridor_id": "C_PANI_TANKI_MORE__WALL_FORD_SEVOKE_CROSSING",
   "from_junction": "J_PANI_TANKI_MORE",
   "from_name": "Pani Tanki More",
@@ -387,6 +764,19 @@
   "endpoints_quality": [
    "CONFIRMED",
    "NEAR"
+  ]
+ },
+ {
+  "corridor_id": "C_WALL_FORD_SEVOKE_CROSSING__PANI_TANKI_MORE",
+  "from_junction": "J_WALL_FORD_SEVOKE_CROSSING",
+  "from_name": "Wall Ford Sevoke Crossing",
+  "to_junction": "J_PANI_TANKI_MORE",
+  "to_name": "Pani Tanki More",
+  "name": "Wall Ford Sevoke Crossing \u2192 Pani Tanki More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "NEAR",
+   "CONFIRMED"
   ]
  },
  {
@@ -403,6 +793,19 @@
   ]
  },
  {
+  "corridor_id": "C_VENUS_MORE__NJP_STATION",
+  "from_junction": "J_VENUS_MORE",
+  "from_name": "Venus More",
+  "to_junction": "J_NJP_STATION",
+  "to_name": "NJP Station",
+  "name": "Venus More \u2192 NJP Station",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "NEAR"
+  ]
+ },
+ {
   "corridor_id": "C_SEVOKE_MORE__CHECK_POST_MORE",
   "from_junction": "J_SEVOKE_MORE",
   "from_name": "Sevoke More",
@@ -413,6 +816,19 @@
   "endpoints_quality": [
    "CONFIRMED",
    "ROAD_ONLY"
+  ]
+ },
+ {
+  "corridor_id": "C_CHECK_POST_MORE__SEVOKE_MORE",
+  "from_junction": "J_CHECK_POST_MORE",
+  "from_name": "Check Post More",
+  "to_junction": "J_SEVOKE_MORE",
+  "to_name": "Sevoke More",
+  "name": "Check Post More \u2192 Sevoke More",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "ROAD_ONLY",
+   "CONFIRMED"
   ]
  },
  {
@@ -429,12 +845,38 @@
   ]
  },
  {
+  "corridor_id": "C_DARJEELING_MORE__WALL_FORD_SEVOKE_CROSSING",
+  "from_junction": "J_DARJEELING_MORE",
+  "from_name": "Darjeeling More",
+  "to_junction": "J_WALL_FORD_SEVOKE_CROSSING",
+  "to_name": "Wall Ford Sevoke Crossing",
+  "name": "Darjeeling More \u2192 Wall Ford Sevoke Crossing",
+  "pin_quality": "MIXED",
+  "endpoints_quality": [
+   "CONFIRMED",
+   "NEAR"
+  ]
+ },
+ {
   "corridor_id": "C_WALL_FORD_SEVOKE_CROSSING__SILIGURI_JUNCTION",
   "from_junction": "J_WALL_FORD_SEVOKE_CROSSING",
   "from_name": "Wall Ford Sevoke Crossing",
   "to_junction": "J_SILIGURI_JUNCTION",
   "to_name": "Siliguri Junction",
   "name": "Wall Ford Sevoke Crossing \u2192 Siliguri Junction",
+  "pin_quality": "NEAR",
+  "endpoints_quality": [
+   "NEAR",
+   "NEAR"
+  ]
+ },
+ {
+  "corridor_id": "C_SILIGURI_JUNCTION__WALL_FORD_SEVOKE_CROSSING",
+  "from_junction": "J_SILIGURI_JUNCTION",
+  "from_name": "Siliguri Junction",
+  "to_junction": "J_WALL_FORD_SEVOKE_CROSSING",
+  "to_name": "Wall Ford Sevoke Crossing",
+  "name": "Siliguri Junction \u2192 Wall Ford Sevoke Crossing",
   "pin_quality": "NEAR",
   "endpoints_quality": [
    "NEAR",

@@ -95,3 +95,68 @@ class TestIncidentActions:
     def test_unknown_action_is_404(self, client):
         r = client.post("/api/incidents/INC-NOPE/teleport", json={"by": "DO-1"})
         assert r.status_code == 404
+
+
+class TestPollingEconomy:
+    """Cadence follows condition. This is both the API bill and the signal quality."""
+
+    def test_quiet_hours_are_the_night(self):
+        from datetime import datetime
+        from packages.command.centre import _is_quiet
+        assert _is_quiet(datetime(2026, 8, 30, 2, 0))
+        assert _is_quiet(datetime(2026, 8, 30, 23, 30))
+        assert not _is_quiet(datetime(2026, 8, 30, 9, 0))
+        assert not _is_quiet(datetime(2026, 8, 30, 19, 0))
+
+    def test_a_quiet_corridor_is_asked_less_often_than_a_failing_one(self):
+        from packages.command.centre import CADENCE
+        assert CADENCE["NORMAL"] > CADENCE["ELEVATED"] > CADENCE["HIGH"]
+
+    def test_a_corridor_is_not_polled_before_it_is_due(self):
+        from datetime import datetime, timedelta
+        from packages.command.centre import CorridorStatus
+        s = CorridorStatus(corridor_id="C_X", name="x")
+        now = datetime(2026, 8, 30, 12, 0)
+        assert s.is_due(now), "never-read corridors must be due immediately"
+        s.band = "NORMAL"
+        s.schedule(now)
+        assert not s.is_due(now + timedelta(minutes=5))
+        assert s.is_due(now + timedelta(minutes=16))
+
+    def test_a_failing_corridor_comes_due_quickly(self):
+        from datetime import datetime, timedelta
+        from packages.command.centre import CorridorStatus
+        s = CorridorStatus(corridor_id="C_X", name="x")
+        now = datetime(2026, 8, 30, 12, 0)
+        s.band = "HIGH"
+        s.schedule(now)
+        assert s.is_due(now + timedelta(minutes=4))
+
+    def test_night_conditions_do_not_become_incidents(self):
+        """There is no sergeant to send at 02:00. Alerting into an empty control
+        room is how a feed gets ignored."""
+        from datetime import datetime, timedelta
+        from packages.command.centre import CommandCentre
+        from packages.incidents.cluster import ChokeCluster
+        from packages.network.model import load_network
+        from packages.network.probe import ChokePoint
+
+        class Stub:
+            name, is_live, retains_durations = "stub", False, False
+            def read(self, *a, **k): return None
+            def provenance(self): return {}
+
+        centre = CommandCentre(network=load_network(), probe=Stub())
+        centre.confirm_after = timedelta(0)
+        for st in centre.status.values():
+            st.band = "HIGH"
+        cluster = ChokeCluster(
+            centre=(26.7245, 88.4156), severity="TRAFFIC_JAM",
+            members=[("C_X", ChokePoint(
+                severity="TRAFFIC_JAM", start=(26.7245, 88.4156), end=(26.7246, 88.4157),
+                midpoint=(26.7245, 88.4156), length_m=400.0, share_of_corridor=0.4))],
+        )
+        at_night = centre._raise_incidents([cluster], datetime(2026, 8, 30, 2, 30))
+        assert at_night == []
+        by_day = centre._raise_incidents([cluster], datetime(2026, 8, 30, 10, 30))
+        assert len(by_day) == 1
