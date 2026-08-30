@@ -12,6 +12,10 @@ COPY . .
 ARG NEXT_PUBLIC_MAPS_API_KEY=""
 ENV NEXT_PUBLIC_MAPS_API_KEY=$NEXT_PUBLIC_MAPS_API_KEY
 
+# The console reads live state from the intelligence API at this origin.
+ARG NEXT_PUBLIC_API_URL=""
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN npm run build
 
 # ── serve ────────────────────────────────────────────────────────────────────

@@ -69,14 +69,22 @@ def load_baselines(frame: pl.DataFrame) -> dict[tuple[str, str, int], Baseline]:
 
 
 def _consolidate(findings: list[LiveFinding]) -> tuple[list[LiveFinding], dict[str, list[str]]]:
-    """Let cluster findings absorb the single-movement findings they explain."""
-    clusters = [f for f in findings if f.signal is Signal.CLUSTER]
-    if not clusters:
-        return findings, {}
+    """Collapse findings that are the same story told more than once.
 
+    Two passes, both of which exist because a feed that enumerates is a feed
+    nobody reads.
+
+    1. A cluster finding absorbs the single-movement findings it explains. Three
+       movements failing together is one statement, not four.
+    2. Among what is left, findings of the same kind touching the same zone are
+       collapsed onto the strongest one. Three separate "unstable" entries for
+       three movements through Champasari is one observation about Champasari,
+       and the other two are attached as components rather than repeated.
+    """
     absorbed: dict[str, list[str]] = {}
     covered: set[str] = set()
-    for c in clusters:
+
+    for c in (f for f in findings if f.signal is Signal.CLUSTER):
         members = [
             f.id
             for f in findings
@@ -85,7 +93,23 @@ def _consolidate(findings: list[LiveFinding]) -> tuple[list[LiveFinding], dict[s
         absorbed[c.id] = members
         covered.update(members)
 
-    kept = [f for f in findings if f.signal is Signal.CLUSTER or f.id not in covered]
+    remaining = [f for f in findings if f.signal is Signal.CLUSTER or f.id not in covered]
+
+    by_signal_zone: dict[tuple[str, str], list[LiveFinding]] = {}
+    for f in remaining:
+        if f.signal is Signal.CLUSTER or len(f.zones) != 1:
+            continue
+        by_signal_zone.setdefault((f.signal.value, f.zones[0]), []).append(f)
+
+    for group in by_signal_zone.values():
+        if len(group) < 2:
+            continue
+        group.sort(key=lambda f: f.priority, reverse=True)
+        lead, rest = group[0], group[1:]
+        absorbed.setdefault(lead.id, []).extend(f.id for f in rest)
+        covered.update(f.id for f in rest)
+
+    kept = [f for f in remaining if f.id not in covered]
     return kept, absorbed
 
 

@@ -1,0 +1,12 @@
+.git
+.venv
+apps/web/node_modules
+apps/web/.next
+apps/web/out
+notebooks
+data/raw
+data/processed
+data/samples
+__pycache__
+.pytest_cache
+*.log

@@ -1,0 +1,12 @@
+.git
+.venv
+apps/web
+notebooks
+tests
+data/raw
+data/processed
+data/samples
+docs
+*.md
+__pycache__
+.pytest_cache

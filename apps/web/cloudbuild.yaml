@@ -5,12 +5,14 @@ substitutions:
   _REGION: asia-south1
   _IMAGE: how-siliguri-moves
   _MAPS_KEY: ""
+  _API_URL: "https://traffic-api-937908328857.asia-south1.run.app"
 
 steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - build
       - --build-arg=NEXT_PUBLIC_MAPS_API_KEY=${_MAPS_KEY}
+      - --build-arg=NEXT_PUBLIC_API_URL=${_API_URL}
       - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/web/${_IMAGE}:$SHORT_SHA
       - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/web/${_IMAGE}:latest
       - .
