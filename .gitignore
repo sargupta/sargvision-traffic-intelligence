@@ -11,3 +11,14 @@ node_modules/
 .DS_Store
 .ruff_cache/
 .pytest_cache/
+
+# Local secrets
+.env.local
+.env.production
+
+# Web artefact
+apps/web/node_modules/
+apps/web/.next/
+apps/web/out/
+apps/web/tsconfig.tsbuildinfo
+apps/web/next-env.d.ts
