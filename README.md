@@ -9,18 +9,15 @@
 
 ## Positioning
 
-```
-   TRAFFIC DATA  →  TRAFFIC MONITORING  →  TRAFFIC INTELLIGENCE  →  BETTER CITY DECISIONS
-  what do we have?   what is happening?    what does it mean, and
-                                          what deserves attention?
-```
+> **Traffic Data tells us what happened. Traffic Monitoring tells us what is happening.**
+> **Traffic Intelligence tells us what it means.**
 
-> **Siliguri does not need another traffic dashboard.** Traffic data already exists.
-> Traffic monitoring tools already exist. **What is missing is the intelligence layer** —
-> and that is the gap SARGVISION solves.
->
-> Google provides navigation and traffic visibility. **SARGVISION builds the intelligence
-> and decision-support layer around urban mobility.**
+We are not competing with Google Maps — it is an important data and monitoring layer, and
+this sits conceptually above it. The question is not *"does Siliguri need another
+dashboard?"* but **can it build institutional intelligence about its own mobility patterns,
+instead of relying only on real-time observation and individual experience?**
+
+> **SARGVISION is exploring how to build Siliguri's digital memory of urban mobility.**
 
 Full framing: [`docs/positioning.md`](docs/positioning.md)
 
