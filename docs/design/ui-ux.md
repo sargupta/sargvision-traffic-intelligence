@@ -5,7 +5,18 @@
 
 ---
 
-## 0. The constraint that shapes every screen
+## 0. What the interface has to communicate
+
+```
+ TRAFFIC DATA → TRAFFIC MONITORING → TRAFFIC INTELLIGENCE → BETTER CITY DECISIONS
+```
+
+**The UI's job is to make the third tier visible.** A screen that shows only current
+conditions has dropped the user back to monitoring, which already exists. Every screen
+must answer *what does this mean* and *what deserves attention* — not merely *what is
+happening*. That is the test for whether a component belongs in the product at all.
+
+## 0.1 The constraint that shapes every screen
 
 The spike found the observations carry **origin and destination points only — no route
 geometry.** That is not merely a data note. It is the dominant design constraint:

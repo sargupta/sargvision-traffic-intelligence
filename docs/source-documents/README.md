@@ -1,5 +1,12 @@
 # Source Documents
 
+> ```
+>  TRAFFIC DATA → TRAFFIC MONITORING → TRAFFIC INTELLIGENCE → BETTER CITY DECISIONS
+> ```
+> **Every document below serves the intelligence tier.** Siliguri does not need another
+> traffic dashboard — see [`docs/positioning.md`](../positioning.md).
+
+
 **The product definition of record.** Every document supplied for this programme, in
 reading order. Later documents supersede earlier ones where they conflict; the
 [traceability record](../architecture/blueprint-traceability.md) states which sections are
