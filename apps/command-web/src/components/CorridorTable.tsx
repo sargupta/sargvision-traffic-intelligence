@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { Band, CorridorRow } from "@/lib/api";
 import { BandTag, TravelTime, Trend, Approximate } from "./Bits";
@@ -82,7 +83,9 @@ export function CorridorTable({ corridors }: { corridors: CorridorRow[] }) {
               <tr key={c.corridor_id} className="border-b border-line/70 last:border-0 hover:bg-raised">
                 <td className="px-3 py-2"><BandTag band={c.band} /></td>
                 <td className="px-3 py-2">
-                  <span className="font-medium">{c.name}</span>
+                  <Link href={`/corridor?id=${c.corridor_id}`} className="font-medium underline decoration-line-firm underline-offset-2 hover:decoration-ink">
+                    {c.name}
+                  </Link>
                   {c.approximate_location && <span className="ml-1.5"><Approximate /></span>}
                 </td>
                 <td className="max-w-[16rem] truncate px-3 py-2 text-ink-2" title={c.roads}>{c.roads || "—"}</td>

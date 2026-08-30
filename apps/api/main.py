@@ -165,6 +165,50 @@ def corridor(corridor_id: str) -> dict:
     }
 
 
+@app.get("/api/city-profile")
+def city_profile(day_type: str = Query("WEEKDAY")) -> dict:
+    """The city's shape of the day, from the 2019 study.
+
+    This is the ONE thing the historical dataset legitimately supports. It was
+    sampled as random origin-destination pairs across Siliguri, so it describes
+    city-level structure well and says nothing reliable about any individual
+    junction — only 11.8% of its observations fall on a named corridor even at a
+    1 km catchment. It is offered as context for reading today's numbers, never
+    as a baseline for a specific corridor.
+    """
+    import polars as pl
+
+    path = CURATED / "patterns_hourly.parquet"
+    if not path.exists():
+        raise HTTPException(404, "city profile has not been built")
+    frame = (
+        pl.read_parquet(path)
+        .filter(pl.col("day_type") == day_type.upper())
+        .sort("hour")
+    )
+    return {
+        "day_type": day_type.upper(),
+        "hours": [
+            {
+                "hour": int(r["hour"]),
+                "index": round(r["median_tti"], 3),
+                "speed_kmh": round(r["median_speed_kmh"], 1),
+                "sample_size": int(r["sample_size"]),
+                "congested": bool(r["congested"]),
+            }
+            for r in frame.iter_rows(named=True)
+        ],
+        "source": (
+            "Akbar, Couture, Duranton & Storeygard, American Economic Review 113(4), 2023. "
+            "101,418 valid primary-route observations, 13 June to 5 November 2019."
+        ),
+        "limitation": (
+            "City-wide structure, not corridor-specific. Seven years old. Useful for "
+            "recognising the shape of a normal day, not for judging one junction."
+        ),
+    }
+
+
 @app.get("/api/roster")
 def roster() -> dict:
     return {"officers": ROSTER}

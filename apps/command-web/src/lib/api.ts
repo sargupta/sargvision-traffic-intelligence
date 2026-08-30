@@ -135,6 +135,15 @@ export const getIncident = (id: string) => get<Incident>(`/api/incidents/${id}`)
 export const getHandover = (hours = 8) =>
   get<HandoverPayload>(`/api/shift/handover?hours=${hours}`);
 export const getCorridor = (id: string) => get<CorridorDetail>(`/api/corridors/${id}`);
+export const getCityProfile = (dayType = "WEEKDAY") =>
+  get<CityProfile>(`/api/city-profile?day_type=${dayType}`);
+
+export interface CityProfile {
+  day_type: string;
+  hours: { hour: number; index: number; speed_kmh: number; sample_size: number; congested: boolean }[];
+  source: string;
+  limitation: string;
+}
 
 export interface CorridorDetail {
   corridor_id: string; name: string; from_name: string; to_name: string;
