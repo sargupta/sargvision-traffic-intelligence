@@ -1,0 +1,38 @@
+[project]
+name = "sargvision-traffic-intelligence"
+version = "0.1.0"
+description = "AI-powered traffic intelligence and investigation copilot for Siliguri"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "polars>=1.17",
+    "duckdb>=1.1",
+    "pyarrow>=18.0",
+    "numpy>=2.0",
+    "scipy>=1.14",
+    "pandas>=3.0.5",
+]
+
+[project.optional-dependencies]
+ai = ["google-genai>=0.3"]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "httpx>=0.28", "ruff>=0.8"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["packages*", "apps*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]
