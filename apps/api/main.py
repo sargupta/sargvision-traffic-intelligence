@@ -23,6 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from packages.command.advice import recommend
 from packages.command.centre import CommandCentre
 from packages.incidents.model import IncidentState
 from packages.network.model import load_network
@@ -114,6 +115,23 @@ def health() -> dict:
 def board() -> dict:
     """Everything the duty officer's main screen needs, in one request."""
     return centre().board()
+
+
+@app.get("/api/advice")
+def advice() -> dict:
+    """What to do about the current state.
+
+    Derived from the network and the readings by arithmetic. No language model
+    participates, nothing here asserts a cause, and every item carries both the
+    evidence it rests on and the thing it cannot establish — a suggestion an
+    officer cannot audit is one they will stop reading.
+    """
+    c = centre()
+    moment = c.last_poll or now()
+    return {
+        "at": moment.isoformat(timespec="seconds"),
+        "recommendations": [r.as_dict() for r in recommend(c.network, c.board(moment), moment)],
+    }
 
 
 @app.get("/api/network")

@@ -5,11 +5,12 @@ import { Chrome } from "@/components/Chrome";
 import { FlowMap } from "@/components/FlowMap";
 import { NetworkPlan } from "@/components/NetworkPlan";
 import { CorridorTable } from "@/components/CorridorTable";
+import { Advice } from "@/components/Advice";
 import { Empty } from "@/components/Bits";
 import { IncidentCard } from "@/components/IncidentCard";
 import {
-  getNetwork, getRoster, useBoard,
-  type Incident, type NetworkPayload, type Officer,
+  getAdvice, getNetwork, getRoster, useBoard,
+  type Incident, type NetworkPayload, type Officer, type Recommendation,
 } from "@/lib/api";
 
 const OFFICER = "DO-1";
@@ -25,11 +26,19 @@ export default function Board() {
   const [roster, setRoster] = useState<Officer[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, Incident>>({});
+  const [advice, setAdvice] = useState<Recommendation[]>([]);
 
   useEffect(() => {
     getNetwork().then(setNetwork).catch(() => setNetwork(null));
     getRoster().then((r) => setRoster(r.officers)).catch(() => setRoster([]));
   }, []);
+
+  // Advice is recomputed whenever the board moves, so a recommendation never
+  // outlives the condition that produced it.
+  useEffect(() => {
+    if (!board) return;
+    getAdvice().then((a) => setAdvice(a.recommendations)).catch(() => setAdvice([]));
+  }, [board?.at]);
 
   // An action returns the updated incident. Showing it immediately, rather than
   // waiting up to three minutes for the next poll, is the difference between a
@@ -154,6 +163,8 @@ export default function Board() {
           </div>
 
           <div className="order-2 flex max-h-none flex-col gap-4 xl:max-h-[calc(100dvh-13rem)] xl:overflow-y-auto xl:pr-1">
+            <Advice items={advice} />
+
             <section>
               <h2 className="mb-2.5 flex items-baseline gap-2 text-[length:var(--text-md)] font-semibold">
                 Needs an officer

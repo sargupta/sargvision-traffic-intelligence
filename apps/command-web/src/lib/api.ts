@@ -149,6 +149,20 @@ export async function act(
   return payload as Incident;
 }
 
+export interface Recommendation {
+  kind: "POST" | "DIVERT" | "ESCALATE" | "WATCH" | "STAND_DOWN";
+  urgency: "NOW" | "THIS_SHIFT" | "ADVISORY";
+  headline: string;
+  detail: string;
+  because: string[];
+  cannot_know: string;
+  junctions: string[];
+  corridors: string[];
+}
+
+export const getAdvice = () =>
+  get<{ at: string; recommendations: Recommendation[] }>("/api/advice");
+
 export const getNetwork = () => get<NetworkPayload>("/api/network");
 export const getRoster = () => get<{ officers: Officer[] }>("/api/roster");
 export const getIncident = (id: string) => get<Incident>(`/api/incidents/${id}`);
