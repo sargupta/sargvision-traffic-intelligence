@@ -22,7 +22,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from packages.incidents.cluster import ChokeCluster, cluster_chokes
+from packages.incidents.cluster import ChokeCluster, cluster_chokes, metres
 from packages.incidents.model import (
     Incident, IncidentKind, IncidentState, Priority, incident_id,
 )
@@ -72,6 +72,11 @@ CONFIRM_AFTER = timedelta(minutes=float(os.environ.get("CONFIRM_MINUTES", "8")))
 
 # An incident nobody acted on, whose condition has cleared, lapses after this.
 LAPSE_AFTER = timedelta(minutes=float(os.environ.get("LAPSE_MINUTES", "20")))
+
+# A new choke cluster within this distance of an open incident is that
+# incident, not a new one. Slightly wider than the clustering radius because a
+# jam's centroid wanders as its tail grows and shrinks.
+MATCH_RADIUS_M = 450.0
 
 
 @dataclass
@@ -207,7 +212,7 @@ class CommandCentre:
         slower than typical, or when traffic has actually stopped.
         """
         worst_index = max(
-            (self.status[c].index or 1.0 for c in cluster.corridors if c in self.status),
+            (st.index or 1.0 for c in cluster.corridors if (st := self.status.get(c))),
             default=1.0,
         )
         if cluster.severity == "TRAFFIC_JAM":
@@ -217,7 +222,7 @@ class CommandCentre:
 
     def _priority(self, cluster: ChokeCluster, corridors: list[str]) -> Priority:
         worst_index = max(
-            (self.status[c].index or 1.0 for c in corridors if c in self.status), default=1.0
+            (st.index or 1.0 for c in corridors if (st := self.status.get(c))), default=1.0
         )
         jam = cluster.severity == "TRAFFIC_JAM"
         if jam and (cluster.corroboration >= 2 or worst_index >= self.thresholds.severe):
@@ -228,17 +233,44 @@ class CommandCentre:
             return Priority.P3
         return Priority.P4
 
+    def _existing_near(self, lat: float, lon: float) -> Incident | None:
+        """Find an incident already covering this spot.
+
+        A jam is not a fixed point: its extent grows and shrinks between polls,
+        so the cluster centroid moves tens of metres each cycle. Keying
+        incidents on a hash of the rounded coordinate therefore spawned a fresh
+        incident for the same jam every few minutes — the handover showed the
+        same stretch of NH10 three times, and a duty officer would have
+        dispatched three times.
+
+        Matching by proximity is what an officer means by "the same problem".
+        """
+        best: Incident | None = None
+        best_d = MATCH_RADIUS_M
+        for incident in self.incidents.values():
+            if incident.kind is not IncidentKind.CHOKE_POINT or not incident.is_open:
+                continue
+            d = metres((lat, lon), (incident.lat, incident.lon))
+            if d < best_d:
+                best, best_d = incident, d
+        return best
+
     def _raise_incidents(self, clusters: list[ChokeCluster], now: datetime) -> list[str]:
         raised: list[str] = []
         for cluster in clusters:
             lat, lon = cluster.centre
-            iid = incident_id(IncidentKind.CHOKE_POINT, lat, lon, now)
 
-            existing = self.incidents.get(iid)
+            existing = self._existing_near(lat, lon)
             if existing is not None:
                 existing.last_seen_at = now
-                if existing.state is IncidentState.LAPSED:
-                    existing.move(IncidentState.ACKNOWLEDGED, "system", "condition returned", at=now)
+                continue
+
+            iid = incident_id(IncidentKind.CHOKE_POINT, lat, lon, now)
+            revived = self.incidents.get(iid)
+            if revived is not None:
+                revived.last_seen_at = now
+                if revived.state is IncidentState.LAPSED:
+                    revived.move(IncidentState.ACKNOWLEDGED, "system", "condition returned", at=now)
                 continue
 
             # A condition must hold before it becomes an officer's problem.
@@ -256,7 +288,8 @@ class CommandCentre:
             jid, jname, dist = self._nearest_junction(lat, lon)
             roads = next(
                 (r.roads for c in cluster.corridors
-                 if (r := self.status[c].latest) is not None and r.roads),
+                 if (st := self.status.get(c)) is not None
+                 and (r := st.latest) is not None and r.roads),
                 "",
             )
             where = f"{roads}, near {jname}" if roads else f"near {jname}"
@@ -288,7 +321,10 @@ class CommandCentre:
                     "share_of_corridor": round(cluster.worst_share, 3),
                     "corroborating_corridors": cluster.corroboration,
                     "worst_index": round(
-                        max((self.status[c].index or 1.0 for c in cluster.corridors), default=1.0), 3
+                        max(
+                            (st.index or 1.0 for c in cluster.corridors if (st := self.status.get(c))),
+                            default=1.0,
+                        ), 3
                     ),
                     "distance_to_junction_m": round(dist),
                     "junction_vc_ratio_2011": junction.vc_ratio,

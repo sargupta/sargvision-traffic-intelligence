@@ -151,3 +151,55 @@ class TestClustering:
 
     def test_no_chokes_gives_no_clusters(self):
         assert cluster_chokes({"C_1": [], "C_2": []}) == []
+
+
+class TestIncidentContinuity:
+    """A jam whose extent changes must stay one incident.
+
+    Cluster centroids wander tens of metres between polls as the tail grows and
+    shrinks. Keyed on a hashed coordinate, that spawned a fresh incident every
+    few minutes and the handover listed the same stretch of NH10 three times.
+    """
+
+    def build(self, lat, lon):
+        from packages.command.centre import CommandCentre
+        from packages.network.model import load_network
+
+        class Stub:
+            name, is_live, retains_durations = "stub", False, False
+            def read(self, *a, **k): return None
+            def provenance(self): return {}
+
+        centre = CommandCentre(network=load_network(), probe=Stub())
+        return centre
+
+    def cluster_at(self, lat, lon, length=400.0):
+        from packages.incidents.cluster import ChokeCluster
+        return ChokeCluster(
+            centre=(lat, lon), severity="TRAFFIC_JAM",
+            members=[("C_X", ChokePoint(
+                severity="TRAFFIC_JAM", start=(lat, lon), end=(lat, lon),
+                midpoint=(lat, lon), length_m=length, share_of_corridor=0.4))],
+        )
+
+    def test_drifting_centroid_stays_one_incident(self):
+        centre = self.build(26.7245, 88.4156)
+        centre.confirm_after = timedelta(0)
+        # Force the corridor to look elevated so the cluster is worth raising.
+        for status in centre.status.values():
+            status.band = "HIGH"
+        first = centre._raise_incidents([self.cluster_at(26.72450, 88.41560)], NOW)
+        assert len(first) == 1
+        # 40 m away on the next poll — the same jam breathing.
+        again = centre._raise_incidents([self.cluster_at(26.72486, 88.41560)], NOW + timedelta(minutes=5))
+        assert again == [], "a drifting centroid must reattach, not spawn a second incident"
+        assert len([i for i in centre.incidents.values() if i.is_open]) == 1
+
+    def test_a_genuinely_different_place_is_a_new_incident(self):
+        centre = self.build(26.7245, 88.4156)
+        centre.confirm_after = timedelta(0)
+        for status in centre.status.values():
+            status.band = "HIGH"
+        centre._raise_incidents([self.cluster_at(26.72450, 88.41560)], NOW)
+        far = centre._raise_incidents([self.cluster_at(26.74000, 88.43000)], NOW + timedelta(minutes=5))
+        assert len(far) == 1
