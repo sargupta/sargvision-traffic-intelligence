@@ -1,0 +1,135 @@
+{
+  "built_at": "2026-08-30T06:24:46+00:00",
+  "source": "data/processed/siliguri_observations.parquet",
+  "mode": "historical replay",
+  "is_live": false,
+  "window": {
+    "start": "2019-06-13",
+    "end": "2019-11-05",
+    "days": 143
+  },
+  "canonical_sample": "101,418 valid primary-route observations",
+  "config": {
+    "zone_min_endpoints": 2000,
+    "zone_max_name_distance_m": 1500,
+    "baseline_min_samples": 30,
+    "reliability_min_samples": 200,
+    "reliability_bands": {
+      "reliable": 15.0,
+      "moderate": 30.0
+    },
+    "anomaly_thresholds": {
+      "moderate": 30.0,
+      "high": 45.0,
+      "critical": 60.0
+    },
+    "congested_tti": 1.1
+  },
+  "zone_search": [
+    {
+      "k": 4,
+      "inertia": 403.924,
+      "min_zone_endpoints": 29799,
+      "max_zone_endpoints": 91638,
+      "worst_name_distance_m": 1210,
+      "median_name_distance_m": 882,
+      "viable": true
+    },
+    {
+      "k": 5,
+      "inertia": 305.318,
+      "min_zone_endpoints": 18484,
+      "max_zone_endpoints": 64783,
+      "worst_name_distance_m": 1365,
+      "median_name_distance_m": 1107,
+      "viable": true
+    },
+    {
+      "k": 6,
+      "inertia": 269.152,
+      "min_zone_endpoints": 8481,
+      "max_zone_endpoints": 60292,
+      "worst_name_distance_m": 2014,
+      "median_name_distance_m": 640,
+      "viable": false
+    },
+    {
+      "k": 7,
+      "inertia": 238.982,
+      "min_zone_endpoints": 8397,
+      "max_zone_endpoints": 56647,
+      "worst_name_distance_m": 2019,
+      "median_name_distance_m": 673,
+      "viable": false
+    },
+    {
+      "k": 8,
+      "inertia": 195.077,
+      "min_zone_endpoints": 8328,
+      "max_zone_endpoints": 53603,
+      "worst_name_distance_m": 2008,
+      "median_name_distance_m": 657,
+      "viable": false
+    },
+    {
+      "k": 9,
+      "inertia": 178.883,
+      "min_zone_endpoints": 6106,
+      "max_zone_endpoints": 51071,
+      "worst_name_distance_m": 2659,
+      "median_name_distance_m": 825,
+      "viable": false
+    },
+    {
+      "k": 10,
+      "inertia": 171.118,
+      "min_zone_endpoints": 5488,
+      "max_zone_endpoints": 48784,
+      "worst_name_distance_m": 3464,
+      "median_name_distance_m": 768,
+      "viable": false
+    },
+    {
+      "k": 11,
+      "inertia": 145.705,
+      "min_zone_endpoints": 5463,
+      "max_zone_endpoints": 49057,
+      "worst_name_distance_m": 3500,
+      "median_name_distance_m": 915,
+      "viable": false
+    },
+    {
+      "k": 12,
+      "inertia": 128.19,
+      "min_zone_endpoints": 6106,
+      "max_zone_endpoints": 42300,
+      "worst_name_distance_m": 5016,
+      "median_name_distance_m": 1085,
+      "viable": false
+    }
+  ],
+  "quality_gate": {
+    "rows": 101418,
+    "trips": 14558,
+    "null_zone": 0,
+    "nonpositive_traffic": 0,
+    "nonpositive_freeflow": 0,
+    "nonpositive_distance": 0,
+    "non_primary_route": 0,
+    "hour_out_of_range": 0,
+    "duplicate_ids": 0
+  },
+  "row_counts": {
+    "zones": 5,
+    "observations": 101418,
+    "baselines": 790,
+    "movements": 25,
+    "reliability": 25,
+    "patterns_hourly": 72,
+    "patterns_daily": 7,
+    "patterns_weekly": 24,
+    "peak_windows": 25,
+    "anomalies": 2776,
+    "anomaly_rates": 25
+  }
+}
