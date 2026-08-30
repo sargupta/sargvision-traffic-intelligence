@@ -3,7 +3,11 @@
     Severity  = how abnormal is this?
     Priority  = how much attention does it deserve?
 
-              = Magnitude x Persistence x Corridor Importance
+              = Magnitude x Persistence x Confidence x Corridor Importance
+
+Blueprint v2 section 15 adds the confidence factor, and the spike made it essential: a
+large deviation on a unit with 40 observations must not outrank a moderate one on a unit
+with 400. An INSUFFICIENT-confidence unit scores zero - it cannot raise a priority at all.
 
 A +35% delay lasting 45 minutes on a critical corridor outranks a +70% spike lasting
 5 minutes on a minor one. Deviation alone cannot express that, which is why the two
@@ -13,6 +17,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from packages.domain.canonical import Confidence
 from packages.domain.models import CorridorImportance, Priority
 
 MAGNITUDE_REFERENCE = 60.0   # the CRITICAL threshold
@@ -47,10 +52,12 @@ def score(
     deviation_pct: float,
     duration_minutes: float,
     importance: CorridorImportance = CorridorImportance.NORMAL,
+    confidence: str = Confidence.HIGH,
 ) -> tuple[float, Priority]:
     value = (
         magnitude_factor(deviation_pct)
         * persistence_factor(duration_minutes)
+        * Confidence.factor(confidence)
         * importance_factor(importance)
     )
     if value >= 3.0:
