@@ -1,11 +1,21 @@
 # SARGVISION Traffic Intelligence — API and intelligence loop.
 FROM python:3.12-slim
 
+# Every timestamp this system shows is read by an officer in Siliguri. Cloud
+# Run defaults to UTC, which put 10:32 in the header at 16:02 local — a
+# five-and-a-half hour error on a screen whose whole job is "what is happening
+# now". tzdata is installed because the slim image has no zone database.
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    TZ=Asia/Kolkata
 
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata \
+ && ln -snf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime \
+ && echo "Asia/Kolkata" > /etc/timezone \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
 RUN pip install --no-cache-dir \

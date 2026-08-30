@@ -16,6 +16,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,6 +30,16 @@ from packages.network.probe import RoutesProbe
 
 CURATED = Path("data/curated")
 ROSTER = json.loads((CURATED / "roster.json").read_text())
+
+# Siliguri time, always. Every timestamp here is read by an officer standing in
+# West Bengal; a UTC clock in the header of a "what is happening now" screen is
+# wrong by five and a half hours. Set explicitly rather than relying on the
+# container's TZ so a misconfigured deployment cannot silently shift the clock.
+IST = ZoneInfo("Asia/Kolkata")
+
+
+def now() -> datetime:
+    return datetime.now(IST).replace(tzinfo=None)
 
 # 34 corridors every 3 minutes is 680 requests an hour. That number is the bill
 # and the compliance surface; it is deliberately one constant.
@@ -47,7 +58,7 @@ def centre() -> CommandCentre:
 async def _drive() -> None:
     while True:
         try:
-            result = await asyncio.to_thread(centre().poll, datetime.now())
+            result = await asyncio.to_thread(centre().poll, now())
             message = json.dumps({"type": "cycle", **result})
         except Exception as exc:  # noqa: BLE001 — a bad cycle must not kill the loop
             message = json.dumps({"type": "error", "detail": str(exc)[:200]})
@@ -65,7 +76,7 @@ async def lifespan(app: FastAPI):
     if not key:
         raise RuntimeError("ROUTES_API_KEY is required — the board has no data without it")
     STATE["centre"] = CommandCentre(network=load_network(), probe=RoutesProbe(key))
-    STATE["started_at"] = datetime.now()
+    STATE["started_at"] = now()
     task = asyncio.create_task(_drive())
     try:
         yield
@@ -217,14 +228,14 @@ def roster() -> dict:
 @app.get("/api/incidents")
 def incidents(state: str | None = Query(None), include_closed: bool = Query(False)) -> dict:
     c = centre()
-    now = c.last_poll or datetime.now()
+    moment = c.last_poll or now()
     items = list(c.incidents.values())
     if state:
         items = [i for i in items if i.state.value == state.upper()]
     elif not include_closed:
         items = [i for i in items if i.is_open]
-    items.sort(key=lambda i: ({"P1": 0, "P2": 1, "P3": 2, "P4": 3}[i.priority.value], -i.age_minutes(now)))
-    return {"incidents": [i.as_dict(now) for i in items], "count": len(items)}
+    items.sort(key=lambda i: ({"P1": 0, "P2": 1, "P3": 2, "P4": 3}[i.priority.value], -i.age_minutes(moment)))
+    return {"incidents": [i.as_dict(moment) for i in items], "count": len(items)}
 
 
 @app.get("/api/incidents/{incident_id}")
@@ -233,7 +244,7 @@ def incident(incident_id: str) -> dict:
     item = c.incidents.get(incident_id)
     if item is None:
         raise HTTPException(404, f"no incident {incident_id}")
-    return item.as_dict(c.last_poll or datetime.now())
+    return item.as_dict(c.last_poll or now())
 
 
 class Action(BaseModel):
@@ -287,7 +298,7 @@ def act(incident_id: str, action: str, payload: Action = Body(...)) -> dict:
     except Exception as exc:  # IllegalTransition and anything else
         raise HTTPException(409, str(exc)) from exc
 
-    return item.as_dict(c.last_poll or datetime.now())
+    return item.as_dict(c.last_poll or now())
 
 
 @app.get("/api/shift/handover")
@@ -298,7 +309,7 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
     and printed.
     """
     c = centre()
-    now = c.last_poll or datetime.now()
+    moment = c.last_poll or now()
     since = now - timedelta(hours=hours)
     touched = [i for i in c.incidents.values() if i.detected_at >= since or i.is_open]
 
@@ -310,7 +321,7 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
             "title": item.title,
             "location_name": item.location_name,
             "owner": item.owner,
-            "age_minutes": round(item.age_minutes(now), 1),
+            "age_minutes": round(item.age_minutes(moment), 1),
             "notes": [n.as_dict() for n in item.notes],
         }
 
@@ -324,7 +335,7 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
     return {
         "window_hours": hours,
         "from": since.isoformat(timespec="seconds"),
-        "to": now.isoformat(timespec="seconds"),
+        "to": moment.isoformat(timespec="seconds"),
         "raised": raised,
         "handing_over": {
             "needs_an_owner": [summarise(i) for i in open_unowned],
