@@ -141,6 +141,21 @@ class IntelligenceLoop:
         day_type = "WEEKEND" if at.weekday() >= 5 else "WEEKDAY"
         return self.baselines.get((movement_id, day_type, at.hour))
 
+    def reset(self) -> None:
+        """Clear all accumulated state.
+
+        Called when the replay clock wraps back to the start of the day. Without
+        it, `since` still points at yesterday and persistence is computed across
+        a backwards jump in time, so a movement reports having been elevated for
+        four hours on a day that is ten minutes old. Readings would also arrive
+        out of order, which the velocity slope assumes cannot happen.
+        """
+        for state in self.city.movements.values():
+            state.readings.clear()
+            state.status = Status.UNKNOWN
+            state.since = None
+        self.feed.clear()
+
     def tick(self, now: datetime) -> dict:
         """Advance the system by one collection cycle."""
         self.ticks += 1

@@ -1,93 +1,108 @@
-# SARGVISION Traffic Intelligence Copilot
+# SARGVISION Traffic Intelligence — Siliguri
 
-**AI-powered traffic intelligence and investigation copilot.** Pilot city: **Siliguri, West Bengal.**
-
-> Google Maps helps people see traffic.
-> **This helps city authorities understand what the traffic means.**
-
----
-
-## Positioning
-
-> **Traffic Data tells us what happened. Traffic Monitoring tells us what is happening.**
-> **Traffic Intelligence tells us what it means.**
-
-We are not competing with Google Maps — it is an important data and monitoring layer, and
-this sits conceptually above it. The question is not *"does Siliguri need another
-dashboard?"* but **can it build institutional intelligence about its own mobility patterns,
-instead of relying only on real-time observation and individual experience?**
-
-> **SARGVISION is exploring how to build Siliguri's digital memory of urban mobility.**
-
-Full framing: [`docs/positioning.md`](docs/positioning.md)
-
----
-
-## What it does
-
-Answers the five questions a traffic officer actually has:
+Real-time urban mobility intelligence. The system observes live conditions,
+compares them against what each movement normally does at that hour on that
+kind of day, detects meaningful change, and surfaces it for investigation.
 
 ```
-What needs attention?  →  Why?  →  Has this happened before?
-        →  What else is affected?  →  What should I investigate?
+OBSERVE → UNDERSTAND → COMPARE → DETECT → CONNECT → EXPLAIN → INVESTIGATE
 ```
 
-Those five questions define the product APIs. Everything else serves them.
-
-## What it does not do
-
-No signal control. No CCTV. No ANPR. No live-monitoring claim. No physical-cause
-diagnosis without evidence. It does not replace Google Maps, traffic engineers, or
-the officer's judgement.
+**Analytics discovers. AI explains. Humans decide.** No language model computes
+a traffic figure anywhere in this system, and the copilot has no path to the
+observations. Every number in an answer came out of a deterministic tool, and
+the tool trace is returned with the answer.
 
 ---
 
 ## Architecture
 
 ```
-API  →  Application Service  →  Domain Service  →  Repository  →  Data Store
+                    OBSERVATION PROVIDER
+              ReplayProvider  |  GoogleRoutesProvider
+                          │
+                          ▼
+                  INTELLIGENCE LOOP  (5-minute ticks)
+                          │
+        ┌─────────────────┼──────────────────┐
+        ▼                 ▼                  ▼
+   CITY STATE        BASELINE LAYER     DETECTORS
+   deviation         2019 pace          deterioration
+   status            percentiles        persistence
+   persistence       confidence         variability
+   velocity                             spatial cluster
+        └─────────────────┼──────────────────┘
+                          ▼
+                    CONSOLIDATION
+              clusters absorb their members
+           same-signal same-zone collapse to one
+                          │
+              ┌───────────┴────────────┐
+              ▼                        ▼
+      INTELLIGENCE FEED          COPILOT (tools only)
+              └───────────┬────────────┘
+                          ▼
+                  DYNAMIC CONSOLE
+        map canvas · feed · adaptive view directives
 ```
 
-Never `API → LLM → Database`. The AI receives evidence from validated tools; it has
-no database access of its own.
+## The compliance boundary
 
-```
-packages/
-  contracts/     Metric contract — provenance enforced at construction
-  domain/        Corridor · Observation · Event · Severity · Priority
-  analytics/     baselines · anomalies · events · patterns        (deterministic)
-  intelligence/  priority scoring · city insights                 (deterministic)
-  replay/        replay clock — historical data as simulated time
-  providers/     TrafficDataProvider protocol + implementations
-apps/
-  api/           FastAPI — the five product endpoints
-  web/           Next.js dashboard
-```
+Google's Maps Service Specific Terms permit caching **latitude and longitude
+only**. Travel times from the Routes API may not be retained to build a
+persistent dataset. A real-time product that stores every duration it fetches
+is exactly what that prohibits.
 
-## Non-negotiable principles
+So the collector is an interface with two implementations:
 
-1. The LLM does not calculate traffic metrics.
-2. The LLM does not invent observations.
-3. The system distinguishes **observation** from **interpretation** from **hypothesis**.
-4. Every important insight is traceable to evidence.
-5. Every important claim states its limitation.
-6. The AI explains intelligence; it does not manufacture it.
-7. Human authorities remain the decision-makers.
+| Provider | Live | Retains durations | Role |
+|---|---|---|---|
+| `ReplayProvider` | no | yes — CC BY 4.0 data | demonstration, and the default |
+| `GoogleRoutesProvider` | yes | **no** — 6-hour memory window | deployment |
 
-## Data
+The engine cannot tell them apart. The persistent analytical history comes from
+the 2019 open dataset, which may be retained. If live history is needed, the
+sanctioned route is a product licensed for it (Roads Management Insights, under
+the Analytics Service Specific Terms) or first-party probe data — not a longer
+cache on this one.
 
-**Demonstrator mode runs on historical open data** — 101,418 valid primary-route
-observations for Siliguri, June–November 2019, CC BY 4.0
-(Zenodo `10.5281/zenodo.10499064`). See [`docs/data-provenance.md`](docs/data-provenance.md).
+## The baseline layer
 
-> ⚠️ **This is historical replay, not live monitoring**, and any demonstration must
-> say so. The analytics engine is production architecture; the data source in this
-> mode is 2019 history.
+The 2019 dataset — **101,418 valid primary-route observations**, 143 days — is
+not the product. It is the calibration layer that makes live comparison mean
+anything.
 
-## Quickstart
+- **Zones** are derived, not drawn. Endpoints are clustered by weighted k-means;
+  the zone count is the largest at which every zone still holds enough evidence
+  *and* has a landmark within 1.5 km to be honestly named after. That gives
+  five: Siliguri Central, Siliguri Junction, Salugara, NJP Station, Champasari.
+- **Baselines are built on pace** (seconds per kilometre), not journey time.
+  Inside one movement-hour bin, trip distances span 5–10× and distance
+  correlates 0.80 with travel time, so a baseline on seconds measures how far
+  someone went. On seconds, 22.1% of observations scored as anomalies; on pace,
+  2.9%.
+- **Nothing is published below 30 observations** per movement-hour-daytype bin.
+  Where the system is silent it is uninformed, and it says so rather than
+  estimating into the gap.
+
+## Running it
 
 ```bash
 uv sync
-uv run scripts/fetch_data.py     # CC BY 4.0, no login
-uv run uvicorn apps.api.main:app --reload
+PYTHONPATH=. .venv/bin/python scripts/build_analytics.py   # baseline layer
+PYTHONPATH=. .venv/bin/python scripts/discover.py          # structural findings
+PYTHONPATH=. .venv/bin/uvicorn apps.api.main:app --port 8099
+npm --prefix apps/web run dev                              # console on :3040
 ```
+
+`scripts/replay_day.py [YYYYMMDD]` drives a whole day through the loop and
+prints what it found — the fastest way to see the engine work.
+
+## What this is not
+
+`is_live` is `False` in replay and the mode is on every API response that could
+be mistaken for current conditions. Zone pairs are not roads. The system can
+establish that something changed and by how much; it cannot establish why, and
+no detector or prompt is permitted to imply otherwise.
+
+See [`docs/known-limitations.md`](docs/known-limitations.md).

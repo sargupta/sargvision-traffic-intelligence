@@ -81,8 +81,10 @@ async def _drive() -> None:
         sim = sim + step
         if not LIVE and sim >= day_end:
             # Wrap to the start of the replay day so a demonstration can be left
-            # running. The wrap is announced rather than silent.
+            # running. State is cleared with it: carrying yesterday's `since`
+            # across a backwards jump in time makes persistence meaningless.
             sim = sim.replace(hour=5, minute=0)
+            loop.reset()
             for q in list(STATE["subscribers"]):
                 q.put_nowait(json.dumps({"type": "replay_wrapped", "at": sim.isoformat()}))
         STATE["clock"] = sim
