@@ -17,6 +17,7 @@ freely; at the cap, a new condition must outrank something already there.
 
 from __future__ import annotations
 
+import os
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -64,11 +65,13 @@ SILIGURI = Thresholds()
 ALERT_BUDGET = 6
 
 # A condition must hold this long before it becomes an incident. Traffic
-# fluctuates; a single poll is not a problem.
-CONFIRM_AFTER = timedelta(minutes=8)
+# fluctuates; a single poll is not a problem. Tunable because the right value
+# depends on the polling cadence, and because a demonstration cannot wait
+# eight minutes to show anything.
+CONFIRM_AFTER = timedelta(minutes=float(os.environ.get("CONFIRM_MINUTES", "8")))
 
 # An incident nobody acted on, whose condition has cleared, lapses after this.
-LAPSE_AFTER = timedelta(minutes=20)
+LAPSE_AFTER = timedelta(minutes=float(os.environ.get("LAPSE_MINUTES", "20")))
 
 
 @dataclass
@@ -133,6 +136,7 @@ class CommandCentre:
     probe: RoutesProbe
     thresholds: Thresholds = SILIGURI
     alert_budget: int = ALERT_BUDGET
+    confirm_after: timedelta = CONFIRM_AFTER
     status: dict[str, CorridorStatus] = field(default_factory=dict)
     incidents: dict[str, Incident] = field(default_factory=dict)
     cycles: int = 0
@@ -239,7 +243,7 @@ class CommandCentre:
 
             # A condition must hold before it becomes an officer's problem.
             first = self._candidates.setdefault(iid, now)
-            if now - first < CONFIRM_AFTER:
+            if now - first < self.confirm_after:
                 continue
 
             if not self._worth_raising(cluster):
