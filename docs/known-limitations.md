@@ -11,11 +11,23 @@ corridors is the first unblocking task, and it carries real risk: grid pairs rea
 300+ observations by aggregating a whole cell, while named corridors are narrower and
 may fall below threshold.
 
-## Coverage is thin
+## Coverage is thin — improved, still partial
 
-**2,621 grid-pair corridors exist; only 32 reach 300+ observations** and enter the
-scored set. 7,333 of 101,418 observations are scored, because scoring requires a
-baseline bin with ≥12 samples.
+Hierarchical 1 km → 2 km fallback now scores **42,988 of 101,418 observations (42.4%)**
+across **820 baseline bins** and **91 units**, up from 12,220 / 385 / 32 (12.0%).
+
+> ⚠️ **This is below the 91% the spike reported at the 2 km unit, and deliberately so.**
+> The spike measured coverage at a **≥12-sample bin floor**. We publish at **≥30**, because
+> a median computed on twelve observations is not a baseline anyone should act on. The
+> cost is coverage; the gain is that every published figure is defensible.
+>
+> **42.4% at a ≥30 floor is the honest number. 91% at ≥12 would be a worse product.**
+
+Of what is scored, **36,431 observations carry LOW confidence** and 6,557 MODERATE — and
+**none is HIGH**. The UI must render that, not average it away.
+
+Only **876 observations** resolve against a 1 km baseline; the rest fall back to 2 km.
+`baseline_source` records which, on every figure.
 
 ## This is historical replay, not live monitoring
 

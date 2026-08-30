@@ -11,7 +11,8 @@ from datetime import datetime
 
 import polars as pl
 
-from packages.analytics import anomalies, baselines
+from packages.analytics import anomalies, baselines, confidence as conf
+from packages.domain.canonical import BaselineSource
 from packages.contracts.metric import Metric
 from packages.domain.models import CorridorImportance
 from packages.intelligence.alert_density import DensityReading
@@ -19,7 +20,7 @@ from packages.intelligence.priority import score
 from packages.providers.historical import HistoricalProvider
 from packages.replay.clock import ReplaySession
 
-MIN_CORRIDOR_OBS = 300
+MIN_UNIT_OBS = 30   # publish floor. Below this no baseline is published at all.
 
 
 class TrafficIntelligenceService:
@@ -30,14 +31,35 @@ class TrafficIntelligenceService:
 
     # ---- internals -------------------------------------------------------
     def _prepared(self) -> tuple[pl.DataFrame, pl.DataFrame]:
+        """Hierarchical baseline: 1 km preferred, 2 km fallback -- Blueprint section 12.
+
+        The spike showed a flat 1 km / 300-observation configuration scored only 12% of
+        the data. Falling back to a 2 km unit where the finer one is too thin retains the
+        great majority of it, and `baseline_source` records which level was used so the
+        figure is never silently coarser than it appears.
+        """
         if self._scored is None:
             raw = self.provider.fetch_observations(datetime(2019, 1, 1), datetime(2020, 1, 1))
             df = baselines.prepare(raw)
-            counts = df.group_by("corridor_id").len()
-            keep = counts.filter(pl.col("len") >= MIN_CORRIDOR_OBS)["corridor_id"]
-            df = df.filter(pl.col("corridor_id").is_in(keep))
-            self._baselines = baselines.build(df)
-            self._scored = anomalies.score(df, self._baselines)
+
+            fine = conf.annotate(
+                baselines.build(df, unit="unit_id"), BaselineSource.UNIT_1KM
+            )
+            coarse = conf.annotate(
+                baselines.build(df, unit="unit_id_2km"), BaselineSource.UNIT_2KM_FALLBACK
+            )
+            # observations that have a publishable 1 km baseline use it
+            scored_fine = anomalies.score(df, fine)
+            covered = scored_fine.select(["unit_id", "day_type", "hour"]).unique()
+
+            # everything else falls back to the 2 km unit
+            remainder = df.join(covered, on=["unit_id", "day_type", "hour"], how="anti")
+            scored_coarse = anomalies.score(
+                remainder.drop("unit_id").rename({"unit_id_2km": "unit_id"}), coarse
+            )
+
+            self._scored = pl.concat([scored_fine, scored_coarse], how="diagonal_relaxed")
+            self._baselines = pl.concat([fine, coarse], how="diagonal_relaxed")
         return self._scored, self._baselines
 
     def _provenance(self) -> dict:
@@ -49,24 +71,31 @@ class TrafficIntelligenceService:
         scored, _ = self._prepared()
         worst = (
             scored.filter(pl.col("deviation_pct") >= anomalies.SILIGURI.moderate)
-            .group_by("corridor_id")
+            .group_by("unit_id")
             .agg(
                 pl.col("deviation_pct").max().alias("peak_deviation_pct"),
                 pl.len().alias("occurrences"),
+                pl.col("sample_size").max().alias("sample_size"),
+                pl.col("confidence").first().alias("confidence"),
+                pl.col("baseline_source").first().alias("baseline_source"),
             )
             .sort("peak_deviation_pct", descending=True)
             .head(limit)
         )
         out = []
         for row in worst.iter_rows(named=True):
-            value, band = score(row["peak_deviation_pct"], 30.0, CorridorImportance.NORMAL)
+            value, band = score(row["peak_deviation_pct"], 30.0,
+                                CorridorImportance.NORMAL, row["confidence"])
             out.append({
-                "corridor_id": row["corridor_id"],
+                "unit_id": row["unit_id"],
                 "peak_deviation_pct": round(row["peak_deviation_pct"], 1),
                 "occurrences": row["occurrences"],
                 "severity": anomalies.SILIGURI.classify(row["peak_deviation_pct"]).value,
                 "priority": band.value,
                 "priority_score": value,
+                "confidence": row["confidence"],
+                "sample_size": row["sample_size"],
+                "baseline_source": row["baseline_source"],
             })
         return out
 
@@ -77,7 +106,7 @@ class TrafficIntelligenceService:
             "is_live": self.provider.is_live,
             "observations_scored": scored.height,
             "baseline_bins": base.height,
-            "corridors": scored["corridor_id"].n_unique(),
+            "units": scored["unit_id"].n_unique(),
             "operational_days": scored["date"].n_unique(),
             "provenance": self._provenance(),
         }

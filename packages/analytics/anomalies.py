@@ -36,7 +36,7 @@ SILIGURI = Thresholds()
 
 
 def score(observations: pl.DataFrame, baselines: pl.DataFrame) -> pl.DataFrame:
-    joined = observations.join(baselines, on=["corridor_id", "day_type", "hour"], how="inner")
+    joined = observations.join(baselines, on=["unit_id", "day_type", "hour"], how="inner")
     iqr = pl.col("p75_seconds") - pl.col("p25_seconds")
     return joined.with_columns(
         (

@@ -23,9 +23,9 @@ def prepare(df: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def build(df: pl.DataFrame, min_samples: int = MIN_SAMPLES) -> pl.DataFrame:
+def build(df: pl.DataFrame, min_samples: int = MIN_SAMPLES, unit: str = "unit_id") -> pl.DataFrame:
     return (
-        df.group_by(["corridor_id", "day_type", "hour"])
+        df.group_by([unit, "day_type", "hour"])
         .agg(
             pl.len().alias("sample_size"),
             pl.col("traffic_seconds").median().alias("median_seconds"),
@@ -34,4 +34,5 @@ def build(df: pl.DataFrame, min_samples: int = MIN_SAMPLES) -> pl.DataFrame:
             pl.col("traffic_seconds").quantile(0.90).alias("p90_seconds"),
         )
         .filter(pl.col("sample_size") >= min_samples)
+        .rename({unit: "unit_id"})
     )

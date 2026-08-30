@@ -11,7 +11,10 @@ from pathlib import Path
 
 import polars as pl
 
-GRID_DEG = 0.009   # ~1 km cells. Grid pairs, NOT named roads -- see docs/known-limitations.md
+# Two resolutions. The spike (docs/methodology/spatial-feasibility-spike.md) found 1 km
+# retains 45% of observations and 2 km retains 91%. We keep both and fall back per bin.
+GRID_1KM = 0.009
+GRID_2KM = 0.018
 SILIGURI_CITYCODE = 21405
 OUT = Path("data/processed/siliguri_observations.parquet")
 
@@ -24,17 +27,20 @@ def build(observations: Path, trips_dta: Path) -> pl.DataFrame:
         columns=["tripid", "citycode", "lat_orig", "lon_orig", "lat_dest", "lon_dest"],
     )
     trips = trips[trips.citycode == SILIGURI_CITYCODE]
-    t = pl.from_pandas(trips).with_columns(
-        (pl.col("lat_orig") / GRID_DEG).round().cast(pl.Int64).alias("o_lat"),
-        (pl.col("lon_orig") / GRID_DEG).round().cast(pl.Int64).alias("o_lon"),
-        (pl.col("lat_dest") / GRID_DEG).round().cast(pl.Int64).alias("d_lat"),
-        (pl.col("lon_dest") / GRID_DEG).round().cast(pl.Int64).alias("d_lon"),
-    ).with_columns(
-        pl.concat_str([
-            pl.lit("SIL_"), pl.col("o_lat"), pl.lit("_"), pl.col("o_lon"),
-            pl.lit("__"), pl.col("d_lat"), pl.lit("_"), pl.col("d_lon"),
-        ]).alias("corridor_id")
-    ).select(["tripid", "corridor_id", "lat_orig", "lon_orig", "lat_dest", "lon_dest"])
+    t = pl.from_pandas(trips)
+    for label, deg in (("unit_id", GRID_1KM), ("unit_id_2km", GRID_2KM)):
+        t = t.with_columns(
+            pl.concat_str([
+                pl.lit("SIL_"),
+                (pl.col("lat_orig") / deg).round().cast(pl.Int64), pl.lit("_"),
+                (pl.col("lon_orig") / deg).round().cast(pl.Int64), pl.lit("__"),
+                (pl.col("lat_dest") / deg).round().cast(pl.Int64), pl.lit("_"),
+                (pl.col("lon_dest") / deg).round().cast(pl.Int64),
+            ]).alias(label)
+        )
+    t = t.with_columns(pl.col("unit_id").alias("corridor_id"))  # back-compat
+    t = t.select(["tripid", "unit_id", "unit_id_2km", "corridor_id",
+                  "lat_orig", "lon_orig", "lat_dest", "lon_dest"])
 
     obs = pl.read_parquet(observations)
     return obs.join(t, on="tripid", how="inner")
@@ -48,4 +54,4 @@ if __name__ == "__main__":
     df = build(obs, dta)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     df.write_parquet(OUT)
-    print(f"wrote {OUT}: {df.height:,} rows, {df['corridor_id'].n_unique()} corridors")
+    print(f"wrote {OUT}: {df.height:,} rows, {df['unit_id'].n_unique()} units @1km, {df['unit_id_2km'].n_unique()} @2km")
