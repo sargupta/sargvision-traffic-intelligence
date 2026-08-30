@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Siliguri Traffic Command — light operations surface.
+
+   This is an instrument, not a publication. It is read in a daytime office,
+   projected in a briefing, and printed for the record, so it is light by
+   default and the status colours are chosen to survive all three.
+
+   Status colour is functional and is never the only signal: every band also
+   carries a word and a shape, because a printed page may be monochrome and
+   roughly one man in twelve has a colour vision deficiency.
+   ───────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Ground and surfaces — not pure white; a paper-grey ground lets white
+     cards carry hierarchy without borders everywhere. */
+  --color-ground:    #F5F6F8;
+  --color-surface:   #FFFFFF;
+  --color-raised:    #FBFCFD;
+  --color-sunken:    #EDEFF3;
+
+  --color-line:      #E2E6EC;   /* hairlines */
+  --color-line-firm: #C9D0DA;   /* dividers that carry meaning */
+
+  /* Ink — near-black, never #000 */
+  --color-ink:       #12161F;   /* 16.1:1 on ground */
+  --color-ink-2:     #4A5568;   /* 7.6:1  secondary */
+  --color-ink-3:     #6B7688;   /* 4.9:1  labels, meets AA at 14px+ */
+
+  /* Brand. Navy carries the chrome; copper is the accent and stays under
+     10% of any view. */
+  --color-navy:      #0A1628;
+  --color-navy-2:    #1C2C46;
+  --color-copper:    #A85F28;   /* 4.8:1 on white — usable as text */
+
+  /* Traffic status. Each verified at or above 4.5:1 on --color-surface so the
+     label is legible, with a tint for fills. */
+  --color-sev:       #B32318;   /* severe   6.4:1 */
+  --color-sev-tint:  #FEF0EE;
+  --color-high:      #B54708;   /* high     5.3:1 */
+  --color-high-tint: #FFF4EC;
+  --color-elev:      #8A6100;   /* elevated 5.1:1 */
+  --color-elev-tint: #FFF9E8;
+  --color-ok:        #157347;   /* normal   5.2:1 */
+  --color-ok-tint:   #EDF8F1;
+  --color-none:      #667085;   /* no data  5.1:1 */
+  --color-none-tint: #F2F4F7;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Dense by design. An operations screen holds more than a marketing page and
+     the scale is tighter to match. */
+  --text-2xs:  0.6875rem;
+  --text-xs:   0.75rem;
+  --text-sm:   0.8125rem;
+  --text-base: 0.875rem;
+  --text-md:   1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.375rem;
+  --text-2xl:  1.75rem;
+  --text-3xl:  2.25rem;
+  --text-num:  2.75rem;   /* the one figure that must read across a room */
+
+  --shadow-card:  0 1px 2px rgb(16 24 40 / 0.06), 0 1px 3px rgb(16 24 40 / 0.10);
+  --shadow-float: 0 4px 8px -2px rgb(16 24 40 / 0.10), 0 12px 24px -4px rgb(16 24 40 / 0.10);
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    font-synthesis-weight: none;
+  }
+
+  h1, h2, h3 { font-weight: 600; letter-spacing: -0.011em; color: var(--color-ink); }
+
+  /* Figures must not shift width as they update. An operations screen that
+     jitters every poll is exhausting to sit in front of for eight hours. */
+  .tnum, table, time, [data-figure] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-navy);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  ::selection { background: #D8E2F5; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ── Print. The shift handover and the daily brief are records. ──────────── */
+@media print {
+  @page { size: A4; margin: 14mm; }
+  body { background: #fff; font-size: 10pt; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .page-break { break-before: page; }
+  a[href]::after { content: ""; }
+  /* Status must survive a monochrome printer, so bands print as text and rule
+     weight rather than as colour alone. */
+  [data-band] { border-left-width: 3px !important; }
+}
+.print-only { display: none; }
+
+@utility card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Google renders marker labels as bare text with no halo, which is unreadable
+   where a label crosses a corridor line. */
+.map-label {
+  text-shadow:
+    0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff,
+    0 1px 2px rgb(255 255 255 / 0.9);
+}
+
+@utility label {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}

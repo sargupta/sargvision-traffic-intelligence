@@ -1,0 +1,172 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Chrome } from "@/components/Chrome";
+import { CommandMap } from "@/components/CommandMap";
+import { CorridorTable } from "@/components/CorridorTable";
+import { Empty } from "@/components/Bits";
+import { IncidentCard } from "@/components/IncidentCard";
+import {
+  getNetwork, getRoster, useBoard,
+  type Incident, type NetworkPayload, type Officer,
+} from "@/lib/api";
+
+const OFFICER = "DO-1";
+
+export default function Board() {
+  const { board, connected, error, refresh } = useBoard();
+  const [network, setNetwork] = useState<NetworkPayload | null>(null);
+  const [roster, setRoster] = useState<Officer[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [overrides, setOverrides] = useState<Record<string, Incident>>({});
+
+  useEffect(() => {
+    getNetwork().then(setNetwork).catch(() => setNetwork(null));
+    getRoster().then((r) => setRoster(r.officers)).catch(() => setRoster([]));
+  }, []);
+
+  // An action returns the updated incident. Showing it immediately, rather than
+  // waiting up to three minutes for the next poll, is the difference between a
+  // tool that feels responsive and one that feels broken.
+  const onChanged = useCallback((updated: Incident) => {
+    setOverrides((o) => ({ ...o, [updated.incident_id]: updated }));
+    refresh();
+  }, [refresh]);
+
+  const incidents = useMemo(() => {
+    if (!board) return [];
+    return board.incidents
+      .map((i) => overrides[i.incident_id] ?? i)
+      .filter((i) => i.is_open);
+  }, [board, overrides]);
+
+  const needsAction = incidents.filter((i) => i.needs_attention);
+  const inHand = incidents.filter((i) => !i.needs_attention);
+  const bands = board?.bands ?? {};
+
+  return (
+    <>
+      <Chrome at={board?.at} connected={connected} cycle={board?.cycle} officer="Duty Officer" />
+
+      <main id="main" className="mx-auto w-full max-w-[130rem] px-4 py-4 lg:px-6">
+        {error && (
+          <p className="mb-4 rounded-md border border-line bg-sev-tint px-4 py-2.5 text-[length:var(--text-sm)]" style={{ color: "var(--color-sev)" }}>
+            {error} — the API may not be running. Set NEXT_PUBLIC_API_URL if it is not on localhost:8099.
+          </p>
+        )}
+
+        {/* The four questions, answered before any click. */}
+        <section className="card mb-4 flex flex-wrap items-center gap-x-8 gap-y-3 px-5 py-4">
+          <div className="min-w-[18rem] flex-1">
+            <p className="label">Right now across Siliguri</p>
+            <p className="mt-1 text-[length:var(--text-xl)] font-semibold leading-snug">
+              {board?.headline ?? "Connecting…"}
+            </p>
+          </div>
+
+          <dl className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            {(
+              [
+                ["Severe", bands.SEVERE ?? 0, "var(--color-sev)"],
+                ["High", bands.HIGH ?? 0, "var(--color-high)"],
+                ["Elevated", bands.ELEVATED ?? 0, "var(--color-elev)"],
+                ["Normal", bands.NORMAL ?? 0, "var(--color-ok)"],
+              ] as const
+            ).map(([label, n, colour]) => (
+              <div key={label} className="text-center">
+                <dd className="tnum text-[length:var(--text-2xl)] font-semibold leading-none" style={{ color: n ? colour : "var(--color-ink-3)" }}>
+                  {n}
+                </dd>
+                <dt className="label mt-1">{label}</dt>
+              </div>
+            ))}
+            <div className="border-l border-line pl-6 text-center">
+              <dd className="tnum text-[length:var(--text-2xl)] font-semibold leading-none">
+                {needsAction.length}
+                <span className="text-[length:var(--text-md)] font-normal text-ink-3">/{board?.alert_budget ?? "—"}</span>
+              </dd>
+              <dt className="label mt-1">Awaiting an officer</dt>
+            </div>
+          </dl>
+        </section>
+
+        {/* Map first and large: the officer is looking at geography, and the
+            incident list is the queue beside it. A narrow map column made the
+            network unreadable and put the queue where the map belongs. */}
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.65fr)]">
+          <div className="order-1 flex flex-col gap-4">
+            <div className="h-[24rem] xl:h-[calc(100dvh-13rem)] xl:min-h-[30rem]">
+              <CommandMap
+                board={board}
+                network={network}
+                selected={selected}
+                onSelectIncident={setSelected}
+              />
+            </div>
+          </div>
+
+          <div className="order-2 flex max-h-none flex-col gap-4 xl:max-h-[calc(100dvh-13rem)] xl:overflow-y-auto xl:pr-1">
+            <section>
+              <h2 className="mb-2.5 flex items-baseline gap-2 text-[length:var(--text-md)] font-semibold">
+                Needs an officer
+                <span className="tnum text-[length:var(--text-sm)] font-normal text-ink-3">
+                  {needsAction.length}
+                </span>
+              </h2>
+              {needsAction.length === 0 ? (
+                <Empty
+                  title="Nothing is waiting for a decision."
+                  detail="Every monitored corridor is within its usual travel time, or what is above it is already with an officer. This is a result, not an empty screen."
+                />
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {needsAction.map((i) => (
+                    <IncidentCard
+                      key={i.incident_id}
+                      incident={i}
+                      roster={roster}
+                      officer={OFFICER}
+                      onChanged={onChanged}
+                      selected={selected === i.incident_id}
+                      onSelect={() => setSelected(i.incident_id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {inHand.length > 0 && (
+              <section>
+                <h2 className="mb-2.5 flex items-baseline gap-2 text-[length:var(--text-md)] font-semibold">
+                  With an officer
+                  <span className="tnum text-[length:var(--text-sm)] font-normal text-ink-3">{inHand.length}</span>
+                </h2>
+                <div className="flex flex-col gap-3">
+                  {inHand.map((i) => (
+                    <IncidentCard
+                      key={i.incident_id}
+                      incident={i}
+                      roster={roster}
+                      officer={OFFICER}
+                      onChanged={onChanged}
+                      selected={selected === i.incident_id}
+                      onSelect={() => setSelected(i.incident_id)}
+                      compact
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+          </div>
+        </div>
+
+        {board && (
+          <div className="mt-4">
+            <CorridorTable corridors={board.corridors} />
+          </div>
+        )}
+      </main>
+    </>
+  );
+}
