@@ -10,8 +10,14 @@ Traffic  M̶o̶n̶i̶t̶o̶r̶i̶n̶g̶
 Traffic  Intelligence
 ```
 
-**Not data. Not monitoring. Intelligence.** The strikethroughs do the argument: the first
-two tiers already exist and are not the gap. The third is what SARGVISION builds.
+**The focus has moved.** The strikethroughs do not say data and monitoring are worthless —
+**Siliguri can manage both.** They say those tiers are handled, and attention now belongs
+on the one that is missing.
+
+Read it as *"past this, past this, **here**"* — not as *"wrong, wrong, right"*. That
+distinction matters in the room: a city that has invested in data and monitoring has built
+the foundation this layer stands on, and the pitch should never sound like it says
+otherwise.
 
 | File | Use |
 |---|---|
