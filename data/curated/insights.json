@@ -1,0 +1,4496 @@
+{
+ "run": {
+  "completed_at": "2026-08-30T06:31:25+00:00",
+  "summary": "77 patterns cleared the evidence threshold, 21 of them at high confidence, across 5 kinds of behaviour.",
+  "proposed": 77,
+  "surfaced": 77,
+  "rejected_fdr": 0,
+  "fdr_q": 0.05,
+  "data_window": {
+   "start": "2019-06-13",
+   "end": "2019-11-05",
+   "days": 143
+  },
+  "mode": "historical replay",
+  "is_live": false
+ },
+ "findings": [
+  {
+   "id": "EVE_SIL_Z01__SIL_Z00",
+   "kind": "PERIOD",
+   "title": "NJP Station \u2192 Siliguri Central loses its evening",
+   "claim": "Between 17:00 and 21:00, NJP Station \u2192 Siliguri Central runs 15% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 7595,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 6082793.5,
+    "p_value": 3.921559842953965e-93,
+    "effect": 14.76,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "1,484 evening observations against 6,111 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.9494,
+   "novelty": 0.5903,
+   "recurrence": 0.9,
+   "priority": 0.5044,
+   "movements": [
+    "SIL_Z01__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "GAP_COVERAGE",
+   "kind": "EVIDENCE_GAP",
+   "title": "Most hours of most movements have no publishable baseline",
+   "claim": "790 of 1,200 possible movement-hour-daytype bins carry the 30 observations we publish at \u2014 66%.",
+   "interpretation": "Everywhere else, the honest output is silence. The engine does not estimate into the gaps, because a baseline computed on a dozen journeys is not something anyone should deploy staff against.",
+   "limitation": "Raising coverage means lowering the floor, and a lower floor means less defensible figures. 30 is a judgement, and it is the reason this number is low.",
+   "evidence": {
+    "observations": 790,
+    "test": "count of bins clearing the publishing floor",
+    "statistic": 790,
+    "p_value": null,
+    "effect": 65.83,
+    "effect_unit": "% of possible bins covered",
+    "comparison": "1,200 possible bins across 5 zones"
+   },
+   "view": {
+    "layout": "coverage",
+    "focus_movements": [],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [],
+    "encode": "coverage",
+    "series": []
+   },
+   "confidence": "HIGH",
+   "impact": 1.0,
+   "novelty": 0.5,
+   "recurrence": 1.0,
+   "priority": 0.5,
+   "movements": [],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z00__SIL_Z02",
+   "kind": "DAY_TYPE",
+   "title": "Siliguri Central \u2192 Salugara empties at the weekend",
+   "claim": "Siliguri Central \u2192 Salugara runs 13% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 5941,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 3656053.0,
+    "p_value": 1.617394475394314e-39,
+    "effect": 12.64,
+    "effect_unit": "% difference in median pace",
+    "comparison": "4,683 weekday observations against 1,258 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.7426,
+   "novelty": 0.6321,
+   "recurrence": 0.95,
+   "priority": 0.446,
+   "movements": [
+    "SIL_Z00__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z00__SIL_Z00",
+   "kind": "DAY_TYPE",
+   "title": "Siliguri Central \u2192 Siliguri Central empties at the weekend",
+   "claim": "Siliguri Central \u2192 Siliguri Central runs 9% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 8771,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 7895177.0,
+    "p_value": 3.8391917567871756e-54,
+    "effect": 9.23,
+    "effect_unit": "% difference in median pace",
+    "comparison": "6,923 weekday observations against 1,848 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 1.0,
+   "novelty": 0.4615,
+   "recurrence": 0.95,
+   "priority": 0.4384,
+   "movements": [
+    "SIL_Z00__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z00__SIL_Z00",
+   "kind": "PERIOD",
+   "title": "Siliguri Central \u2192 Siliguri Central loses its evening",
+   "claim": "Between 17:00 and 21:00, Siliguri Central \u2192 Siliguri Central runs 12% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 8771,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 8464546.5,
+    "p_value": 8.845668601871487e-116,
+    "effect": 12.05,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "1,801 evening observations against 6,970 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 1.0,
+   "novelty": 0.4821,
+   "recurrence": 0.9,
+   "priority": 0.4339,
+   "movements": [
+    "SIL_Z00__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z02__SIL_Z00",
+   "kind": "PERIOD",
+   "title": "Salugara \u2192 Siliguri Central loses its evening",
+   "claim": "Between 17:00 and 21:00, Salugara \u2192 Siliguri Central runs 17% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 5674,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 3798223.0,
+    "p_value": 4.510290119018308e-128,
+    "effect": 16.74,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "1,152 evening observations against 4,522 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.7093,
+   "novelty": 0.6694,
+   "recurrence": 0.9,
+   "priority": 0.4273,
+   "movements": [
+    "SIL_Z02__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z00__SIL_Z01",
+   "kind": "PERIOD",
+   "title": "Siliguri Central \u2192 NJP Station loses its evening",
+   "claim": "Between 17:00 and 21:00, Siliguri Central \u2192 NJP Station runs 13% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 7173,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 5580624.5,
+    "p_value": 1.2954482535476718e-96,
+    "effect": 12.85,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "1,436 evening observations against 5,737 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z01"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.8966,
+   "novelty": 0.5141,
+   "recurrence": 0.9,
+   "priority": 0.4149,
+   "movements": [
+    "SIL_Z00__SIL_Z01"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z04__SIL_Z00",
+   "kind": "PERIOD",
+   "title": "Siliguri Junction \u2192 Siliguri Central loses its evening",
+   "claim": "Between 17:00 and 21:00, Siliguri Junction \u2192 Siliguri Central runs 12% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 7200,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 6060606.5,
+    "p_value": 2.505016410868091e-158,
+    "effect": 11.62,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "1,449 evening observations against 5,751 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z04__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.9,
+   "novelty": 0.4646,
+   "recurrence": 0.9,
+   "priority": 0.3763,
+   "movements": [
+    "SIL_Z04__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z02__SIL_Z00",
+   "kind": "DAY_TYPE",
+   "title": "Salugara \u2192 Siliguri Central empties at the weekend",
+   "claim": "Salugara \u2192 Siliguri Central runs 11% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 5674,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 3316264.5,
+    "p_value": 2.854547559889772e-36,
+    "effect": 10.89,
+    "effect_unit": "% difference in median pace",
+    "comparison": "4,475 weekday observations against 1,199 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.7093,
+   "novelty": 0.5446,
+   "recurrence": 0.95,
+   "priority": 0.3669,
+   "movements": [
+    "SIL_Z02__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z00__SIL_Z02",
+   "kind": "PERIOD",
+   "title": "Siliguri Central \u2192 Salugara loses its evening",
+   "claim": "Between 17:00 and 21:00, Siliguri Central \u2192 Salugara runs 14% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 5941,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 3941055.0,
+    "p_value": 3.560028177185192e-111,
+    "effect": 13.61,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "1,158 evening observations against 4,783 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.7426,
+   "novelty": 0.5443,
+   "recurrence": 0.9,
+   "priority": 0.3638,
+   "movements": [
+    "SIL_Z00__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DIV_SIL_Z01__SIL_Z03",
+   "kind": "DIVERGENCE",
+   "title": "NJP Station \u2192 Champasari is quick but undependable",
+   "claim": "NJP Station \u2192 Champasari ranks 2 of 25 for unreliability but 25 of 25 for slowness \u2014 a gap of 23 places.",
+   "interpretation": "Average speed would put this movement in the wrong queue. It moves well most of the time, which is exactly why the bad days are not planned for.",
+   "limitation": "Ranks are within these 25 movements only, and both measures pool all hours. A gap in rank is not a statistical test.",
+   "evidence": {
+    "observations": 632,
+    "test": "rank comparison, buffer against median speed",
+    "statistic": 23.0,
+    "p_value": null,
+    "effect": 23.0,
+    "effect_unit": "places between the two ranks",
+    "comparison": "25 movements ranked on both measures"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [],
+    "encode": "divergence",
+    "series": [
+     "buffer_pct",
+     "median_speed_kmh"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.6,
+   "novelty": 0.92,
+   "recurrence": 1.0,
+   "priority": 0.3588,
+   "movements": [
+    "SIL_Z01__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z00__SIL_Z04",
+   "kind": "PERIOD",
+   "title": "Siliguri Central \u2192 Siliguri Junction loses its evening",
+   "claim": "Between 17:00 and 21:00, Siliguri Central \u2192 Siliguri Junction runs 10% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 7442,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 6426022.0,
+    "p_value": 5.583461561636891e-137,
+    "effect": 10.48,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "1,545 evening observations against 5,897 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z04"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.9303,
+   "novelty": 0.4194,
+   "recurrence": 0.9,
+   "priority": 0.3511,
+   "movements": [
+    "SIL_Z00__SIL_Z04"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z01__SIL_Z00",
+   "kind": "DAY_TYPE",
+   "title": "NJP Station \u2192 Siliguri Central empties at the weekend",
+   "claim": "NJP Station \u2192 Siliguri Central runs 8% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 7595,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 5632245.5,
+    "p_value": 5.1698550619251924e-27,
+    "effect": 7.78,
+    "effect_unit": "% difference in median pace",
+    "comparison": "5,996 weekday observations against 1,599 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.9494,
+   "novelty": 0.389,
+   "recurrence": 0.95,
+   "priority": 0.3508,
+   "movements": [
+    "SIL_Z01__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DIV_SIL_Z04__SIL_Z00",
+   "kind": "DIVERGENCE",
+   "title": "Siliguri Junction \u2192 Siliguri Central is slow but dependable",
+   "claim": "Siliguri Junction \u2192 Siliguri Central ranks 22 of 25 for unreliability but 2 of 25 for slowness \u2014 a gap of 20 places.",
+   "interpretation": "Average speed would put this movement in the wrong queue. It is consistently slow, which at least makes it plannable: the fix here is capacity, not operations.",
+   "limitation": "Ranks are within these 25 movements only, and both measures pool all hours. A gap in rank is not a statistical test.",
+   "evidence": {
+    "observations": 7200,
+    "test": "rank comparison, buffer against median speed",
+    "statistic": 20.0,
+    "p_value": null,
+    "effect": 20.0,
+    "effect_unit": "places between the two ranks",
+    "comparison": "25 movements ranked on both measures"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z04__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [],
+    "encode": "divergence",
+    "series": [
+     "buffer_pct",
+     "median_speed_kmh"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.6,
+   "novelty": 0.8,
+   "recurrence": 1.0,
+   "priority": 0.312,
+   "movements": [
+    "SIL_Z04__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DIV_SIL_Z01__SIL_Z04",
+   "kind": "DIVERGENCE",
+   "title": "NJP Station \u2192 Siliguri Junction is slow but dependable",
+   "claim": "NJP Station \u2192 Siliguri Junction ranks 24 of 25 for unreliability but 4 of 25 for slowness \u2014 a gap of 20 places.",
+   "interpretation": "Average speed would put this movement in the wrong queue. It is consistently slow, which at least makes it plannable: the fix here is capacity, not operations.",
+   "limitation": "Ranks are within these 25 movements only, and both measures pool all hours. A gap in rank is not a statistical test.",
+   "evidence": {
+    "observations": 2719,
+    "test": "rank comparison, buffer against median speed",
+    "statistic": 20.0,
+    "p_value": null,
+    "effect": 20.0,
+    "effect_unit": "places between the two ranks",
+    "comparison": "25 movements ranked on both measures"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z04"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [],
+    "encode": "divergence",
+    "series": [
+     "buffer_pct",
+     "median_speed_kmh"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.6,
+   "novelty": 0.8,
+   "recurrence": 1.0,
+   "priority": 0.312,
+   "movements": [
+    "SIL_Z01__SIL_Z04"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z00__SIL_Z01",
+   "kind": "DAY_TYPE",
+   "title": "Siliguri Central \u2192 NJP Station empties at the weekend",
+   "claim": "Siliguri Central \u2192 NJP Station runs 7% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 7173,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 5037944.5,
+    "p_value": 3.32303910296895e-28,
+    "effect": 7.13,
+    "effect_unit": "% difference in median pace",
+    "comparison": "5,674 weekday observations against 1,499 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z01"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.8966,
+   "novelty": 0.3564,
+   "recurrence": 0.95,
+   "priority": 0.3035,
+   "movements": [
+    "SIL_Z00__SIL_Z01"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z00__SIL_Z04",
+   "kind": "DAY_TYPE",
+   "title": "Siliguri Central \u2192 Siliguri Junction empties at the weekend",
+   "claim": "Siliguri Central \u2192 Siliguri Junction runs 7% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 7442,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 5545786.5,
+    "p_value": 1.8683264989083786e-43,
+    "effect": 6.78,
+    "effect_unit": "% difference in median pace",
+    "comparison": "5,917 weekday observations against 1,525 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z04"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.9303,
+   "novelty": 0.3389,
+   "recurrence": 0.95,
+   "priority": 0.2995,
+   "movements": [
+    "SIL_Z00__SIL_Z04"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z04__SIL_Z00",
+   "kind": "DAY_TYPE",
+   "title": "Siliguri Junction \u2192 Siliguri Central empties at the weekend",
+   "claim": "Siliguri Junction \u2192 Siliguri Central runs 6% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 7200,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 5073200.5,
+    "p_value": 5.552591544089723e-34,
+    "effect": 6.32,
+    "effect_unit": "% difference in median pace",
+    "comparison": "5,731 weekday observations against 1,469 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z04__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.9,
+   "novelty": 0.3159,
+   "recurrence": 0.95,
+   "priority": 0.2701,
+   "movements": [
+    "SIL_Z04__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z02__SIL_Z04",
+   "kind": "PERIOD",
+   "title": "Salugara \u2192 Siliguri Junction loses its evening",
+   "claim": "Between 17:00 and 21:00, Salugara \u2192 Siliguri Junction runs 14% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 3135,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 1008281.0,
+    "p_value": 3.0567657352056585e-26,
+    "effect": 13.71,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "635 evening observations against 2,500 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z04"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.3919,
+   "novelty": 0.5485,
+   "recurrence": 0.9,
+   "priority": 0.1935,
+   "movements": [
+    "SIL_Z02__SIL_Z04"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z04__SIL_Z02",
+   "kind": "PERIOD",
+   "title": "Siliguri Junction \u2192 Salugara loses its evening",
+   "claim": "Between 17:00 and 21:00, Siliguri Junction \u2192 Salugara runs 14% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 3153,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 1053332.5,
+    "p_value": 1.383307371451278e-37,
+    "effect": 13.6,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "628 evening observations against 2,525 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z04__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.3941,
+   "novelty": 0.5441,
+   "recurrence": 0.9,
+   "priority": 0.193,
+   "movements": [
+    "SIL_Z04__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z00__SIL_Z03",
+   "kind": "DAY_TYPE",
+   "title": "Siliguri Central \u2192 Champasari empties at the weekend",
+   "claim": "Siliguri Central \u2192 Champasari runs 10% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 3164,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 1032785.0,
+    "p_value": 3.0976266263510186e-19,
+    "effect": 9.62,
+    "effect_unit": "% difference in median pace",
+    "comparison": "2,485 weekday observations against 679 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.3955,
+   "novelty": 0.4808,
+   "recurrence": 0.95,
+   "priority": 0.1806,
+   "movements": [
+    "SIL_Z00__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REL_SIL_Z00__SIL_Z00",
+   "kind": "RELIABILITY",
+   "title": "Siliguri Central \u2192 Siliguri Central is hard to plan around",
+   "claim": "A journey on Siliguri Central \u2192 Siliguri Central needs 30% more time than typical to arrive on time nine trips in ten \u2014 6 points above the city median of 24%.",
+   "interpretation": "Budgeting the median 8 minutes fails one trip in ten by 5 minutes or more. A movement that is usually fine and occasionally bad is an operations problem, not a capacity one: something intermittent is happening on it.",
+   "limitation": "Buffer is computed across all hours and both day types pooled. It says the movement is unpredictable, not when. The zone pair is not a road, and this is 2019 data.",
+   "evidence": {
+    "observations": 8771,
+    "test": "percentile spread of pace (P90 vs P50), seconds per km",
+    "statistic": 29.81,
+    "p_value": null,
+    "effect": 5.93,
+    "effect_unit": "points above city median buffer",
+    "comparison": "city median buffer 23.9%"
+   },
+   "view": {
+    "layout": "map+detail",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [],
+    "encode": "reliability",
+    "series": []
+   },
+   "confidence": "MODERATE",
+   "impact": 0.6919,
+   "novelty": 0.3953,
+   "recurrence": 1.0,
+   "priority": 0.1778,
+   "movements": [
+    "SIL_Z00__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z03__SIL_Z00",
+   "kind": "DAY_TYPE",
+   "title": "Champasari \u2192 Siliguri Central empties at the weekend",
+   "claim": "Champasari \u2192 Siliguri Central runs 8% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 3062,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 988256.5,
+    "p_value": 2.132528783989411e-19,
+    "effect": 8.09,
+    "effect_unit": "% difference in median pace",
+    "comparison": "2,387 weekday observations against 675 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.3827,
+   "novelty": 0.4046,
+   "recurrence": 0.95,
+   "priority": 0.1471,
+   "movements": [
+    "SIL_Z03__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z03__SIL_Z00",
+   "kind": "PERIOD",
+   "title": "Champasari \u2192 Siliguri Central loses its evening",
+   "claim": "Between 17:00 and 21:00, Champasari \u2192 Siliguri Central runs 10% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 3062,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 1048018.0,
+    "p_value": 4.402226598925845e-46,
+    "effect": 9.99,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "631 evening observations against 2,431 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.3827,
+   "novelty": 0.3996,
+   "recurrence": 0.9,
+   "priority": 0.1376,
+   "movements": [
+    "SIL_Z03__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z02__SIL_Z04",
+   "kind": "DAY_TYPE",
+   "title": "Salugara \u2192 Siliguri Junction empties at the weekend",
+   "claim": "Salugara \u2192 Siliguri Junction runs 7% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 3135,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 1016801.5,
+    "p_value": 1.833113115377699e-14,
+    "effect": 7.22,
+    "effect_unit": "% difference in median pace",
+    "comparison": "2,432 weekday observations against 703 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z04"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "HIGH",
+   "impact": 0.3919,
+   "novelty": 0.3609,
+   "recurrence": 0.95,
+   "priority": 0.1343,
+   "movements": [
+    "SIL_Z02__SIL_Z04"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REL_SIL_Z00__SIL_Z03",
+   "kind": "RELIABILITY",
+   "title": "Siliguri Central \u2192 Champasari is hard to plan around",
+   "claim": "A journey on Siliguri Central \u2192 Champasari needs 31% more time than typical to arrive on time nine trips in ten \u2014 8 points above the city median of 24%.",
+   "interpretation": "Budgeting the median 14 minutes fails one trip in ten by 8 minutes or more. A movement that is usually fine and occasionally bad is an operations problem, not a capacity one: something intermittent is happening on it.",
+   "limitation": "Buffer is computed across all hours and both day types pooled. It says the movement is unpredictable, not when. The zone pair is not a road, and this is 2019 data.",
+   "evidence": {
+    "observations": 3164,
+    "test": "percentile spread of pace (P90 vs P50), seconds per km",
+    "statistic": 31.42,
+    "p_value": null,
+    "effect": 7.54,
+    "effect_unit": "points above city median buffer",
+    "comparison": "city median buffer 23.9%"
+   },
+   "view": {
+    "layout": "map+detail",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [],
+    "encode": "reliability",
+    "series": []
+   },
+   "confidence": "MODERATE",
+   "impact": 0.2496,
+   "novelty": 0.5026,
+   "recurrence": 1.0,
+   "priority": 0.0815,
+   "movements": [
+    "SIL_Z00__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z02_07",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Salugara keeps breaking at 07:00",
+   "claim": "At 07:00, Salugara \u2192 Salugara departs from its own baseline on 11% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 487,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 56,
+    "p_value": 4.1542557557535666e-19,
+    "effect": 4.2,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "56 departures in 487 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     7
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1623,
+   "novelty": 1.0,
+   "recurrence": 0.6899,
+   "priority": 0.0728,
+   "movements": [
+    "SIL_Z02__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z01__SIL_Z02",
+   "kind": "DAY_TYPE",
+   "title": "NJP Station \u2192 Salugara empties at the weekend",
+   "claim": "NJP Station \u2192 Salugara runs 17% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 920,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 83328.0,
+    "p_value": 4.7513595313775725e-07,
+    "effect": 16.82,
+    "effect_unit": "% difference in median pace",
+    "comparison": "738 weekday observations against 182 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.115,
+   "novelty": 0.8411,
+   "recurrence": 0.95,
+   "priority": 0.0597,
+   "movements": [
+    "SIL_Z01__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z01__SIL_Z02",
+   "kind": "PERIOD",
+   "title": "NJP Station \u2192 Salugara loses its evening",
+   "claim": "Between 17:00 and 21:00, NJP Station \u2192 Salugara runs 19% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 920,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 102782.5,
+    "p_value": 2.4841582293770055e-20,
+    "effect": 19.33,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "201 evening observations against 719 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.115,
+   "novelty": 0.7733,
+   "recurrence": 0.9,
+   "priority": 0.052,
+   "movements": [
+    "SIL_Z01__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z02__SIL_Z01",
+   "kind": "PERIOD",
+   "title": "Salugara \u2192 NJP Station loses its evening",
+   "claim": "Between 17:00 and 21:00, Salugara \u2192 NJP Station runs 16% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 942,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 97367.5,
+    "p_value": 2.3076178806322225e-15,
+    "effect": 16.17,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "189 evening observations against 753 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z01"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1177,
+   "novelty": 0.6469,
+   "recurrence": 0.9,
+   "priority": 0.0446,
+   "movements": [
+    "SIL_Z02__SIL_Z01"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REL_SIL_Z02__SIL_Z03",
+   "kind": "RELIABILITY",
+   "title": "Salugara \u2192 Champasari is hard to plan around",
+   "claim": "A journey on Salugara \u2192 Champasari needs 29% more time than typical to arrive on time nine trips in ten \u2014 5 points above the city median of 24%.",
+   "interpretation": "Budgeting the median 13 minutes fails one trip in ten by 9 minutes or more. A movement that is usually fine and occasionally bad is an operations problem, not a capacity one: something intermittent is happening on it.",
+   "limitation": "Buffer is computed across all hours and both day types pooled. It says the movement is unpredictable, not when. The zone pair is not a road, and this is 2019 data.",
+   "evidence": {
+    "observations": 2262,
+    "test": "percentile spread of pace (P90 vs P50), seconds per km",
+    "statistic": 28.94,
+    "p_value": null,
+    "effect": 5.06,
+    "effect_unit": "points above city median buffer",
+    "comparison": "city median buffer 23.9%"
+   },
+   "view": {
+    "layout": "map+detail",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [],
+    "encode": "reliability",
+    "series": []
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1784,
+   "novelty": 0.3376,
+   "recurrence": 1.0,
+   "priority": 0.0392,
+   "movements": [
+    "SIL_Z02__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z02_08",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Salugara keeps breaking at 08:00",
+   "claim": "At 08:00, Salugara \u2192 Salugara departs from its own baseline on 8% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 498,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 42,
+    "p_value": 2.4318285819225463e-10,
+    "effect": 3.08,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "42 departures in 498 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     8
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.166,
+   "novelty": 0.6937,
+   "recurrence": 0.506,
+   "priority": 0.0379,
+   "movements": [
+    "SIL_Z02__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REL_SIL_Z03__SIL_Z03",
+   "kind": "RELIABILITY",
+   "title": "Champasari \u2192 Champasari is hard to plan around",
+   "claim": "A journey on Champasari \u2192 Champasari needs 29% more time than typical to arrive on time nine trips in ten \u2014 5 points above the city median of 24%.",
+   "interpretation": "Budgeting the median 8 minutes fails one trip in ten by 5 minutes or more. A movement that is usually fine and occasionally bad is an operations problem, not a capacity one: something intermittent is happening on it.",
+   "limitation": "Buffer is computed across all hours and both day types pooled. It says the movement is unpredictable, not when. The zone pair is not a road, and this is 2019 data.",
+   "evidence": {
+    "observations": 2283,
+    "test": "percentile spread of pace (P90 vs P50), seconds per km",
+    "statistic": 28.69,
+    "p_value": null,
+    "effect": 4.81,
+    "effect_unit": "points above city median buffer",
+    "comparison": "city median buffer 23.9%"
+   },
+   "view": {
+    "layout": "map+detail",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [],
+    "encode": "reliability",
+    "series": []
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1801,
+   "novelty": 0.3208,
+   "recurrence": 1.0,
+   "priority": 0.0375,
+   "movements": [
+    "SIL_Z03__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REL_SIL_Z02__SIL_Z04",
+   "kind": "RELIABILITY",
+   "title": "Salugara \u2192 Siliguri Junction is hard to plan around",
+   "claim": "A journey on Salugara \u2192 Siliguri Junction needs 27% more time than typical to arrive on time nine trips in ten \u2014 3 points above the city median of 24%.",
+   "interpretation": "Budgeting the median 13 minutes fails one trip in ten by 8 minutes or more. A movement that is usually fine and occasionally bad is an operations problem, not a capacity one: something intermittent is happening on it.",
+   "limitation": "Buffer is computed across all hours and both day types pooled. It says the movement is unpredictable, not when. The zone pair is not a road, and this is 2019 data.",
+   "evidence": {
+    "observations": 3135,
+    "test": "percentile spread of pace (P90 vs P50), seconds per km",
+    "statistic": 27.38,
+    "p_value": null,
+    "effect": 3.5,
+    "effect_unit": "points above city median buffer",
+    "comparison": "city median buffer 23.9%"
+   },
+   "view": {
+    "layout": "map+detail",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z04"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [],
+    "encode": "reliability",
+    "series": []
+   },
+   "confidence": "MODERATE",
+   "impact": 0.2473,
+   "novelty": 0.2331,
+   "recurrence": 1.0,
+   "priority": 0.0375,
+   "movements": [
+    "SIL_Z02__SIL_Z04"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z04__SIL_Z03",
+   "kind": "DAY_TYPE",
+   "title": "Siliguri Junction \u2192 Champasari empties at the weekend",
+   "claim": "Siliguri Junction \u2192 Champasari runs 10% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 960,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 98064.0,
+    "p_value": 1.7982967954395253e-06,
+    "effect": 9.54,
+    "effect_unit": "% difference in median pace",
+    "comparison": "742 weekday observations against 218 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z04__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.12,
+   "novelty": 0.4769,
+   "recurrence": 0.95,
+   "priority": 0.0353,
+   "movements": [
+    "SIL_Z04__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z02_09",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Salugara keeps breaking at 09:00",
+   "claim": "At 09:00, Salugara \u2192 Salugara departs from its own baseline on 9% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 371,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 33,
+    "p_value": 5.144436682858783e-09,
+    "effect": 3.25,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "33 departures in 371 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     9
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1237,
+   "novelty": 0.7499,
+   "recurrence": 0.5337,
+   "priority": 0.0322,
+   "movements": [
+    "SIL_Z02__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z00_12",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Siliguri Central keeps breaking at 12:00",
+   "claim": "At 12:00, Siliguri Central \u2192 Siliguri Central departs from its own baseline on 8% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 452,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 36,
+    "p_value": 1.9237931416837183e-08,
+    "effect": 2.91,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "36 departures in 452 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     12
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1507,
+   "novelty": 0.6366,
+   "recurrence": 0.4779,
+   "priority": 0.0298,
+   "movements": [
+    "SIL_Z00__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z03__SIL_Z04",
+   "kind": "PERIOD",
+   "title": "Champasari \u2192 Siliguri Junction loses its evening",
+   "claim": "Between 17:00 and 21:00, Champasari \u2192 Siliguri Junction runs 12% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 848,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 82330.0,
+    "p_value": 2.5887010821650874e-18,
+    "effect": 11.95,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "170 evening observations against 678 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z04"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.106,
+   "novelty": 0.4779,
+   "recurrence": 0.9,
+   "priority": 0.0296,
+   "movements": [
+    "SIL_Z03__SIL_Z04"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z02_06",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Salugara keeps breaking at 06:00",
+   "claim": "At 06:00, Salugara \u2192 Salugara departs from its own baseline on 9% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 303,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 28,
+    "p_value": 3.162257792393034e-08,
+    "effect": 3.38,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "28 departures in 303 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     6
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.101,
+   "novelty": 0.792,
+   "recurrence": 0.5545,
+   "priority": 0.0288,
+   "movements": [
+    "SIL_Z02__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z02__SIL_Z01",
+   "kind": "DAY_TYPE",
+   "title": "Salugara \u2192 NJP Station empties at the weekend",
+   "claim": "Salugara \u2192 NJP Station runs 7% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 942,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 82835.0,
+    "p_value": 0.0001124394837723626,
+    "effect": 7.35,
+    "effect_unit": "% difference in median pace",
+    "comparison": "757 weekday observations against 185 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z01"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1177,
+   "novelty": 0.3673,
+   "recurrence": 0.95,
+   "priority": 0.0267,
+   "movements": [
+    "SIL_Z02__SIL_Z01"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z00_14",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Siliguri Central keeps breaking at 14:00",
+   "claim": "At 14:00, Siliguri Central \u2192 Siliguri Central departs from its own baseline on 7% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 514,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 37,
+    "p_value": 1.6113418062353243e-07,
+    "effect": 2.63,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "37 departures in 514 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     14
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1713,
+   "novelty": 0.5433,
+   "recurrence": 0.4319,
+   "priority": 0.0261,
+   "movements": [
+    "SIL_Z00__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z00_13",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Siliguri Central keeps breaking at 13:00",
+   "claim": "At 13:00, Siliguri Central \u2192 Siliguri Central departs from its own baseline on 8% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 453,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 34,
+    "p_value": 1.9007091670566788e-07,
+    "effect": 2.74,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "34 departures in 453 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     13
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.151,
+   "novelty": 0.5807,
+   "recurrence": 0.4503,
+   "priority": 0.0257,
+   "movements": [
+    "SIL_Z00__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z04__SIL_Z03",
+   "kind": "PERIOD",
+   "title": "Siliguri Junction \u2192 Champasari loses its evening",
+   "claim": "Between 17:00 and 21:00, Siliguri Junction \u2192 Champasari runs 9% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 960,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 95019.0,
+    "p_value": 4.1351219880506853e-08,
+    "effect": 8.6,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "201 evening observations against 759 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z04__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.12,
+   "novelty": 0.3439,
+   "recurrence": 0.9,
+   "priority": 0.0241,
+   "movements": [
+    "SIL_Z04__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "DAY_SIL_Z03__SIL_Z04",
+   "kind": "DAY_TYPE",
+   "title": "Champasari \u2192 Siliguri Junction empties at the weekend",
+   "claim": "Champasari \u2192 Siliguri Junction runs 7% slower per kilometre on weekdays than at weekends.",
+   "interpretation": "A movement that clears at the weekend is carrying commuting or business travel, and demand-side measures can reach it. One that does not is carrying something that does not observe a weekend.",
+   "limitation": "One 2019 window covering monsoon into early winter. Festival weeks are inside it and are not separated out, and a public holiday is counted as whatever weekday it fell on.",
+   "evidence": {
+    "observations": 848,
+    "test": "Mann-Whitney U on pace, weekday against weekend",
+    "statistic": 75024.5,
+    "p_value": 2.136764683344747e-06,
+    "effect": 7.29,
+    "effect_unit": "% difference in median pace",
+    "comparison": "664 weekday observations against 184 weekend"
+   },
+   "view": {
+    "layout": "compare",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z04"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [
+     "WEEKDAY",
+     "WEEKEND"
+    ],
+    "encode": "delay",
+    "series": [
+     "weekday_tti",
+     "weekend_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.106,
+   "novelty": 0.3647,
+   "recurrence": 0.95,
+   "priority": 0.0239,
+   "movements": [
+    "SIL_Z03__SIL_Z04"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z00_15",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Siliguri Central keeps breaking at 15:00",
+   "claim": "At 15:00, Siliguri Central \u2192 Siliguri Central departs from its own baseline on 6% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 678,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 42,
+    "p_value": 1.3510252028506775e-06,
+    "effect": 2.26,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "42 departures in 678 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     15
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.226,
+   "novelty": 0.4211,
+   "recurrence": 0.3717,
+   "priority": 0.023,
+   "movements": [
+    "SIL_Z00__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z01__SIL_Z01_06",
+   "kind": "RECURRENCE",
+   "title": "NJP Station \u2192 NJP Station keeps breaking at 06:00",
+   "claim": "At 06:00, NJP Station \u2192 NJP Station departs from its own baseline on 7% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 325,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 24,
+    "p_value": 1.4358838375145967e-05,
+    "effect": 2.7,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "24 departures in 325 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z01"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     6
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1083,
+   "novelty": 0.566,
+   "recurrence": 0.4431,
+   "priority": 0.0177,
+   "movements": [
+    "SIL_Z01__SIL_Z01"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z01__SIL_Z03",
+   "kind": "PERIOD",
+   "title": "NJP Station \u2192 Champasari loses its evening",
+   "claim": "Between 17:00 and 21:00, NJP Station \u2192 Champasari runs 10% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 632,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 41843.5,
+    "p_value": 3.118615445892864e-06,
+    "effect": 9.51,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "134 evening observations against 498 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.079,
+   "novelty": 0.3802,
+   "recurrence": 0.9,
+   "priority": 0.0176,
+   "movements": [
+    "SIL_Z01__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z01__SIL_Z01_07",
+   "kind": "RECURRENCE",
+   "title": "NJP Station \u2192 NJP Station keeps breaking at 07:00",
+   "claim": "At 07:00, NJP Station \u2192 NJP Station departs from its own baseline on 7% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 430,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 28,
+    "p_value": 2.9578726031906924e-05,
+    "effect": 2.38,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "28 departures in 430 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z01"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     7
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1433,
+   "novelty": 0.4596,
+   "recurrence": 0.3907,
+   "priority": 0.0167,
+   "movements": [
+    "SIL_Z01__SIL_Z01"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "EVE_SIL_Z03__SIL_Z01",
+   "kind": "PERIOD",
+   "title": "Champasari \u2192 NJP Station loses its evening",
+   "claim": "Between 17:00 and 21:00, Champasari \u2192 NJP Station runs 8% slower per kilometre than it does across the rest of the day.",
+   "interpretation": "The evening is when this movement stops resembling itself. If staff or signal timing are allocated on a whole-day average, this is the window that average is hiding.",
+   "limitation": "The evening window is defined as 17:00-21:00 by us, not derived. The comparison is against the same movement's other hours, so it says nothing about how this movement compares to the city.",
+   "evidence": {
+    "observations": 663,
+    "test": "Mann-Whitney U on pace, evening greater than rest of day",
+    "statistic": 50077.5,
+    "p_value": 7.892253547828154e-10,
+    "effect": 8.4,
+    "effect_unit": "% slower per km in the evening",
+    "comparison": "146 evening observations against 517 others"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z01"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17,
+     18,
+     19,
+     20,
+     21
+    ],
+    "day_types": [],
+    "encode": "delay",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.0829,
+   "novelty": 0.336,
+   "recurrence": 0.9,
+   "priority": 0.0163,
+   "movements": [
+    "SIL_Z03__SIL_Z01"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REL_SIL_Z01__SIL_Z03",
+   "kind": "RELIABILITY",
+   "title": "NJP Station \u2192 Champasari is hard to plan around",
+   "claim": "A journey on NJP Station \u2192 Champasari needs 31% more time than typical to arrive on time nine trips in ten \u2014 7 points above the city median of 24%.",
+   "interpretation": "Budgeting the median 21 minutes fails one trip in ten by 5 minutes or more. A movement that is usually fine and occasionally bad is an operations problem, not a capacity one: something intermittent is happening on it.",
+   "limitation": "Buffer is computed across all hours and both day types pooled. It says the movement is unpredictable, not when. The zone pair is not a road, and this is 2019 data.",
+   "evidence": {
+    "observations": 632,
+    "test": "percentile spread of pace (P90 vs P50), seconds per km",
+    "statistic": 30.82,
+    "p_value": null,
+    "effect": 6.94,
+    "effect_unit": "points above city median buffer",
+    "comparison": "city median buffer 23.9%"
+   },
+   "view": {
+    "layout": "map+detail",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [],
+    "day_types": [],
+    "encode": "reliability",
+    "series": []
+   },
+   "confidence": "MODERATE",
+   "impact": 0.0499,
+   "novelty": 0.4628,
+   "recurrence": 1.0,
+   "priority": 0.015,
+   "movements": [
+    "SIL_Z01__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z03_15",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Champasari keeps breaking at 15:00",
+   "claim": "At 15:00, Siliguri Central \u2192 Champasari departs from its own baseline on 12% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 216,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 25,
+    "p_value": 1.875717223433711e-09,
+    "effect": 4.23,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "25 departures in 216 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     15
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.072,
+   "novelty": 1.0,
+   "recurrence": 0.6944,
+   "priority": 0.015,
+   "movements": [
+    "SIL_Z00__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z02_05",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Salugara keeps breaking at 05:00",
+   "claim": "At 05:00, Salugara \u2192 Salugara departs from its own baseline on 15% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 158,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 23,
+    "p_value": 8.52280542145599e-11,
+    "effect": 5.32,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "23 departures in 158 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     5
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0527,
+   "novelty": 1.0,
+   "recurrence": 0.8734,
+   "priority": 0.0138,
+   "movements": [
+    "SIL_Z02__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z03__SIL_Z03_08",
+   "kind": "RECURRENCE",
+   "title": "Champasari \u2192 Champasari keeps breaking at 08:00",
+   "claim": "At 08:00, Champasari \u2192 Champasari departs from its own baseline on 13% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 150,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 20,
+    "p_value": 6.6283628960249e-09,
+    "effect": 4.87,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "20 departures in 150 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     8
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.05,
+   "novelty": 1.0,
+   "recurrence": 0.8,
+   "priority": 0.012,
+   "movements": [
+    "SIL_Z03__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z03__SIL_Z02_07",
+   "kind": "RECURRENCE",
+   "title": "Champasari \u2192 Salugara keeps breaking at 07:00",
+   "claim": "At 07:00, Champasari \u2192 Salugara departs from its own baseline on 11% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 162,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 18,
+    "p_value": 5.990272826852664e-07,
+    "effect": 4.06,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "18 departures in 162 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     7
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.054,
+   "novelty": 1.0,
+   "recurrence": 0.6667,
+   "priority": 0.0108,
+   "movements": [
+    "SIL_Z03__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z00_19",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Siliguri Central keeps breaking at 19:00",
+   "claim": "At 19:00, Siliguri Central \u2192 Siliguri Central departs from its own baseline on 6% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 379,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 22,
+    "p_value": 0.0009260355430204371,
+    "effect": 2.12,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "22 departures in 379 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     19
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1263,
+   "novelty": 0.3736,
+   "recurrence": 0.3483,
+   "priority": 0.0107,
+   "movements": [
+    "SIL_Z00__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z01__SIL_Z00_06",
+   "kind": "RECURRENCE",
+   "title": "NJP Station \u2192 Siliguri Central keeps breaking at 06:00",
+   "claim": "At 06:00, NJP Station \u2192 Siliguri Central departs from its own baseline on 6% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 310,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 19,
+    "p_value": 0.0010648583393835854,
+    "effect": 2.24,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "19 departures in 310 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     6
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1033,
+   "novelty": 0.4131,
+   "recurrence": 0.3677,
+   "priority": 0.0102,
+   "movements": [
+    "SIL_Z01__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z03__SIL_Z03_17",
+   "kind": "RECURRENCE",
+   "title": "Champasari \u2192 Champasari keeps breaking at 17:00",
+   "claim": "At 17:00, Champasari \u2192 Champasari departs from its own baseline on 11% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 159,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 17,
+    "p_value": 2.076535996822707e-06,
+    "effect": 3.91,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "17 departures in 159 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.053,
+   "novelty": 0.9687,
+   "recurrence": 0.6415,
+   "priority": 0.0099,
+   "movements": [
+    "SIL_Z03__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z03_15",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Champasari keeps breaking at 15:00",
+   "claim": "At 15:00, Salugara \u2192 Champasari departs from its own baseline on 10% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 183,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 18,
+    "p_value": 3.5040734012734976e-06,
+    "effect": 3.59,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "18 departures in 183 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     15
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.061,
+   "novelty": 0.8645,
+   "recurrence": 0.5902,
+   "priority": 0.0093,
+   "movements": [
+    "SIL_Z02__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z03_14",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Champasari keeps breaking at 14:00",
+   "claim": "At 14:00, Siliguri Central \u2192 Champasari departs from its own baseline on 9% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 179,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 17,
+    "p_value": 1.0292927130070964e-05,
+    "effect": 3.47,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "17 departures in 179 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     14
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0597,
+   "novelty": 0.8232,
+   "recurrence": 0.5698,
+   "priority": 0.0084,
+   "movements": [
+    "SIL_Z00__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z02_22",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Salugara keeps breaking at 22:00",
+   "claim": "At 22:00, Salugara \u2192 Salugara departs from its own baseline on 10% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 153,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 15,
+    "p_value": 2.2920217509627108e-05,
+    "effect": 3.58,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "15 departures in 153 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     22
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.051,
+   "novelty": 0.8606,
+   "recurrence": 0.5882,
+   "priority": 0.0077,
+   "movements": [
+    "SIL_Z02__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z04_08",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Siliguri Junction keeps breaking at 08:00",
+   "claim": "At 08:00, Salugara \u2192 Siliguri Junction departs from its own baseline on 8% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 212,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 18,
+    "p_value": 2.642563196012166e-05,
+    "effect": 3.1,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "18 departures in 212 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z04"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     8
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0707,
+   "novelty": 0.7006,
+   "recurrence": 0.5094,
+   "priority": 0.0076,
+   "movements": [
+    "SIL_Z02__SIL_Z04"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z00_14",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Siliguri Central keeps breaking at 14:00",
+   "claim": "At 14:00, Salugara \u2192 Siliguri Central departs from its own baseline on 6% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 308,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 17,
+    "p_value": 0.005439473626817594,
+    "effect": 2.02,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "17 departures in 308 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     14
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "MODERATE",
+   "impact": 0.1027,
+   "novelty": 0.3388,
+   "recurrence": 0.3312,
+   "priority": 0.0075,
+   "movements": [
+    "SIL_Z02__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z03_16",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Champasari keeps breaking at 16:00",
+   "claim": "At 16:00, Siliguri Central \u2192 Champasari departs from its own baseline on 8% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 236,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 19,
+    "p_value": 3.345836780477847e-05,
+    "effect": 2.94,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "19 departures in 236 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     16
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0787,
+   "novelty": 0.6471,
+   "recurrence": 0.4831,
+   "priority": 0.0074,
+   "movements": [
+    "SIL_Z00__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z03_17",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Champasari keeps breaking at 17:00",
+   "claim": "At 17:00, Salugara \u2192 Champasari departs from its own baseline on 9% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 160,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 15,
+    "p_value": 3.8721599864934415e-05,
+    "effect": 3.43,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "15 departures in 160 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0533,
+   "novelty": 0.8083,
+   "recurrence": 0.5625,
+   "priority": 0.0073,
+   "movements": [
+    "SIL_Z02__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z03_12",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Champasari keeps breaking at 12:00",
+   "claim": "At 12:00, Siliguri Central \u2192 Champasari departs from its own baseline on 9% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 180,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 16,
+    "p_value": 4.167407789415214e-05,
+    "effect": 3.25,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "16 departures in 180 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     12
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.06,
+   "novelty": 0.7492,
+   "recurrence": 0.5333,
+   "priority": 0.0072,
+   "movements": [
+    "SIL_Z00__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z01__SIL_Z00_00",
+   "kind": "RECURRENCE",
+   "title": "NJP Station \u2192 Siliguri Central keeps breaking at 00:00",
+   "claim": "At 00:00, NJP Station \u2192 Siliguri Central departs from its own baseline on 9% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 156,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 14,
+    "p_value": 0.00011067081305885835,
+    "effect": 3.28,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "14 departures in 156 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     0
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.052,
+   "novelty": 0.7596,
+   "recurrence": 0.5385,
+   "priority": 0.0064,
+   "movements": [
+    "SIL_Z01__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z03_17",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Champasari keeps breaking at 17:00",
+   "claim": "At 17:00, Siliguri Central \u2192 Champasari departs from its own baseline on 8% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 239,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 18,
+    "p_value": 0.00012436353923489605,
+    "effect": 2.75,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "18 departures in 239 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     17
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0797,
+   "novelty": 0.5838,
+   "recurrence": 0.4519,
+   "priority": 0.0063,
+   "movements": [
+    "SIL_Z00__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z03_16",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Champasari keeps breaking at 16:00",
+   "claim": "At 16:00, Salugara \u2192 Champasari departs from its own baseline on 8% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 188,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 15,
+    "p_value": 0.00023659167924500624,
+    "effect": 2.91,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "15 departures in 188 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     16
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0627,
+   "novelty": 0.6383,
+   "recurrence": 0.4787,
+   "priority": 0.0057,
+   "movements": [
+    "SIL_Z02__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z03_08",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Champasari keeps breaking at 08:00",
+   "claim": "At 08:00, Salugara \u2192 Champasari departs from its own baseline on 9% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 150,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 13,
+    "p_value": 0.0002703746213004084,
+    "effect": 3.17,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "13 departures in 150 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     8
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.05,
+   "novelty": 0.7221,
+   "recurrence": 0.52,
+   "priority": 0.0056,
+   "movements": [
+    "SIL_Z02__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z01__SIL_Z00_04",
+   "kind": "RECURRENCE",
+   "title": "NJP Station \u2192 Siliguri Central keeps breaking at 04:00",
+   "claim": "At 04:00, NJP Station \u2192 Siliguri Central departs from its own baseline on 8% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 163,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 13,
+    "p_value": 0.0006003969977573085,
+    "effect": 2.91,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "13 departures in 163 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     4
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0543,
+   "novelty": 0.6379,
+   "recurrence": 0.4785,
+   "priority": 0.005,
+   "movements": [
+    "SIL_Z01__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z04_07",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Siliguri Junction keeps breaking at 07:00",
+   "claim": "At 07:00, Salugara \u2192 Siliguri Junction departs from its own baseline on 7% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 210,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 15,
+    "p_value": 0.000757748919132708,
+    "effect": 2.61,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "15 departures in 210 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z04"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     7
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.07,
+   "novelty": 0.5365,
+   "recurrence": 0.4286,
+   "priority": 0.0048,
+   "movements": [
+    "SIL_Z02__SIL_Z04"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z02__SIL_Z02_23",
+   "kind": "RECURRENCE",
+   "title": "Salugara \u2192 Salugara keeps breaking at 23:00",
+   "claim": "At 23:00, Salugara \u2192 Salugara departs from its own baseline on 8% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 151,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 12,
+    "p_value": 0.0009880382222388802,
+    "effect": 2.9,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "12 departures in 151 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z02__SIL_Z02"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     23
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0503,
+   "novelty": 0.6345,
+   "recurrence": 0.4768,
+   "priority": 0.0046,
+   "movements": [
+    "SIL_Z02__SIL_Z02"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z03_18",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Champasari keeps breaking at 18:00",
+   "claim": "At 18:00, Siliguri Central \u2192 Champasari departs from its own baseline on 8% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 152,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 12,
+    "p_value": 0.001046357684633932,
+    "effect": 2.88,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "12 departures in 152 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     18
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0507,
+   "novelty": 0.6281,
+   "recurrence": 0.4737,
+   "priority": 0.0045,
+   "movements": [
+    "SIL_Z00__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z03__SIL_Z03_16",
+   "kind": "RECURRENCE",
+   "title": "Champasari \u2192 Champasari keeps breaking at 16:00",
+   "claim": "At 16:00, Champasari \u2192 Champasari departs from its own baseline on 7% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 179,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 13,
+    "p_value": 0.0014211844699530984,
+    "effect": 2.65,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "13 departures in 179 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     16
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0597,
+   "novelty": 0.5511,
+   "recurrence": 0.4358,
+   "priority": 0.0043,
+   "movements": [
+    "SIL_Z03__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z03__SIL_Z03_07",
+   "kind": "RECURRENCE",
+   "title": "Champasari \u2192 Champasari keeps breaking at 07:00",
+   "claim": "At 07:00, Champasari \u2192 Champasari departs from its own baseline on 7% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 163,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 12,
+    "p_value": 0.0018987756730875856,
+    "effect": 2.69,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "12 departures in 163 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z03__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     7
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0543,
+   "novelty": 0.5632,
+   "recurrence": 0.4417,
+   "priority": 0.0041,
+   "movements": [
+    "SIL_Z03__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z01__SIL_Z00_05",
+   "kind": "RECURRENCE",
+   "title": "NJP Station \u2192 Siliguri Central keeps breaking at 05:00",
+   "claim": "At 05:00, NJP Station \u2192 Siliguri Central departs from its own baseline on 7% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 169,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 12,
+    "p_value": 0.0025633054749075925,
+    "effect": 2.59,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "12 departures in 169 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z01__SIL_Z00"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     5
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0563,
+   "novelty": 0.5314,
+   "recurrence": 0.426,
+   "priority": 0.0038,
+   "movements": [
+    "SIL_Z01__SIL_Z00"
+   ],
+   "zones": [],
+   "related": []
+  },
+  {
+   "id": "REC_SIL_Z00__SIL_Z03_07",
+   "kind": "RECURRENCE",
+   "title": "Siliguri Central \u2192 Champasari keeps breaking at 07:00",
+   "claim": "At 07:00, Siliguri Central \u2192 Champasari departs from its own baseline on 6% of observations \u2014 against 2.7% across the city.",
+   "interpretation": "This is not one bad day. The same movement at the same hour keeps leaving its own normal range, which is the signature of a recurring cause rather than an incident \u2014 and recurring causes can be found.",
+   "limitation": "An anomaly here means a departure from this movement's own 2019 baseline at this hour. It is not an incident record, and no cause is attached because none is in the data.",
+   "evidence": {
+    "observations": 233,
+    "test": "binomial test against the city-wide anomaly rate",
+    "statistic": 14,
+    "p_value": 0.005375391296871388,
+    "effect": 2.2,
+    "effect_unit": "x the city anomaly rate",
+    "comparison": "14 departures in 233 observations"
+   },
+   "view": {
+    "layout": "timeline",
+    "focus_movements": [
+     "SIL_Z00__SIL_Z03"
+    ],
+    "focus_zones": [],
+    "focus_hours": [
+     7
+    ],
+    "day_types": [],
+    "encode": "anomaly",
+    "series": [
+     "median_tti"
+    ]
+   },
+   "confidence": "LOW",
+   "impact": 0.0777,
+   "novelty": 0.3984,
+   "recurrence": 0.3605,
+   "priority": 0.0033,
+   "movements": [
+    "SIL_Z00__SIL_Z03"
+   ],
+   "zones": [],
+   "related": []
+  }
+ ],
+ "edges": [
+  {
+   "source": "EVE_SIL_Z01__SIL_Z00",
+   "target": "DAY_SIL_Z01__SIL_Z00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z01__SIL_Z00",
+   "target": "REC_SIL_Z01__SIL_Z00_06",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z01__SIL_Z00",
+   "target": "REC_SIL_Z01__SIL_Z00_00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z01__SIL_Z00",
+   "target": "REC_SIL_Z01__SIL_Z00_04",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z01__SIL_Z00",
+   "target": "REC_SIL_Z01__SIL_Z00_05",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z02",
+   "target": "EVE_SIL_Z00__SIL_Z02",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z02"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z00",
+   "target": "EVE_SIL_Z00__SIL_Z00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z00",
+   "target": "REL_SIL_Z00__SIL_Z00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_12",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_14",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_13",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_15",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_19",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z00__SIL_Z00",
+   "target": "REL_SIL_Z00__SIL_Z00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_12",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_14",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_13",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_15",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_19",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z02__SIL_Z00",
+   "target": "DAY_SIL_Z02__SIL_Z00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z02__SIL_Z00",
+   "target": "REC_SIL_Z02__SIL_Z00_14",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z00__SIL_Z01",
+   "target": "DAY_SIL_Z00__SIL_Z01",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z01"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z04__SIL_Z00",
+   "target": "DIV_SIL_Z04__SIL_Z00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z04__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z04__SIL_Z00",
+   "target": "DAY_SIL_Z04__SIL_Z00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z04__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z02__SIL_Z00",
+   "target": "REC_SIL_Z02__SIL_Z00_14",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DIV_SIL_Z01__SIL_Z03",
+   "target": "EVE_SIL_Z01__SIL_Z03",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z03"
+   ]
+  },
+  {
+   "source": "DIV_SIL_Z01__SIL_Z03",
+   "target": "REL_SIL_Z01__SIL_Z03",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z03"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z00__SIL_Z04",
+   "target": "DAY_SIL_Z00__SIL_Z04",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z04"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z01__SIL_Z00",
+   "target": "REC_SIL_Z01__SIL_Z00_06",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z01__SIL_Z00",
+   "target": "REC_SIL_Z01__SIL_Z00_00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z01__SIL_Z00",
+   "target": "REC_SIL_Z01__SIL_Z00_04",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z01__SIL_Z00",
+   "target": "REC_SIL_Z01__SIL_Z00_05",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DIV_SIL_Z04__SIL_Z00",
+   "target": "DAY_SIL_Z04__SIL_Z00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z04__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z02__SIL_Z04",
+   "target": "DAY_SIL_Z02__SIL_Z04",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z04"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z02__SIL_Z04",
+   "target": "REL_SIL_Z02__SIL_Z04",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z04"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z02__SIL_Z04",
+   "target": "REC_SIL_Z02__SIL_Z04_08",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z04"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z02__SIL_Z04",
+   "target": "REC_SIL_Z02__SIL_Z04_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z04"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z03",
+   "target": "REL_SIL_Z00__SIL_Z03",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_15",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_14",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_16",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_12",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_17",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_18",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_12",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_14",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_13",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_15",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z00",
+   "target": "REC_SIL_Z00__SIL_Z00_19",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z03__SIL_Z00",
+   "target": "EVE_SIL_Z03__SIL_Z00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z00"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z02__SIL_Z04",
+   "target": "REL_SIL_Z02__SIL_Z04",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z04"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z02__SIL_Z04",
+   "target": "REC_SIL_Z02__SIL_Z04_08",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z04"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z02__SIL_Z04",
+   "target": "REC_SIL_Z02__SIL_Z04_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z04"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_15",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_14",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_16",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_12",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_17",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_18",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z00__SIL_Z03",
+   "target": "REC_SIL_Z00__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_07",
+   "target": "REC_SIL_Z02__SIL_Z02_08",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_07",
+   "target": "REC_SIL_Z02__SIL_Z02_09",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_07",
+   "target": "REC_SIL_Z02__SIL_Z02_06",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_07",
+   "target": "REC_SIL_Z02__SIL_Z02_05",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_07",
+   "target": "REC_SIL_Z02__SIL_Z02_22",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_07",
+   "target": "REC_SIL_Z02__SIL_Z02_23",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z01__SIL_Z02",
+   "target": "EVE_SIL_Z01__SIL_Z02",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z02"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z02__SIL_Z01",
+   "target": "DAY_SIL_Z02__SIL_Z01",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z01"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z02__SIL_Z03",
+   "target": "REC_SIL_Z02__SIL_Z03_15",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z02__SIL_Z03",
+   "target": "REC_SIL_Z02__SIL_Z03_17",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z02__SIL_Z03",
+   "target": "REC_SIL_Z02__SIL_Z03_16",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z02__SIL_Z03",
+   "target": "REC_SIL_Z02__SIL_Z03_08",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_08",
+   "target": "REC_SIL_Z02__SIL_Z02_09",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_08",
+   "target": "REC_SIL_Z02__SIL_Z02_06",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_08",
+   "target": "REC_SIL_Z02__SIL_Z02_05",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_08",
+   "target": "REC_SIL_Z02__SIL_Z02_22",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_08",
+   "target": "REC_SIL_Z02__SIL_Z02_23",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z03__SIL_Z03",
+   "target": "REC_SIL_Z03__SIL_Z03_08",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z03__SIL_Z03",
+   "target": "REC_SIL_Z03__SIL_Z03_17",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z03__SIL_Z03",
+   "target": "REC_SIL_Z03__SIL_Z03_16",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z03__SIL_Z03",
+   "target": "REC_SIL_Z03__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z02__SIL_Z04",
+   "target": "REC_SIL_Z02__SIL_Z04_08",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z04"
+   ]
+  },
+  {
+   "source": "REL_SIL_Z02__SIL_Z04",
+   "target": "REC_SIL_Z02__SIL_Z04_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z04"
+   ]
+  },
+  {
+   "source": "DAY_SIL_Z04__SIL_Z03",
+   "target": "EVE_SIL_Z04__SIL_Z03",
+   "via": "movement",
+   "shared": [
+    "SIL_Z04__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_09",
+   "target": "REC_SIL_Z02__SIL_Z02_06",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_09",
+   "target": "REC_SIL_Z02__SIL_Z02_05",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_09",
+   "target": "REC_SIL_Z02__SIL_Z02_22",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_09",
+   "target": "REC_SIL_Z02__SIL_Z02_23",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z00_12",
+   "target": "REC_SIL_Z00__SIL_Z00_14",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z00_12",
+   "target": "REC_SIL_Z00__SIL_Z00_13",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z00_12",
+   "target": "REC_SIL_Z00__SIL_Z00_15",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z00_12",
+   "target": "REC_SIL_Z00__SIL_Z00_19",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z03__SIL_Z04",
+   "target": "DAY_SIL_Z03__SIL_Z04",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z04"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_06",
+   "target": "REC_SIL_Z02__SIL_Z02_05",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_06",
+   "target": "REC_SIL_Z02__SIL_Z02_22",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_06",
+   "target": "REC_SIL_Z02__SIL_Z02_23",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z00_14",
+   "target": "REC_SIL_Z00__SIL_Z00_13",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z00_14",
+   "target": "REC_SIL_Z00__SIL_Z00_15",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z00_14",
+   "target": "REC_SIL_Z00__SIL_Z00_19",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z00_13",
+   "target": "REC_SIL_Z00__SIL_Z00_15",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z00_13",
+   "target": "REC_SIL_Z00__SIL_Z00_19",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z00_15",
+   "target": "REC_SIL_Z00__SIL_Z00_19",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z01__SIL_Z01_06",
+   "target": "REC_SIL_Z01__SIL_Z01_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z01"
+   ]
+  },
+  {
+   "source": "EVE_SIL_Z01__SIL_Z03",
+   "target": "REL_SIL_Z01__SIL_Z03",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_15",
+   "target": "REC_SIL_Z00__SIL_Z03_14",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_15",
+   "target": "REC_SIL_Z00__SIL_Z03_16",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_15",
+   "target": "REC_SIL_Z00__SIL_Z03_12",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_15",
+   "target": "REC_SIL_Z00__SIL_Z03_17",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_15",
+   "target": "REC_SIL_Z00__SIL_Z03_18",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_15",
+   "target": "REC_SIL_Z00__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_05",
+   "target": "REC_SIL_Z02__SIL_Z02_22",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_05",
+   "target": "REC_SIL_Z02__SIL_Z02_23",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z03__SIL_Z03_08",
+   "target": "REC_SIL_Z03__SIL_Z03_17",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z03__SIL_Z03_08",
+   "target": "REC_SIL_Z03__SIL_Z03_16",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z03__SIL_Z03_08",
+   "target": "REC_SIL_Z03__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z01__SIL_Z00_06",
+   "target": "REC_SIL_Z01__SIL_Z00_00",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z01__SIL_Z00_06",
+   "target": "REC_SIL_Z01__SIL_Z00_04",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z01__SIL_Z00_06",
+   "target": "REC_SIL_Z01__SIL_Z00_05",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z03__SIL_Z03_17",
+   "target": "REC_SIL_Z03__SIL_Z03_16",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z03__SIL_Z03_17",
+   "target": "REC_SIL_Z03__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z03_15",
+   "target": "REC_SIL_Z02__SIL_Z03_17",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z03_15",
+   "target": "REC_SIL_Z02__SIL_Z03_16",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z03_15",
+   "target": "REC_SIL_Z02__SIL_Z03_08",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_14",
+   "target": "REC_SIL_Z00__SIL_Z03_16",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_14",
+   "target": "REC_SIL_Z00__SIL_Z03_12",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_14",
+   "target": "REC_SIL_Z00__SIL_Z03_17",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_14",
+   "target": "REC_SIL_Z00__SIL_Z03_18",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_14",
+   "target": "REC_SIL_Z00__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z02_22",
+   "target": "REC_SIL_Z02__SIL_Z02_23",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z02"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z04_08",
+   "target": "REC_SIL_Z02__SIL_Z04_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z04"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_16",
+   "target": "REC_SIL_Z00__SIL_Z03_12",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_16",
+   "target": "REC_SIL_Z00__SIL_Z03_17",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_16",
+   "target": "REC_SIL_Z00__SIL_Z03_18",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_16",
+   "target": "REC_SIL_Z00__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z03_17",
+   "target": "REC_SIL_Z02__SIL_Z03_16",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z03_17",
+   "target": "REC_SIL_Z02__SIL_Z03_08",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_12",
+   "target": "REC_SIL_Z00__SIL_Z03_17",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_12",
+   "target": "REC_SIL_Z00__SIL_Z03_18",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_12",
+   "target": "REC_SIL_Z00__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z01__SIL_Z00_00",
+   "target": "REC_SIL_Z01__SIL_Z00_04",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z01__SIL_Z00_00",
+   "target": "REC_SIL_Z01__SIL_Z00_05",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_17",
+   "target": "REC_SIL_Z00__SIL_Z03_18",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_17",
+   "target": "REC_SIL_Z00__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z02__SIL_Z03_16",
+   "target": "REC_SIL_Z02__SIL_Z03_08",
+   "via": "movement",
+   "shared": [
+    "SIL_Z02__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z01__SIL_Z00_04",
+   "target": "REC_SIL_Z01__SIL_Z00_05",
+   "via": "movement",
+   "shared": [
+    "SIL_Z01__SIL_Z00"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z00__SIL_Z03_18",
+   "target": "REC_SIL_Z00__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z00__SIL_Z03"
+   ]
+  },
+  {
+   "source": "REC_SIL_Z03__SIL_Z03_16",
+   "target": "REC_SIL_Z03__SIL_Z03_07",
+   "via": "movement",
+   "shared": [
+    "SIL_Z03__SIL_Z03"
+   ]
+  }
+ ]
+}
