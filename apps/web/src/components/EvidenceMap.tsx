@@ -52,6 +52,7 @@ export function EvidenceMap() {
         map.current = new gm.Map(host.current, {
           center: { lat: meta.centre[0], lng: meta.centre[1] },
           zoom: 12,
+          maxZoom: 15,
           styles: MAP_STYLE,
           disableDefaultUI: true,
           zoomControl: true,
@@ -59,6 +60,17 @@ export function EvidenceMap() {
           backgroundColor: "#0A1628",
           clickableIcons: false,
         });
+
+        // Frame the observed extent rather than trusting a fixed zoom, so the
+        // evidence stays fully visible at any container width — a phone would
+        // otherwise crop it.
+        map.current.fitBounds(
+          new gm.LatLngBounds(
+            { lat: meta.bbox[0], lng: meta.bbox[1] },
+            { lat: meta.bbox[2], lng: meta.bbox[3] },
+          ),
+          { top: 28, right: 28, bottom: 28, left: 28 },
+        );
 
         // Evidence coverage, drawn first so arcs sit above it.
         for (const cell of coverage.cells) {
