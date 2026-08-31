@@ -30,6 +30,7 @@ from packages.incidents.model import (
     Priority,
     incident_id,
 )
+from packages.incidents.store import IncidentStore, MemoryStore
 from packages.network.model import Network
 from packages.network.probe import CorridorReading, RoutesProbe
 
@@ -191,6 +192,7 @@ class CommandCentre:
     thresholds: Thresholds = SILIGURI
     alert_budget: int = ALERT_BUDGET
     confirm_after: timedelta = CONFIRM_AFTER
+    store: IncidentStore = field(default_factory=MemoryStore)
     status: dict[str, CorridorStatus] = field(default_factory=dict)
     incidents: dict[str, Incident] = field(default_factory=dict)
     cycles: int = 0
@@ -200,6 +202,16 @@ class CommandCentre:
     def __post_init__(self) -> None:
         for cid, c in self.network.corridors.items():
             self.status[cid] = CorridorStatus(corridor_id=cid, name=c.name)
+
+        # Whatever was open when the last instance stopped is open now. Without
+        # this a deploy handed the incoming shift a clean board and no record
+        # that anything had been happening.
+        for incident in self.store.load_open():
+            self.incidents[incident.incident_id] = incident
+
+    def remember(self, incident: Incident) -> None:
+        """Persist one incident. Called after every change an officer makes."""
+        self.store.save(incident)
 
     # ── the cycle ────────────────────────────────────────────────────────────
     def poll(self, now: datetime) -> dict:
@@ -327,7 +339,7 @@ class CommandCentre:
             existing = self._existing_near(lat, lon)
             if existing is not None:
                 existing.last_seen_at = now
-                continue
+                continue  # last_seen is refreshed every cycle; not worth a write
 
             iid = incident_id(IncidentKind.CHOKE_POINT, lat, lon, now)
             revived = self.incidents.get(iid)
@@ -423,6 +435,7 @@ class CommandCentre:
                 last_seen_at=now,
             )
             self.incidents[iid] = incident
+            self.remember(incident)
             raised.append(iid)
         return raised
 
@@ -442,6 +455,7 @@ class CommandCentre:
             last = incident.last_seen_at or incident.detected_at
             if now - last >= LAPSE_AFTER:
                 incident.lapse(at=now)
+                self.remember(incident)
                 lapsed.append(iid)
         return lapsed
 

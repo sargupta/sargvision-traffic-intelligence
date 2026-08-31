@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 from packages.command.advice import recommend
 from packages.command.centre import CommandCentre
 from packages.incidents.model import IncidentState
+from packages.incidents.store import build_store
 from packages.network.model import load_network
 from packages.network.probe import RoutesProbe
 
@@ -79,7 +80,9 @@ async def lifespan(app: FastAPI):
     key = os.environ.get("ROUTES_API_KEY") or os.environ.get("GEO_API_KEY", "")
     if not key:
         raise RuntimeError("ROUTES_API_KEY is required — the board has no data without it")
-    STATE["centre"] = CommandCentre(network=load_network(), probe=RoutesProbe(key))
+    STATE["centre"] = CommandCentre(
+        network=load_network(), probe=RoutesProbe(key), store=build_store()
+    )
     STATE["started_at"] = now()
     task = asyncio.create_task(_drive())
     try:
@@ -107,6 +110,7 @@ def health() -> dict:
     c = STATE["centre"]
     return {
         "ok": c is not None,
+        "store": c.store.describe() if c else None,
         "cycles": c.cycles if c else 0,
         "last_poll": c.last_poll.isoformat(timespec="seconds") if c and c.last_poll else None,
         "poll_seconds": POLL_SECONDS,
@@ -357,6 +361,9 @@ def act(incident_id: str, action: str, payload: Action = Body(...)) -> dict:
     except Exception as exc:  # IllegalTransition and anything else
         raise HTTPException(409, str(exc)) from exc
 
+    # Written before the response returns. An officer who sees "assigned" must
+    # not lose it to an instance recycling a second later.
+    c.remember(item)
     return item.as_dict(c.last_poll or now())
 
 
