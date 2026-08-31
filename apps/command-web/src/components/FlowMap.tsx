@@ -38,12 +38,14 @@ export function FlowMap({
   selected,
   onSelectIncident,
   animate,
+  onUnavailable,
 }: {
   board: Board | null;
   network: NetworkPayload | null;
   selected: string | null;
   onSelectIncident: (id: string) => void;
   animate: boolean;
+  onUnavailable?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
@@ -115,8 +117,31 @@ export function FlowMap({
   }, [animate, loopEnd]);
 
   useEffect(() => {
-    if (!KEY || !host.current || !network) return;
+    if (!KEY) {
+      setStatus("error");
+      onUnavailable?.();
+      return;
+    }
+    if (!host.current || !network) return;
     let cancelled = false;
+
+    // The only signal Google gives for a rejected key. Without it the map
+    // renders Google's own error dialog inside our frame, under our legend and
+    // our "N stretches measured" count, and the app reports itself healthy.
+    (window as unknown as Record<string, unknown>).gm_authFailure = () => {
+      setStatus("error");
+      onUnavailable?.();
+    };
+
+    // And a key can be valid while tiles never arrive. If nothing has painted
+    // by then, treat the basemap as unavailable rather than showing an empty
+    // frame that looks like clear roads.
+    const watchdog = window.setTimeout(() => {
+      if (!host.current?.querySelector("canvas, img")) {
+        setStatus("error");
+        onUnavailable?.();
+      }
+    }, 8000);
     loadMaps(KEY)
       .then((gm) => {
         if (cancelled || !host.current) return;
@@ -152,12 +177,17 @@ export function FlowMap({
         overlay.current.setMap(map.current);
         setStatus("ready");
       })
-      .catch(() => !cancelled && setStatus("error"));
+      .catch(() => {
+        if (cancelled) return;
+        setStatus("error");
+        onUnavailable?.();
+      });
     return () => {
       cancelled = true;
+      window.clearTimeout(watchdog);
       overlay.current?.finalize();
     };
-  }, [network]);
+  }, [network, onUnavailable]);
 
   useEffect(() => {
     if (!overlay.current || status !== "ready" || !board) return;
@@ -253,6 +283,7 @@ export function FlowMap({
         </div>
       )}
 
+      {status === "ready" && (
       <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border border-line bg-surface/95 px-3 py-2 shadow-[var(--shadow-card)]">
         <p className="label mb-1.5">Measured on the road</p>
         <div className="flex flex-col gap-1">
@@ -274,6 +305,7 @@ export function FlowMap({
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }

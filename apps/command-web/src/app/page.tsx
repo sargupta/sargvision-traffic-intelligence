@@ -21,7 +21,12 @@ export default function Board() {
   // "plan" is not a downgrade. Without a basemap the only lines on screen are
   // roads we actually measure, which is the better rendering on a projector,
   // in a briefing pack, and on any machine where the map will not paint.
-  const [view, setView] = useState<"map" | "plan">("map");
+  // Plan, not Map, is the default. It needs no API key, it prints, it costs no
+  // GPU or animation loop, and the only lines on it are roads we actually
+  // measure. A control-room screen should not open on something that can be a
+  // vendor error dialog when a key expires. The basemap is the enhancement.
+  const [view, setView] = useState<"map" | "plan">("plan");
+  const [mapUsable, setMapUsable] = useState(true);
   const [network, setNetwork] = useState<NetworkPayload | null>(null);
   const [roster, setRoster] = useState<Officer[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -144,6 +149,10 @@ export default function Board() {
                   selected={selected}
                   onSelectIncident={setSelected}
                   animate={animate}
+                  onUnavailable={() => {
+                    setMapUsable(false);
+                    setView("plan");
+                  }}
                 />
               ) : (
                 <NetworkPlan
@@ -156,17 +165,19 @@ export default function Board() {
               )}
               <div className="absolute right-3 top-3 flex items-center gap-2 rounded-md border border-line bg-surface/95 px-2.5 py-1.5 shadow-[var(--shadow-card)] no-print">
                 <div role="group" aria-label="View" className="flex items-center gap-0.5">
-                  {(["map", "plan"] as const).map((v) => (
+                  {(["plan", "map"] as const).map((v) => (
                     <button
                       key={v}
                       type="button"
+                      disabled={v === "map" && !mapUsable}
                       onClick={() => setView(v)}
                       aria-pressed={view === v}
+                      title={v === "map" && !mapUsable ? "The basemap is unavailable" : undefined}
                       className={`rounded px-2 py-0.5 text-[length:var(--text-2xs)] font-medium transition-colors ${
                         view === v ? "bg-navy text-white" : "text-ink-2 hover:bg-sunken"
                       }`}
                     >
-                      {v === "map" ? "Map" : "Plan"}
+                      {v === "map" ? "Basemap" : "Network"}
                     </button>
                   ))}
                 </div>
@@ -184,6 +195,11 @@ export default function Board() {
                 <span className="border-l border-line pl-2 tnum text-[length:var(--text-2xs)] text-ink-3">
                   {board?.corridors.reduce((n, c) => n + c.runs.length, 0) ?? 0} stretches measured
                 </span>
+                {!mapUsable && (
+                  <span className="border-l border-line pl-2 text-[length:var(--text-2xs)]" style={{ color: "var(--color-high)" }}>
+                    basemap unavailable
+                  </span>
+                )}
               </div>
             </div>
           </div>
