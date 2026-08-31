@@ -24,7 +24,11 @@ from datetime import datetime, timedelta
 
 from packages.incidents.cluster import ChokeCluster, cluster_chokes, metres
 from packages.incidents.model import (
-    Incident, IncidentKind, IncidentState, Priority, incident_id,
+    Incident,
+    IncidentKind,
+    IncidentState,
+    Priority,
+    incident_id,
 )
 from packages.network.model import Network
 from packages.network.probe import CorridorReading, RoutesProbe
@@ -159,7 +163,7 @@ class CorridorStatus:
         denom = sum((x - mx) ** 2 for x in xs)
         if denom == 0:
             return None
-        return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / denom
+        return sum((x - mx) * (y - my) for x, y in zip(xs, ys, strict=True)) / denom
 
     def observe(self, reading: CorridorReading, thresholds: Thresholds) -> str:
         self.readings.append(reading)
@@ -167,9 +171,12 @@ class CorridorStatus:
         # Hysteresis so a corridor hovering on a threshold does not flicker.
         # UNKNOWN is excluded: it means "not yet observed", not "elevated", and
         # holding it would strand a corridor's first reading forever.
-        if self.band not in ("NORMAL", "UNKNOWN") and band == "NORMAL":
-            if reading.congestion_index >= thresholds.clear:
-                band = self.band
+        if (
+            self.band not in ("NORMAL", "UNKNOWN")
+            and band == "NORMAL"
+            and reading.congestion_index >= thresholds.clear
+        ):
+            band = self.band
         if band != self.band:
             self.band = band
             self.band_since = reading.observed_at

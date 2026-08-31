@@ -102,6 +102,7 @@ class TestPollingEconomy:
 
     def test_quiet_hours_are_the_night(self):
         from datetime import datetime
+
         from packages.command.centre import _is_quiet
         assert _is_quiet(datetime(2026, 8, 30, 2, 0))
         assert _is_quiet(datetime(2026, 8, 30, 23, 30))
@@ -114,6 +115,7 @@ class TestPollingEconomy:
 
     def test_a_corridor_is_not_polled_before_it_is_due(self):
         from datetime import datetime, timedelta
+
         from packages.command.centre import CorridorStatus
         s = CorridorStatus(corridor_id="C_X", name="x")
         now = datetime(2026, 8, 30, 12, 0)
@@ -125,6 +127,7 @@ class TestPollingEconomy:
 
     def test_a_failing_corridor_comes_due_quickly(self):
         from datetime import datetime, timedelta
+
         from packages.command.centre import CorridorStatus
         s = CorridorStatus(corridor_id="C_X", name="x")
         now = datetime(2026, 8, 30, 12, 0)
@@ -136,6 +139,7 @@ class TestPollingEconomy:
         """There is no sergeant to send at 02:00. Alerting into an empty control
         room is how a feed gets ignored."""
         from datetime import datetime, timedelta
+
         from packages.command.centre import CommandCentre
         from packages.incidents.cluster import ChokeCluster
         from packages.network.model import load_network

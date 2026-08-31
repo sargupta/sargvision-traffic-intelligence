@@ -132,7 +132,7 @@ class TestReliability:
                              distance_m=8000.0, traffic_seconds=pace * 8.0,
                              speed_kmh=3600.0 / pace))
         scored = rel.score(pl.DataFrame(rows), min_samples=100)
-        buffers = dict(zip(scored["movement_id"], scored["buffer_pct"]))
+        buffers = dict(zip(scored["movement_id"], scored["buffer_pct"], strict=True))
         assert buffers["SHORT"] == pytest.approx(buffers["LONG"], abs=1e-9)
 
     def test_bands_are_ordered(self):
@@ -151,7 +151,7 @@ class TestPatterns:
         obs = _synthetic().with_columns(pl.lit(0).alias("day_of_week"))
         hourly = pat.by_hour(obs)
         assert hourly["median_tti"][0] == pytest.approx(1.2)
-        assert bool(hourly["congested"][0]) is (1.2 >= pat.CONGESTED_TTI)
+        assert bool(hourly["congested"][0]) is (pat.CONGESTED_TTI <= 1.2)
 
 
 class TestSeverityThresholds:

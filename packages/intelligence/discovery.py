@@ -515,7 +515,7 @@ def detect_recurrence(anomalies: pl.DataFrame, scored_total: int, obs: pl.DataFr
                         encode="anomaly",
                         series=["median_tti"],
                     ),
-                    confidence=_confidence(int(r["scored"]), float(test.pvalue)),
+                    confidence=_confidence(int(r["scored"]), p),
                     impact=min(1.0, int(r["scored"]) / 3000),
                     novelty=min(1.0, (rate / br - 1) / 3),
                     recurrence=min(1.0, rate * 6),

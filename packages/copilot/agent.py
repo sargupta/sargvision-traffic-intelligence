@@ -154,7 +154,7 @@ class Copilot:
     def ask(self, question: str) -> CopilotAnswer:
         try:
             return self._ask_model(question)
-        except Exception as exc:  # noqa: BLE001 — degrade rather than fail the request
+        except Exception as exc:
             return self._ask_deterministic(question, reason=str(exc))
 
     # ── model path ───────────────────────────────────────────────────────────
@@ -196,8 +196,8 @@ class Copilot:
 
         final = client.models.generate_content(
             model=MODEL,
-            contents=contents
-            + [
+            contents=[
+                *contents,
                 types.Content(
                     role="user",
                     parts=[
@@ -206,7 +206,7 @@ class Copilot:
                             "returned by the tools above."
                         )
                     ],
-                )
+                ),
             ],
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM,

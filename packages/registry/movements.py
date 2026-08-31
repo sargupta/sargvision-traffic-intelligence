@@ -12,7 +12,7 @@ equally. A HIGH movement is polled every five minutes; a LOW one every twenty.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import polars as pl
@@ -76,7 +76,7 @@ def build_from_analytics(
     follows evidence and volatility: the movements we know most about and that
     move around most are the ones worth the sampling budget.
     """
-    buffers = dict(zip(reliability["movement_id"], reliability["buffer_pct"]))
+    buffers = dict(zip(reliability["movement_id"], reliability["buffer_pct"], strict=True))
     volatile = sorted(buffers.values(), reverse=True)
     top_third = volatile[max(0, len(volatile) // 3 - 1)] if volatile else 0.0
 

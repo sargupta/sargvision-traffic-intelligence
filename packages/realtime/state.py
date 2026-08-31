@@ -126,7 +126,7 @@ class MovementState:
         denom = sum((x - mx) ** 2 for x in xs)
         if denom == 0:
             return None
-        return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / denom
+        return sum((x - mx) * (y - my) for x, y in zip(xs, ys, strict=True)) / denom
 
     def variability(self, now: datetime, span: timedelta = WINDOW) -> float | None:
         """Coefficient of variation of pace across the window, as a percentage."""
@@ -148,9 +148,12 @@ class MovementState:
             status = classify(deviation)
             # Hysteresis: do not drop out of an elevated state the moment the
             # deviation dips under the entry threshold, or the feed flickers.
-            if self.status not in (Status.NORMAL, Status.UNKNOWN) and status is Status.NORMAL:
-                if deviation > RESOLVE:
-                    status = self.status
+            if (
+                self.status not in (Status.NORMAL, Status.UNKNOWN)
+                and status is Status.NORMAL
+                and deviation > RESOLVE
+            ):
+                status = self.status
 
         reading = Reading(
             at=sample.observed_at,

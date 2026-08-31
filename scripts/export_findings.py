@@ -175,7 +175,7 @@ def main() -> None:
             return out
         rx, ry = ranks(xs), ranks(ys)
         mx, my = sum(rx) / len(rx), sum(ry) / len(ry)
-        num = sum((a - mx) * (b - my) for a, b in zip(rx, ry))
+        num = sum((a - mx) * (b - my) for a, b in zip(rx, ry, strict=True))
         den = (sum((a - mx) ** 2 for a in rx) * sum((b - my) ** 2 for b in ry)) ** 0.5
         return num / den
 
@@ -199,7 +199,6 @@ def main() -> None:
     # ------------------------------------------------------- Coverage layer
     # How well each 1 km cell is observed, counting every journey that starts
     # or ends inside it. This is what makes "we cannot see here" visible.
-    pairs = df.select("unit_id", "lat_orig", "lon_orig", "lat_dest", "lon_dest")
     cells: dict[str, int] = {}
     for pair, cnt in df.group_by("unit_id").len().iter_rows():
         origin_cell, dest_cell = pair.removeprefix("SIL_").split("__")

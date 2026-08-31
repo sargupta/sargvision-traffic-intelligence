@@ -1,0 +1,189 @@
+name: Deploy
+
+# Only from main, only after CI has passed, and only the service that changed.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which service to deploy
+        required: true
+        default: both
+        type: choice
+        options: [both, api, web]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false      # never interrupt a deploy mid-flight
+
+permissions:
+  contents: read
+  id-token: write                # required for Workload Identity Federation
+
+env:
+  PROJECT_ID: sargvision-traffic-intel
+  REGION: asia-south1
+  REGISTRY: asia-south1-docker.pkg.dev/sargvision-traffic-intel/web
+  API_URL: https://traffic-api-937908328857.asia-south1.run.app
+  WEB_URL: https://siliguri-command-937908328857.asia-south1.run.app
+
+jobs:
+  guard:
+    name: Should we deploy
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      api: ${{ steps.decide.outputs.api }}
+      web: ${{ steps.decide.outputs.web }}
+      sha: ${{ steps.decide.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - id: decide
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          TARGET="${{ inputs.target }}"
+          if [ -n "$TARGET" ] && [ "$TARGET" != "both" ]; then
+            echo "api=$([ "$TARGET" = api ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            echo "web=$([ "$TARGET" = web ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Deploy only what moved. Rebuilding the API because a stylesheet
+          # changed restarts the poll loop and loses in-flight incidents.
+          CHANGED=$(git diff --name-only HEAD~1 HEAD || echo "")
+          echo "$CHANGED"
+          echo "api=$(echo "$CHANGED" | grep -qE '^(packages/|apps/api/|data/curated/|Dockerfile|pyproject)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "web=$(echo "$CHANGED" | grep -qE '^apps/command-web/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  api:
+    name: API
+    needs: guard
+    if: needs.guard.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - uses: google-github-actions/auth@v2
+        with:
+          # No service-account key exists to leak. GitHub proves who it is,
+          # and only this repository can assume this identity.
+          workload_identity_provider: projects/937908328857/locations/global/workloadIdentityPools/github/providers/github-oidc
+          service_account: github-deployer@sargvision-traffic-intel.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build
+        run: |
+          gcloud builds submit --project="$PROJECT_ID" --region=global \
+            --tag="$REGISTRY/traffic-api:${{ needs.guard.outputs.sha }}" .
+
+      - name: Deploy
+        run: |
+          gcloud run deploy traffic-api \
+            --image="$REGISTRY/traffic-api:${{ needs.guard.outputs.sha }}" \
+            --project="$PROJECT_ID" --region="$REGION" --quiet
+
+      - name: Verify every endpoint the interface depends on
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS -m 10 "$API_URL/health" >/dev/null 2>&1 && break
+            sleep 10
+          done
+          FAILED=0
+          for p in /health /api/board /api/advice /api/network /api/roster \
+                   /api/incidents "/api/shift/handover?hours=8" \
+                   "/api/city-profile?day_type=WEEKDAY"; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 25 "$API_URL$p")
+            echo "$CODE  $p"
+            [ "$CODE" = "200" ] || FAILED=1
+          done
+          [ "$FAILED" = "0" ] || { echo "::error::A required endpoint is not answering"; exit 1; }
+
+      - name: Roll back if the smoke test failed
+        if: failure()
+        run: |
+          PREV=$(gcloud run revisions list --service=traffic-api --project="$PROJECT_ID" \
+                   --region="$REGION" --format='value(metadata.name)' --sort-by='~metadata.creationTimestamp' \
+                   | sed -n 2p)
+          if [ -n "$PREV" ]; then
+            echo "::warning::Rolling back to $PREV"
+            gcloud run services update-traffic traffic-api --project="$PROJECT_ID" \
+              --region="$REGION" --to-revisions="$PREV=100" --quiet
+          fi
+
+  web:
+    name: Command interface
+    needs: guard
+    if: needs.guard.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/937908328857/locations/global/workloadIdentityPools/github/providers/github-oidc
+          service_account: github-deployer@sargvision-traffic-intel.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Fetch the browser key
+        id: key
+        run: |
+          # Held in Secret Manager rather than GitHub secrets so there is one
+          # place to rotate it and the repository never holds a credential.
+          KEY=$(gcloud secrets versions access latest --secret=maps-browser-key --project="$PROJECT_ID")
+          echo "::add-mask::$KEY"
+          echo "value=$KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: |
+          gcloud builds submit --config=apps/command-web/cloudbuild.yaml \
+            --project="$PROJECT_ID" \
+            --substitutions=_MAPS_KEY="${{ steps.key.outputs.value }}",SHORT_SHA=${{ needs.guard.outputs.sha }} \
+            apps/command-web
+
+      - name: Deploy
+        run: |
+          gcloud run deploy siliguri-command \
+            --image="$REGISTRY/siliguri-command:${{ needs.guard.outputs.sha }}" \
+            --project="$PROJECT_ID" --region="$REGION" --quiet
+
+      - name: Verify every route renders
+        run: |
+          FAILED=0
+          for p in / /network /handover /field /corridor; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 25 "$WEB_URL$p")
+            echo "$CODE  $p"
+            [ "$CODE" = "200" ] || FAILED=1
+          done
+          # A trailing slash once silently served the wrong page with a 200.
+          TITLE=$(curl -s -m 25 "$WEB_URL/network" | grep -o '<title>[^<]*</title>' | head -1)
+          echo "network title: $TITLE"
+          [ "$FAILED" = "0" ] || { echo "::error::A route is not serving"; exit 1; }
+
+      - name: Roll back if the smoke test failed
+        if: failure()
+        run: |
+          PREV=$(gcloud run revisions list --service=siliguri-command --project="$PROJECT_ID" \
+                   --region="$REGION" --format='value(metadata.name)' --sort-by='~metadata.creationTimestamp' \
+                   | sed -n 2p)
+          if [ -n "$PREV" ]; then
+            echo "::warning::Rolling back to $PREV"
+            gcloud run services update-traffic siliguri-command --project="$PROJECT_ID" \
+              --region="$REGION" --to-revisions="$PREV=100" --quiet
+          fi

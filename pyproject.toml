@@ -36,3 +36,41 @@ dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
 ]
+
+[tool.ruff.lint]
+# Selected deliberately rather than accepting every default. The set is
+# "things that are bugs or that hide bugs", not house style.
+select = [
+    "E", "W",      # pycodestyle
+    "F",           # pyflakes — unused names, undefined names
+    "I",           # import order
+    "B",           # bugbear — B023 caught a real late-binding closure bug
+    "C4",          # comprehension clarity
+    "SIM",         # simplifications that reduce branching
+    "UP",          # modern syntax for the Python we target
+    "RUF",
+]
+ignore = [
+    # FastAPI's dependency-injection idiom IS a call in a default argument.
+    # Flagging Query(), Body() and Depends() would mean annotating every route.
+    "B008",
+    # Naive datetimes are deliberate: the container runs on Asia/Kolkata and
+    # every timestamp is Siliguri wall-clock, which is what an officer reads.
+    # Made explicit in apps/api/main.py; see the timezone commit.
+    "DTZ",
+    # Line length is enforced by the formatter, not the linter.
+    "E501",
+    # The multiplication sign is deliberate in prose about scoring formulas
+    # ("severity × persistence × confidence"); an ASCII x reads as a variable.
+    "RUF001", "RUF002", "RUF003",
+    # str+Enum is intentional: these values are serialised to JSON and compared
+    # against strings across the API boundary.
+    "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests may repeat themselves and construct fixtures inline for readability.
+"tests/*" = ["C408", "RUF015", "B023", "SIM117"]
+# The multiplication sign is deliberate in prose about scoring formulas
+# ("severity × persistence × confidence"), and an ASCII x reads as a variable.
+extend-safe-fixes = ["RUF"]

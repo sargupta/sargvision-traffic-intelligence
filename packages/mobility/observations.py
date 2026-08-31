@@ -19,8 +19,6 @@ contract between extraction and analysis.
 
 from __future__ import annotations
 
-import datetime as dt
-
 import polars as pl
 
 # The published fields. Anything not on this list is an implementation detail

@@ -1,7 +1,6 @@
 """Fetch the Siliguri observations. CC BY 4.0, no login required."""
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 SOURCE_HINT = """

@@ -1,10 +1,10 @@
 """The contracts are the product's integrity guarantees. Test them first."""
 import pytest
 
+from packages.analytics.anomalies import SILIGURI
 from packages.contracts.metric import Metric
 from packages.contracts.response import AnswerContract
 from packages.domain.models import CorridorImportance, Priority, Severity
-from packages.analytics.anomalies import SILIGURI
 from packages.intelligence.priority import score
 
 GOOD = dict(

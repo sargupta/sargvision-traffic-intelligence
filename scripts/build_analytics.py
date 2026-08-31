@@ -15,7 +15,7 @@ runs on the same input produce byte-identical tables.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
@@ -110,7 +110,7 @@ def main() -> None:
     con.close()
 
     manifest = {
-        "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "built_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "source": str(SOURCE),
         "mode": "historical replay",
         "is_live": False,

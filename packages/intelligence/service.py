@@ -11,9 +11,10 @@ from datetime import datetime
 
 import polars as pl
 
-from packages.analytics import anomalies, baselines, confidence as conf
-from packages.domain.canonical import BaselineSource
+from packages.analytics import anomalies, baselines
+from packages.analytics import confidence as conf
 from packages.contracts.metric import Metric
+from packages.domain.canonical import BaselineSource
 from packages.domain.models import CorridorImportance
 from packages.intelligence.alert_density import DensityReading
 from packages.intelligence.priority import score

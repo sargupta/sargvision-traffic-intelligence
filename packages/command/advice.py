@@ -103,7 +103,6 @@ def recommend(
         junction = network.junction(junction_id)
         if junction is None:
             continue
-        worst = max(approaches, key=lambda c: c.get("index") or 0)
         total_excess = sum(c.get("excess_minutes") or 0 for c in approaches)
 
         out.append(

@@ -11,7 +11,7 @@ that the engine felt differently today.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import polars as pl
@@ -45,7 +45,7 @@ def main() -> None:
 
     payload = {
         "run": {
-            "completed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "completed_at": datetime.now(UTC).isoformat(timespec="seconds"),
             "summary": feed_summary(run),
             "proposed": run.proposed,
             "surfaced": run.surfaced,

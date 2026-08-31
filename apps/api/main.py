@@ -11,6 +11,7 @@ one constant and the registry that drives it is one file.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 from contextlib import asynccontextmanager
@@ -61,13 +62,14 @@ async def _drive() -> None:
         try:
             result = await asyncio.to_thread(centre().poll, now())
             message = json.dumps({"type": "cycle", **result})
-        except Exception as exc:  # noqa: BLE001 — a bad cycle must not kill the loop
+        except Exception as exc:
             message = json.dumps({"type": "error", "detail": str(exc)[:200]})
         for q in list(STATE["subscribers"]):
-            try:
+            # A subscriber that cannot keep up is skipped, not disconnected:
+            # the next cycle will reach them, and dropping a slow client would
+            # black out a control room screen on one bad frame.
+            with contextlib.suppress(asyncio.QueueFull):
                 q.put_nowait(message)
-            except asyncio.QueueFull:
-                pass
         await asyncio.sleep(POLL_SECONDS)
 
 
@@ -421,7 +423,7 @@ async def stream() -> StreamingResponse:
             while True:
                 try:
                     yield f"data: {await asyncio.wait_for(queue.get(), timeout=25)}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield ": keep-alive\n\n"
         finally:
             STATE["subscribers"].discard(queue)

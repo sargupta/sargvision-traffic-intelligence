@@ -8,7 +8,12 @@ import pytest
 
 from packages.incidents.cluster import cluster_chokes
 from packages.incidents.model import (
-    IllegalTransition, Incident, IncidentKind, IncidentState, Priority, incident_id,
+    IllegalTransition,
+    Incident,
+    IncidentKind,
+    IncidentState,
+    Priority,
+    incident_id,
 )
 from packages.network.probe import ChokePoint
 

@@ -192,9 +192,12 @@ class IntelligenceLoop:
                 )
 
         for key, entry in self.feed.items():
-            if key not in seen_now and entry.state == "ACTIVE":
-                if now - entry.last_seen >= RESOLVE_AFTER:
-                    entry.state = "RESOLVED"
+            if (
+                key not in seen_now
+                and entry.state == "ACTIVE"
+                and now - entry.last_seen >= RESOLVE_AFTER
+            ):
+                entry.state = "RESOLVED"
 
         return {
             "at": now.isoformat(timespec="seconds"),

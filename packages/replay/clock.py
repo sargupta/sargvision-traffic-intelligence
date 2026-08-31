@@ -9,8 +9,8 @@ credibility this product sells.
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Iterator
 
 import polars as pl
 

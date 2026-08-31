@@ -1,0 +1,133 @@
+name: CI
+
+# Runs on every push and pull request. Nothing merges that has not passed.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Analytics and API
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --all-extras --dev
+
+      - name: Lint
+        run: uv run ruff check packages apps/api scripts tests
+
+      - name: Format check
+        run: uv run ruff format --check packages apps/api scripts tests
+        continue-on-error: true
+
+      - name: Test
+        env:
+          # The suite must not need a live Maps key. Anything that does is a
+          # test of Google's uptime, not of this code.
+          ROUTES_API_KEY: test-key-unused
+          CORS_ORIGINS: http://localhost:3050
+        run: uv run pytest tests -q --junitxml=junit.xml
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results
+          path: junit.xml
+
+  web:
+    name: Command interface
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/command-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/command-web/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        env:
+          # A build must succeed without secrets. The map degrades to a stated
+          # message and every other feature is unaffected — that property is
+          # worth protecting in CI.
+          NEXT_PUBLIC_MAPS_API_KEY: ''
+          NEXT_PUBLIC_API_URL: https://traffic-api-937908328857.asia-south1.run.app
+        run: npm run build
+
+      - name: Check the export produced every route
+        run: |
+          for page in index network handover field corridor; do
+            test -f "out/${page}.html" || { echo "missing out/${page}.html"; exit 1; }
+          done
+          echo "all routes exported"
+
+  contracts:
+    name: API contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+
+      - name: Every route the interface depends on must answer
+        env:
+          ROUTES_API_KEY: test-key-unused
+          CORS_ORIGINS: http://localhost:3050
+        run: uv run pytest tests/test_api_contract.py -q
+
+  secrets:
+    name: No credentials in the tree
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan tracked files for API keys
+        run: |
+          # A build artefact once carried a Maps key into three commits. This
+          # job exists so that cannot happen again silently.
+          if git ls-files -z | xargs -0 grep -lE 'AIza[A-Za-z0-9_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY' 2>/dev/null | grep .; then
+            echo "::error::A credential is present in a tracked file"
+            exit 1
+          fi
+          echo "no credentials in tracked files"
+
+      - name: Build output must never be committed
+        run: |
+          if git ls-files | grep -qE '^apps/[^/]+/(out|\.next)/'; then
+            echo "::error::Build output is tracked. It bakes NEXT_PUBLIC_* values into chunks."
+            exit 1
+          fi
+          echo "no build output tracked"

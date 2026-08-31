@@ -92,7 +92,7 @@ def discover(
     # are marked, and their confidence is capped elsewhere.
     tested = [c for c in candidates if c["p"] is not None]
     survive = det.benjamini_hochberg([c["p"] for c in tested], fdr_q)
-    keep_ids = {id(c) for c, ok in zip(tested, survive) if ok}
+    keep_ids = {id(c) for c, ok in zip(tested, survive, strict=True) if ok}
 
     kept = [c for c in candidates if c["p"] is None or id(c) in keep_ids]
     findings = [c["build"]() for c in kept]
