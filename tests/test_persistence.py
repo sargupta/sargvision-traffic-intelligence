@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-import pytest
-
 from packages.command.centre import CommandCentre
 from packages.incidents.model import Incident, IncidentKind, IncidentState, Priority
 from packages.incidents.store import (
