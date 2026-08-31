@@ -26,6 +26,12 @@ apps/web/next-env.d.ts
 # Built analytics tables (reproducible from scripts/build_analytics.py)
 data/curated/*.parquet
 data/curated/*.duckdb
+# One exception. The city's hourly profile is a 5 KB published artefact derived
+# from a CC BY 4.0 dataset, it never changes, and /api/city-profile 404s
+# without it — so a fresh clone would fail CI and anyone evaluating the repo
+# would meet a broken endpoint. Everything else in curated/ is regenerable by
+# scripts/build_analytics.py and stays out.
+!data/curated/patterns_hourly.parquet
 
 # Build output. Never committed: the static export bakes NEXT_PUBLIC_* values
 # into its chunks, which is how a browser Maps key reached three commits.
