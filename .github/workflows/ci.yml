@@ -34,7 +34,6 @@ jobs:
 
       - name: Format check
         run: uv run ruff format --check packages apps/api scripts tests
-        continue-on-error: true
 
       - name: Test
         env:
