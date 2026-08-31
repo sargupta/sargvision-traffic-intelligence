@@ -5,6 +5,8 @@ from __future__ import annotations
 import polars as pl
 import pytest
 
+from tests.conftest import needs_dataset
+
 from packages.analytics import anomalies as anom
 from packages.analytics import baselines as base
 from packages.analytics import patterns as pat
@@ -109,6 +111,7 @@ class TestPublishingFloor:
         assert scored.height == obs.height
 
 
+@needs_dataset
 class TestZoneModel:
     @pytest.fixture(scope="class")
     def observations(self) -> pl.DataFrame:

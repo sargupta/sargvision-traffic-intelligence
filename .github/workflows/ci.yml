@@ -41,7 +41,22 @@ jobs:
           # test of Google's uptime, not of this code.
           ROUTES_API_KEY: test-key-unused
           CORS_ORIGINS: http://localhost:3050
-        run: uv run pytest tests -q --junitxml=junit.xml
+        run: uv run pytest tests -q -rs --junitxml=junit.xml
+
+      - name: Report what did not run
+        if: always()
+        run: |
+          # Tests needing the 2019 extract skip on a fresh clone. Surfaced in
+          # the summary so a shrinking suite cannot hide behind a green tick.
+          SKIPPED=$(python -c "
+          import xml.etree.ElementTree as ET
+          try: print(ET.parse('junit.xml').getroot().attrib.get('skipped', '0'))
+          except Exception: print('0')
+          ")
+          echo "### Tests skipped: ${SKIPPED}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SKIPPED" != "0" ]; then
+            echo "Skipped tests need data/processed/siliguri_observations.parquet, which is not committed." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Publish test results
         if: always()
