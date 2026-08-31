@@ -59,6 +59,32 @@ export default function Board() {
   const inHand = incidents.filter((i) => !i.needs_attention);
   const bands = board?.bands ?? {};
 
+  // An empty queue must explain itself. The previous text asserted that every
+  // corridor was within its usual travel time, which the headline directly
+  // contradicted whenever anything was elevated — a police screen claiming the
+  // city is fine in a state it reaches most afternoons.
+  const emptyState = useMemo(() => {
+    const above = (bands.SEVERE ?? 0) + (bands.HIGH ?? 0) + (bands.ELEVATED ?? 0);
+    const s = board?.suppressed;
+    if (above === 0) {
+      return {
+        title: "Every corridor is within its usual travel time.",
+        detail: "Nothing is above what this network normally takes at this hour. This is a result, not an empty screen.",
+      };
+    }
+    const reasons: string[] = [];
+    if (s?.holding) reasons.push(`${s.holding} still being confirmed`);
+    if (s?.below_threshold) reasons.push(`${s.below_threshold} too small to act on`);
+    if (s?.quiet_hours) reasons.push(`${s.quiet_hours} held until the morning shift`);
+    if (s?.budget) reasons.push(`${s.budget} beyond the alert budget`);
+    return {
+      title: `${above} corridor${above === 1 ? " is" : "s are"} above typical, none needing a decision yet.`,
+      detail: reasons.length
+        ? `Located choke points: ${reasons.join(", ")}. A condition becomes an incident once it has held long enough to be worth sending someone to.`
+        : "No located choke point has held long enough to be worth sending someone to. The corridor table below shows every reading.",
+    };
+  }, [bands, board?.suppressed]);
+
   return (
     <>
       <Chrome at={board?.at} connected={connected} cycle={board?.cycle} officer="Duty Officer" />
@@ -173,10 +199,7 @@ export default function Board() {
                 </span>
               </h2>
               {needsAction.length === 0 ? (
-                <Empty
-                  title="Nothing is waiting for a decision."
-                  detail="Every monitored corridor is within its usual travel time, or what is above it is already with an officer. This is a result, not an empty screen."
-                />
+                <Empty title={emptyState.title} detail={emptyState.detail} />
               ) : (
                 <div className="flex flex-col gap-3">
                   {needsAction.map((i) => (

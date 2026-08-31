@@ -91,9 +91,16 @@ jobs:
 
       - name: Deploy
         run: |
+          # max-instances=1 is not a cost control, it is correctness. Each
+          # instance runs its own poll loop over its own in-process corridor
+          # state, so two of them double the Routes bill and an assignment can
+          # land on the instance that never saw the incident.
           gcloud run deploy traffic-api \
             --image="$REGISTRY/traffic-api:${{ needs.guard.outputs.sha }}" \
-            --project="$PROJECT_ID" --region="$REGION" --quiet
+            --project="$PROJECT_ID" --region="$REGION" \
+            --max-instances=1 \
+            --set-env-vars=INCIDENT_STORE=firestore,GOOGLE_CLOUD_PROJECT=$PROJECT_ID \
+            --quiet
           # A previous rollback pins traffic to a named revision, and Cloud Run
           # then stops migrating to the latest. Without this, one bad deploy
           # freezes the service silently: later revisions build, report healthy,
@@ -121,6 +128,9 @@ jobs:
           LATEST=$(gcloud run services describe traffic-api --project="$PROJECT_ID" \
                       --region="$REGION" --format='value(status.latestReadyRevisionName)')
           echo "serving $SERVING, latest ready $LATEST"
+          BACKEND=$(curl -s -m 20 "$API_URL/health" | python3 -c "import json,sys; print((json.load(sys.stdin).get('store') or {}).get('backend','none'))")
+          echo "incident store: $BACKEND"
+          [ "$BACKEND" = "firestore" ] || { echo "::error::The service is not using durable storage"; exit 1; }
           [ "$SERVING" = "$LATEST" ] || { echo "::error::Traffic is pinned to $SERVING, not the revision just deployed"; exit 1; }
 
       - name: Roll back if the smoke test failed

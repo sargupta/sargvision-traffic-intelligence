@@ -21,7 +21,8 @@ COPY pyproject.toml ./
 RUN pip install --no-cache-dir \
       "fastapi>=0.115" "uvicorn[standard]>=0.32" "pydantic>=2.9" \
       "polars>=1.17" "duckdb>=1.1" "pyarrow>=18.0" "numpy>=2.0" "scipy>=1.14" \
-      "google-genai>=1.0" "httpx>=0.28"
+      "google-genai>=1.0" "httpx>=0.28" \
+      "google-cloud-firestore>=2.19"
 
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/

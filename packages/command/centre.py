@@ -119,6 +119,22 @@ MATCH_RADIUS_M = 450.0
 
 
 @dataclass
+class _Candidate:
+    """A condition that is not yet an incident.
+
+    Position is updated as the cluster moves; `first_seen` is not. That
+    distinction is the whole point: a queue is confirmed on how long it has
+    persisted, not on how still it has stood.
+    """
+
+    lat: float
+    lon: float
+    severity: str
+    first_seen: datetime
+    last_seen: datetime
+
+
+@dataclass
 class CorridorStatus:
     """Current and recent condition of one corridor. Memory only."""
 
@@ -197,7 +213,13 @@ class CommandCentre:
     incidents: dict[str, Incident] = field(default_factory=dict)
     cycles: int = 0
     last_poll: datetime | None = None
-    _candidates: dict[str, datetime] = field(default_factory=dict)
+    suppressed: dict[str, int] = field(
+        default_factory=lambda: {"holding": 0, "below_threshold": 0, "quiet_hours": 0, "budget": 0}
+    )
+    # Candidate conditions, held until they have persisted long enough to be
+    # worth an officer's attention. Matched by PROXIMITY, not by a hash of the
+    # rounded coordinate — see _confirm_candidate.
+    _candidates: list[_Candidate] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         for cid, c in self.network.corridors.items():
@@ -250,6 +272,7 @@ class CommandCentre:
         clusters = cluster_chokes(chokes)
         raised = self._raise_incidents(clusters, now)
         lapsed = self._age_incidents(now)
+        self._prune_candidates(now)
 
         return {
             "at": now.isoformat(timespec="seconds"),
@@ -258,6 +281,7 @@ class CommandCentre:
             "corridors_skipped": skipped,
             "quiet_hours": _is_quiet(now),
             "choke_clusters": len(clusters),
+            "suppressed": dict(self.suppressed),
             "raised": raised,
             "lapsed": lapsed,
             "open": sum(1 for i in self.incidents.values() if i.is_open),
@@ -332,6 +356,10 @@ class CommandCentre:
         return best
 
     def _raise_incidents(self, clusters: list[ChokeCluster], now: datetime) -> list[str]:
+        # Why a cluster did not become an incident is as important as the fact.
+        # An empty queue under a red headline reads as a broken screen unless
+        # the interface can say which gate stopped it.
+        self.suppressed = {"holding": 0, "below_threshold": 0, "quiet_hours": 0, "budget": 0}
         raised: list[str] = []
         for cluster in clusters:
             lat, lon = cluster.centre
@@ -349,12 +377,15 @@ class CommandCentre:
                     revived.move(IncidentState.ACKNOWLEDGED, "system", "condition returned", at=now)
                 continue
 
-            # A condition must hold before it becomes an officer's problem.
-            first = self._candidates.setdefault(iid, now)
-            if now - first < self.confirm_after:
+            # A condition must hold before it becomes an officer's problem —
+            # and holding is measured on the condition, not on a coordinate.
+            first = self._confirm_candidate(lat, lon, cluster.severity, now)
+            if first is None:
+                self.suppressed["holding"] += 1
                 continue
 
             if not self._worth_raising(cluster):
+                self.suppressed["below_threshold"] += 1
                 continue
 
             # Overnight there is nobody to send. The condition is still tracked
@@ -362,10 +393,12 @@ class CommandCentre:
             # demanding an owner who does not exist. Alerting into an empty
             # control room trains people to ignore the feed.
             if _is_quiet(now):
+                self.suppressed["quiet_hours"] += 1
                 continue
 
             priority = self._priority(cluster, cluster.corridors)
             if not self._within_budget(priority):
+                self.suppressed["budget"] += 1
                 continue
 
             jid, jname, dist = self._nearest_junction(lat, lon)
@@ -439,6 +472,46 @@ class CommandCentre:
             raised.append(iid)
         return raised
 
+    def _confirm_candidate(
+        self, lat: float, lon: float, severity: str, now: datetime
+    ) -> datetime | None:
+        """Track how long this condition has persisted; None until it qualifies.
+
+        The previous version keyed candidates on `incident_id`, which hashes the
+        coordinate rounded to four decimals — about eleven metres. A queue whose
+        tail grows moves further than that between polls, so every poll minted a
+        fresh key, restarted the clock, and the condition never confirmed. A
+        simulation of two hours of continuous stopped traffic raised nothing and
+        left forty orphan keys behind.
+
+        Every queue worth dispatching to is growing. So candidates are matched
+        the way an officer would match them — by being in the same place — and
+        the position is updated while `first_seen` is kept.
+        """
+        for candidate in self._candidates:
+            if metres((lat, lon), (candidate.lat, candidate.lon)) <= MATCH_RADIUS_M:
+                candidate.lat, candidate.lon = lat, lon
+                candidate.last_seen = now
+                if severity == "TRAFFIC_JAM":
+                    candidate.severity = severity
+                if now - candidate.first_seen >= self.confirm_after:
+                    return candidate.first_seen
+                return None
+
+        self._candidates.append(
+            _Candidate(lat=lat, lon=lon, severity=severity, first_seen=now, last_seen=now)
+        )
+        return None if self.confirm_after > timedelta(0) else now
+
+    def _prune_candidates(self, now: datetime) -> None:
+        """Forget conditions that stopped being observed.
+
+        Without this the list grew by one entry per poll forever, which on a
+        service that runs for weeks is a slow leak in a process that must not
+        be restarted casually.
+        """
+        self._candidates = [c for c in self._candidates if now - c.last_seen < LAPSE_AFTER]
+
     def _within_budget(self, priority: Priority) -> bool:
         unowned = [i for i in self.incidents.values() if i.needs_attention]
         if len(unowned) < self.alert_budget:
@@ -480,6 +553,8 @@ class CommandCentre:
             "bands": bands,
             "headline": self._headline(bands, open_incidents),
             "alert_budget": self.alert_budget,
+            "suppressed": dict(self.suppressed),
+            "candidates_holding": len(self._candidates),
             "unowned": sum(1 for i in self.incidents.values() if i.needs_attention),
             "incidents": [i.as_dict(moment) for i in open_incidents],
             "corridors": [

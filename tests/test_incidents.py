@@ -247,3 +247,98 @@ class TestIncidentContinuity:
             [self.cluster_at(26.74000, 88.43000)], NOW + timedelta(minutes=5)
         )
         assert len(far) == 1
+
+
+class TestDriftingQueueConfirms:
+    """The defect that made the product unable to raise an incident for a real jam.
+
+    Candidates were keyed on incident_id, which hashes the coordinate rounded to
+    four decimals — about eleven metres. A queue whose tail grows moves further
+    than that between polls, so every poll minted a fresh key, restarted the
+    confirmation clock, and the condition never confirmed. Two hours of
+    continuous stopped traffic raised nothing and left forty orphan keys.
+
+    Every queue worth dispatching to is growing. This is the regression guard.
+    """
+
+    def centre(self):
+        from packages.command.centre import CommandCentre
+        from packages.network.model import load_network
+
+        class Stub:
+            name, is_live, retains_durations = "stub", False, False
+
+            def read(self, *a, **k):
+                return None
+
+            def provenance(self):
+                return {}
+
+        c = CommandCentre(network=load_network(), probe=Stub())
+        for st in c.status.values():
+            st.band = "HIGH"
+        return c
+
+    def jam_at(self, lat, lon):
+        from packages.incidents.cluster import ChokeCluster
+
+        return ChokeCluster(
+            centre=(lat, lon),
+            severity="TRAFFIC_JAM",
+            members=[
+                (
+                    "C_X",
+                    ChokePoint(
+                        severity="TRAFFIC_JAM",
+                        start=(lat, lon),
+                        end=(lat, lon),
+                        midpoint=(lat, lon),
+                        length_m=450.0,
+                        share_of_corridor=0.41,
+                    ),
+                )
+            ],
+        )
+
+    def simulate(self, drift_m: float, polls: int = 40):
+        c = self.centre()
+        start = datetime(2026, 8, 31, 10, 0)
+        lat, lon = 26.72450, 88.41560
+        raised = 0
+        for i in range(polls):
+            lat += drift_m / 111_320.0
+            at = start + timedelta(minutes=3 * i)
+            raised += len(c._raise_incidents([self.jam_at(lat, lon)], at))
+            c._prune_candidates(at)
+        return c, raised
+
+    @pytest.mark.parametrize("drift_m", [0.0, 5.0, 10.0, 20.0])
+    def test_a_growing_queue_still_becomes_an_incident(self, drift_m):
+        _, raised = self.simulate(drift_m)
+        assert raised >= 1, f"a jam drifting {drift_m} m per poll never confirmed — this is the bug"
+
+    def test_a_realistic_queue_becomes_exactly_one_incident(self):
+        c, raised = self.simulate(10.0)
+        assert raised == 1
+        assert len([i for i in c.incidents.values() if i.is_open]) == 1
+
+    def test_the_confirmation_hold_is_still_enforced(self):
+        """Fixing drift must not mean everything confirms instantly."""
+        c = self.centre()
+        at = datetime(2026, 8, 31, 10, 0)
+        assert c._raise_incidents([self.jam_at(26.7245, 88.4156)], at) == []
+        assert c._raise_incidents([self.jam_at(26.7245, 88.4156)], at + timedelta(minutes=3)) == []
+        raised = c._raise_incidents([self.jam_at(26.7245, 88.4156)], at + timedelta(minutes=9))
+        assert len(raised) == 1, "should confirm once past the 8-minute hold"
+
+    def test_candidates_do_not_accumulate_forever(self):
+        """One entry per poll, never pruned, is a slow leak in a process that
+        must not be restarted casually."""
+        c, _ = self.simulate(10.0, polls=60)
+        assert len(c._candidates) <= 3, f"{len(c._candidates)} candidates left holding"
+
+    def test_the_board_says_why_nothing_was_raised(self):
+        c = self.centre()
+        at = datetime(2026, 8, 31, 10, 0)
+        c._raise_incidents([self.jam_at(26.7245, 88.4156)], at)
+        assert c.suppressed["holding"] == 1
