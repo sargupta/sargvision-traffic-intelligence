@@ -5,14 +5,13 @@ from __future__ import annotations
 import polars as pl
 import pytest
 
-from tests.conftest import needs_dataset
-
 from packages.analytics import anomalies as anom
 from packages.analytics import baselines as base
 from packages.analytics import patterns as pat
 from packages.analytics import reliability as rel
 from packages.zones.gazetteer import LANDMARKS
 from packages.zones.model import MAX_NAME_DISTANCE_M, assign, build_zones
+from tests.conftest import needs_dataset
 
 
 def _synthetic(n_per_bin: int = 60) -> pl.DataFrame:
