@@ -1,9 +1,9 @@
 [
- {"officer_id": "DO-1", "name": "Duty Officer, Traffic Control", "rank": "Inspector", "role": "DUTY_OFFICER", "unit": "Control", "on_duty": true},
- {"officer_id": "TG-1", "name": "SI R. Barman", "rank": "Sub-Inspector", "role": "FIELD", "unit": "Traffic Guard 1", "on_duty": true},
- {"officer_id": "TG-2", "name": "SI A. Chhetri", "rank": "Sub-Inspector", "role": "FIELD", "unit": "Traffic Guard 2", "on_duty": true},
- {"officer_id": "TG-3", "name": "ASI P. Roy", "rank": "ASI", "role": "FIELD", "unit": "Traffic Guard 3", "on_duty": true},
- {"officer_id": "TG-4", "name": "ASI S. Lama", "rank": "ASI", "role": "FIELD", "unit": "Traffic Guard 4", "on_duty": false},
- {"officer_id": "PCR-1", "name": "Mobile Patrol 1", "rank": "Unit", "role": "PATROL", "unit": "PCR", "on_duty": true},
- {"officer_id": "TI-1", "name": "TI M. Sarkar", "rank": "Traffic Inspector", "role": "SUPERVISOR", "unit": "Siliguri Traffic", "on_duty": true}
+ {"officer_id": "DO-1",  "name": "Duty Officer",            "rank": "Inspector",         "role": "DUTY_OFFICER", "unit": "Traffic Control Room", "on_duty": true},
+ {"officer_id": "TG-1",  "name": "Traffic Guard 1",         "rank": "Sub-Inspector",     "role": "FIELD",        "unit": "Traffic Guard 1",      "on_duty": true},
+ {"officer_id": "TG-2",  "name": "Traffic Guard 2",         "rank": "Sub-Inspector",     "role": "FIELD",        "unit": "Traffic Guard 2",      "on_duty": true},
+ {"officer_id": "TG-3",  "name": "Traffic Guard 3",         "rank": "ASI",               "role": "FIELD",        "unit": "Traffic Guard 3",      "on_duty": true},
+ {"officer_id": "TG-4",  "name": "Traffic Guard 4",         "rank": "ASI",               "role": "FIELD",        "unit": "Traffic Guard 4",      "on_duty": false},
+ {"officer_id": "PCR-1", "name": "Mobile Patrol 1",         "rank": "Unit",              "role": "PATROL",       "unit": "PCR 1",                "on_duty": true},
+ {"officer_id": "TI-1",  "name": "Traffic Inspector",       "rank": "Traffic Inspector", "role": "SUPERVISOR",   "unit": "Siliguri Traffic",     "on_duty": true}
 ]

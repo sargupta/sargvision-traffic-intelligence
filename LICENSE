@@ -1,0 +1,32 @@
+Copyright (c) 2026 SARGVISION Intelligence Pvt. Ltd.
+
+All rights reserved.
+
+This repository is published for review and evaluation. It is the working
+source of an operational system built for the Siliguri Metropolitan Police
+traffic branch.
+
+You may read, clone and run this code to evaluate it. You may not deploy it in
+production, offer it as a service, or use it commercially, without written
+permission from SARGVISION Intelligence Pvt. Ltd.
+
+Third-party data and services carry their own terms:
+
+  Google Maps Platform  — Google Maps Platform Terms of Service. This software
+                          caches latitude and longitude only. Travel times are
+                          held in memory and never persisted. See
+                          packages/network/probe.py.
+
+  Akbar, Couture, Duranton & Storeygard, "Mobility and Congestion in Urban
+  India", American Economic Review 113(4), 2023 — CC BY 4.0,
+  doi:10.5281/zenodo.10499064.
+
+  Junction volume-to-capacity ratios are from the Comprehensive Mobility Plan
+  2011, published in the Siliguri City Development Plan 2041.
+
+  Accident density figures are from Roy, Mohammadi & Roy, Geographies 6(2):55
+  (2026), doi:10.3390/geographies6020055.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. It reports
+where traffic is slower than typical. It does not establish cause, and no
+output of it should be treated as a finding of fact.
