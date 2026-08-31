@@ -86,8 +86,8 @@ jobs:
 
       - name: Build
         run: |
-          gcloud builds submit --project="$PROJECT_ID" --region=global \
-            --tag="$REGISTRY/traffic-api:${{ needs.guard.outputs.sha }}" .
+          gcloud builds submit --config=cloudbuild.yaml --project="$PROJECT_ID" \
+            --substitutions=SHORT_SHA=${{ needs.guard.outputs.sha }} .
 
       - name: Deploy
         run: |
