@@ -52,22 +52,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          # Full history: the guard diffs against the commit the running
+          # revision was built from, which may be many commits back.
+          fetch-depth: 0
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
       - id: decide
         run: |
           SHA=$(git rev-parse --short HEAD)
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          # An explicit request deploys exactly what was asked for. "both" used
+          # to fall through to the path diff, so asking for both and getting
+          # neither was the documented behaviour of the button.
           TARGET="${{ inputs.target }}"
-          if [ -n "$TARGET" ] && [ "$TARGET" != "both" ]; then
-            echo "api=$([ "$TARGET" = api ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-            echo "web=$([ "$TARGET" = web ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          if [ -n "$TARGET" ]; then
+            echo "explicit request: $TARGET"
+            case "$TARGET" in
+              both) echo "api=true"  >> "$GITHUB_OUTPUT"; echo "web=true"  >> "$GITHUB_OUTPUT" ;;
+              api)  echo "api=true"  >> "$GITHUB_OUTPUT"; echo "web=false" >> "$GITHUB_OUTPUT" ;;
+              web)  echo "api=false" >> "$GITHUB_OUTPUT"; echo "web=true"  >> "$GITHUB_OUTPUT" ;;
+            esac
             exit 0
           fi
-          # Deploy only what moved. Rebuilding the API because a stylesheet
-          # changed restarts the poll loop and loses in-flight incidents.
-          CHANGED=$(git diff --name-only HEAD~1 HEAD || echo "")
+          # Deploy what has moved since the revision actually running, not
+          # since the previous commit. Diffing HEAD~1 meant that when a commit
+          # failed CI and a one-line follow-up fixed it, the real changes never
+          # deployed: the guard saw only the follow-up and skipped both jobs.
+          # The running image is tagged with its commit, so ask the service.
+          DEPLOYED=$(gcloud run services describe traffic-api --project="$PROJECT_ID" \
+                       --region="$REGION" --format='value(spec.template.spec.containers[0].image)' \
+                       2>/dev/null | sed 's/.*://')
+          if [ -n "$DEPLOYED" ] && git cat-file -e "$DEPLOYED^{commit}" 2>/dev/null; then
+            echo "comparing against the running revision $DEPLOYED"
+            CHANGED=$(git diff --name-only "$DEPLOYED" HEAD || echo "")
+          else
+            echo "no usable deployed SHA; falling back to the last commit"
+            CHANGED=$(git diff --name-only HEAD~1 HEAD || echo "")
+          fi
           echo "$CHANGED"
           echo "api=$(echo "$CHANGED" | grep -qE '^(packages/|apps/api/|data/curated/|Dockerfile|pyproject)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "web=$(echo "$CHANGED" | grep -qE '^apps/command-web/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
