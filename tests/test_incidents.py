@@ -342,3 +342,70 @@ class TestDriftingQueueConfirms:
         at = datetime(2026, 8, 31, 10, 0)
         c._raise_incidents([self.jam_at(26.7245, 88.4156)], at)
         assert c.suppressed["holding"] == 1
+
+
+class TestQueueBudget:
+    """A cap that admits anything outranking the weakest, and never removes the
+    weakest, is not a cap. The board showed "6/5"."""
+
+    def centre_with_unowned(self, priorities):
+        from packages.command.centre import CommandCentre
+        from packages.network.model import load_network
+
+        class Stub:
+            name, is_live, retains_durations = "stub", False, False
+            def read(self, *a, **k): return None
+            def provenance(self): return {}
+
+        c = CommandCentre(network=load_network(), probe=Stub())
+        for n, p in enumerate(priorities):
+            c.incidents[f"INC-{n}"] = Incident(
+                incident_id=f"INC-{n}", kind=IncidentKind.CHOKE_POINT, priority=p,
+                title="t", detail="d", location_name="NH10", lat=26.7, lon=88.4,
+                corridors=[], junctions=[], detected_at=NOW, evidence={}, limitation="x",
+            )
+        return c
+
+    def test_a_low_priority_condition_is_refused_at_the_cap(self):
+        c = self.centre_with_unowned([Priority.P3] * 5)
+        assert c._within_budget(Priority.P3) is False
+        assert c._within_budget(Priority.P4) is False
+
+    def test_a_severe_condition_is_never_hidden_by_a_full_queue(self):
+        """Suppressing a genuine P1 because a counter is full is the wrong
+        failure for a police system."""
+        c = self.centre_with_unowned([Priority.P3] * 8)
+        assert c._within_budget(Priority.P1) is True
+        assert c._within_budget(Priority.P2) is True
+
+    def test_below_the_cap_anything_is_admitted(self):
+        c = self.centre_with_unowned([Priority.P1] * 2)
+        assert c._within_budget(Priority.P4) is True
+
+    def test_the_board_declares_an_overloaded_shift(self):
+        c = self.centre_with_unowned([Priority.P1] * 7)
+        assert c.board(NOW)["over_budget"] is True
+
+    def test_a_healthy_queue_is_not_flagged(self):
+        c = self.centre_with_unowned([Priority.P1] * 2)
+        assert c.board(NOW)["over_budget"] is False
+
+
+class TestHeadlineCountsTheWholeQueue:
+    def centre_with(self, priorities):
+        return TestQueueBudget().centre_with_unowned(priorities)
+
+    def test_it_does_not_undercount_behind_the_p1s(self):
+        """It said "2 incidents needing action now" while six sat unowned."""
+        c = self.centre_with([Priority.P1, Priority.P1, Priority.P2, Priority.P3, Priority.P3, Priority.P3])
+        headline = c.board(NOW)["headline"]
+        assert "2 incidents needing action now" in headline
+        assert "4 more waiting" in headline
+
+    def test_a_queue_with_no_p1_still_reports_itself(self):
+        c = self.centre_with([Priority.P3, Priority.P3])
+        assert "2 incidents waiting for an officer" in c.board(NOW)["headline"]
+
+    def test_an_empty_queue_falls_through_to_the_corridor_bands(self):
+        c = self.centre_with([])
+        assert "waiting for an officer" not in c.board(NOW)["headline"]

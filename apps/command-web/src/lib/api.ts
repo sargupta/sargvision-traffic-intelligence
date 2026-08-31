@@ -94,6 +94,7 @@ export interface Board {
   bands: Partial<Record<Band, number>>;
   headline: string;
   alert_budget: number;
+  over_budget: boolean;
   suppressed: { holding: number; below_threshold: number; quiet_hours: number; budget: number };
   candidates_holding: number;
   unowned: number;

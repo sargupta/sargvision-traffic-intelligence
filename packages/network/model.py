@@ -30,10 +30,26 @@ class Junction:
     match_quality: str  # CONFIRMED | NEAR | ROAD_ONLY
     match_note: str
     formatted_address: str | None = None
+    # True where the name comes from the CMP 2011 junction table and describes a
+    # road pair rather than a place anyone in Siliguri says out loud.
+    name_unconfirmed: bool = False
 
     @property
     def pin_is_approximate(self) -> bool:
         return self.match_quality == "ROAD_ONLY"
+
+    @property
+    def caveat(self) -> str | None:
+        """What must be said out loud wherever this junction is named."""
+        if self.name_unconfirmed:
+            return (
+                "This name comes from the 2011 mobility plan and describes a road "
+                "pair, not a place anyone here calls by that name. Its location is "
+                "unconfirmed."
+            )
+        if self.pin_is_approximate:
+            return "Located to a road rather than to the junction itself."
+        return None
 
     @property
     def congestion_pressure(self) -> str | None:
@@ -102,6 +118,7 @@ def load_network(junctions_path: Path = JUNCTIONS, corridors_path: Path = CORRID
             match_quality=j["match_quality"],
             match_note=j["match_note"],
             formatted_address=j.get("formatted_address"),
+            name_unconfirmed=bool(j.get("name_unconfirmed", False)),
         )
         for j in json.loads(junctions_path.read_text())
     }

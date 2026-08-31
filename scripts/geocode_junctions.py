@@ -182,6 +182,14 @@ def geocode(query: str) -> dict | None:
 # Google returns the name the place is registered under, which is not always the
 # name an officer uses. These are the same place; without them the check reports
 # a weak pin for a perfectly good match.
+# Names taken from the CMP 2011 junction table that local usage does not
+# corroborate. They describe a road pair rather than a place anyone says out
+# loud, and neither geocodes to a junction. Kept because the V/C figures are
+# real, flagged so nothing built on them claims more than it has.
+UNCONFIRMED_NAMES: frozenset[str] = frozenset(
+    {"Wall Ford Sevoke Crossing", "Wall Ford Bypass Crossing"}
+)
+
 ALIASES: dict[str, tuple[str, ...]] = {
     "NJP Station": ("new jalpaiguri", "njp"),
     "Siliguri Junction": ("siliguri jn", "siliguri junction"),
@@ -190,8 +198,11 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "Jhankaar More": ("jhankar", "jhankaar"),
     "Mallaguri Crossing": ("mallaguri",),
     "Naukaghat": ("nauka ghat", "naukaghat"),
-    "Wall Ford Sevoke Crossing": ("sevoke rd", "sevoke road"),
-    "Wall Ford Bypass Crossing": ("eastern bypass", "bypass"),
+    # Deliberately NOT aliased: "Wall Ford Sevoke Crossing" and "Wall Ford
+    # Bypass Crossing" geocode to a generic road, not to a junction. Aliasing
+    # "sevoke rd" or "eastern bypass" would let a road match satisfy a junction
+    # check, which defeats the only guard we have against a confident pin on a
+    # place we have not located. They stay ROAD_ONLY.
     "Bagdogra Airport": ("bagdogra",),
 }
 
@@ -237,6 +248,13 @@ def main() -> None:
             and BBOX["west"] <= hit["lon"] <= BBOX["east"]
         )
         quality, why = match_quality(j["name"], hit)
+        unconfirmed = j["name"] in UNCONFIRMED_NAMES
+        if unconfirmed:
+            # A name nobody in Siliguri uses must not be presented as located,
+            # whatever the geocoder returned for the road it sits on.
+            quality = "ROAD_ONLY"
+            why = "name from the CMP 2011 table; not corroborated by local usage"
+
         record = {
             "junction_id": "J_" + j["name"].upper().replace(" ", "_"),
             "name": j["name"],
@@ -245,6 +263,7 @@ def main() -> None:
             "in_siliguri_bbox": inside,
             "match_quality": quality,
             "match_note": why,
+            "name_unconfirmed": unconfirmed,
             **hit,
         }
         out.append(record)

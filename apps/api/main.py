@@ -158,6 +158,8 @@ def network() -> dict:
                 "congestion_pressure": j.congestion_pressure,
                 "pin_approximate": j.pin_is_approximate,
                 "pin_note": j.match_note,
+                "name_unconfirmed": j.name_unconfirmed,
+                "caveat": j.caveat,
             }
             for j in net.junctions.values()
         ],

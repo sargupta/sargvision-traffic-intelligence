@@ -513,12 +513,23 @@ class CommandCentre:
         self._candidates = [c for c in self._candidates if now - c.last_seen < LAPSE_AFTER]
 
     def _within_budget(self, priority: Priority) -> bool:
-        unowned = [i for i in self.incidents.values() if i.needs_attention]
-        if len(unowned) < self.alert_budget:
+        """Whether this condition may be raised given how full the queue is.
+
+        The old rule admitted anything that outranked the weakest thing already
+        waiting, and never removed the weakest — so a queue capped at five grew
+        to six and then further, one priority step at a time, while the screen
+        showed "6/5" as though the counter were broken.
+
+        Hiding a genuine severe condition because a counter is full is the
+        wrong failure, so the cap now bites only on the low end: below it
+        anything may be raised, at or above it only P1 and P2 get through. A
+        queue past its budget means the shift is overloaded, which the board
+        states rather than conceals.
+        """
+        unowned = sum(1 for i in self.incidents.values() if i.needs_attention)
+        if unowned < self.alert_budget:
             return True
-        rank = {Priority.P1: 0, Priority.P2: 1, Priority.P3: 2, Priority.P4: 3}
-        weakest = max(rank[i.priority] for i in unowned)
-        return rank[priority] < weakest
+        return priority in (Priority.P1, Priority.P2)
 
     def _age_incidents(self, now: datetime) -> list[str]:
         lapsed: list[str] = []
@@ -553,6 +564,8 @@ class CommandCentre:
             "bands": bands,
             "headline": self._headline(bands, open_incidents),
             "alert_budget": self.alert_budget,
+            "over_budget": sum(1 for i in self.incidents.values() if i.needs_attention)
+            > self.alert_budget,
             "suppressed": dict(self.suppressed),
             "candidates_holding": len(self._candidates),
             "unowned": sum(1 for i in self.incidents.values() if i.needs_attention),
@@ -596,9 +609,19 @@ class CommandCentre:
         high = bands.get("HIGH", 0)
         elevated = bands.get("ELEVATED", 0)
         p1 = sum(1 for i in open_incidents if i.priority is Priority.P1)
+        waiting = sum(1 for i in open_incidents if i.needs_attention)
 
-        if p1:
-            return f"{p1} incident{'s' if p1 > 1 else ''} needing action now."
+        # Counting P1 only said "2 incidents needing action now" while six sat
+        # unowned. The headline is the one line an officer reads on sitting
+        # down, and it must not undercount the queue behind it.
+        if p1 and waiting > p1:
+            others = waiting - p1
+            return (
+                f"{p1} incident{'s' if p1 > 1 else ''} needing action now, "
+                f"and {others} more waiting for an officer."
+            )
+        if waiting:
+            return f"{waiting} incident{'s' if waiting > 1 else ''} waiting for an officer."
         if severe or high:
             n = severe + high
             return f"{n} corridor{'s' if n > 1 else ''} well above typical travel time."

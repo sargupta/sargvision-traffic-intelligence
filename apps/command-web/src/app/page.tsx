@@ -127,11 +127,15 @@ export default function Board() {
               </div>
             ))}
             <div className="border-l border-line pl-6 text-center">
-              <dd className="tnum text-[length:var(--text-2xl)] font-semibold leading-none">
+              <dd
+                className="tnum text-[length:var(--text-2xl)] font-semibold leading-none"
+                style={{ color: board?.over_budget ? "var(--color-high)" : undefined }}
+              >
                 {needsAction.length}
-                <span className="text-[length:var(--text-md)] font-normal text-ink-3">/{board?.alert_budget ?? "—"}</span>
               </dd>
-              <dt className="label mt-1">Awaiting an officer</dt>
+              <dt className="label mt-1">
+                {board?.over_budget ? "Over the alert budget" : "Awaiting an officer"}
+              </dt>
             </div>
           </dl>
         </section>

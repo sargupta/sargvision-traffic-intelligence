@@ -133,11 +133,7 @@ def recommend(
                 cannot_know=(
                     "Whether the approaches share a cause. They share a destination, which is "
                     "why one post covers them, but the reason each is slow is not in this data."
-                    + (
-                        " The pin for this junction is approximate."
-                        if junction.pin_is_approximate
-                        else ""
-                    )
+                    + (f" {junction.caveat}" if junction.caveat else "")
                 ),
                 junctions=[junction_id],
                 corridors=[c["corridor_id"] for c in approaches],
@@ -253,29 +249,40 @@ def recommend(
         break  # one diversion suggestion at a time; more is noise
 
     # ── 3. Escalate: held a long time with nobody on it ─────────────────────
-    for i in incidents:
-        if not i.get("needs_attention"):
-            continue
-        age = i.get("age_minutes") or 0
-        if age < 25:
-            continue
+    # One entry, not one per incident. Five separate "has waited 30 minutes"
+    # cards is the same flooding the posting cap exists to prevent, arriving
+    # through a different door — and it is one message to a duty officer
+    # regardless of how many rows produced it.
+    stale = [i for i in incidents if i.get("needs_attention") and (i.get("age_minutes") or 0) >= 25]
+    if stale:
+        stale.sort(key=lambda i: -(i.get("age_minutes") or 0))
+        oldest = stale[0]
+        worst_age = oldest.get("age_minutes") or 0
+        urgent = any(i.get("priority") == "P1" for i in stale)
         out.append(
             Recommendation(
                 kind="ESCALATE",
-                urgency="NOW" if i.get("priority") == "P1" else "THIS_SHIFT",
-                headline=f"{i['title']} has waited {age:.0f} minutes with no owner",
+                urgency="NOW" if urgent else "THIS_SHIFT",
+                headline=(
+                    f"{len(stale)} incident{'s have' if len(stale) > 1 else ' has'} "
+                    f"been waiting over 25 minutes with no owner"
+                ),
                 detail=(
-                    "Nobody has taken responsibility for this since it was raised. Either assign "
-                    "it, or record why no action is needed — leaving it open is the one outcome "
-                    "that teaches people the board can be ignored."
+                    f"The oldest is {worst_age:.0f} minutes. Each needs an officer assigned or a "
+                    "reason recorded for why none is needed — leaving them open is the one "
+                    "outcome that teaches a control room the board can be ignored."
                 ),
                 because=[
-                    f"Raised at {str(i.get('detected_at', ''))[11:16]}, still unassigned.",
-                    i.get("detail", ""),
-                ],
-                cannot_know="Whether an officer is already dealing with it off-system.",
-                junctions=i.get("junctions", []),
-                corridors=i.get("corridors", []),
+                    f"{i['title']} — {(i.get('age_minutes') or 0):.0f} min, still unassigned."
+                    for i in stale[:4]
+                ]
+                + ([f"and {len(stale) - 4} more."] if len(stale) > 4 else []),
+                cannot_know=(
+                    "Whether an officer is already dealing with any of them off-system, over "
+                    "wireless or by phone."
+                ),
+                junctions=sorted({j for i in stale for j in i.get("junctions", [])}),
+                corridors=sorted({c for i in stale for c in i.get("corridors", [])}),
             )
         )
 

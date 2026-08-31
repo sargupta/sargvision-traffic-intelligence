@@ -142,3 +142,74 @@ class TestCopy:
         w = self._watch(1)
         if not w.headline.startswith("1 more junction "):
             assert "junctions" in w.headline and "also show " in w.headline, w.headline
+
+
+class TestAdviceDoesNotFlood:
+    """The posting cap stopped one kind of flooding. Escalations arrived
+    through the other door: five unowned incidents produced five near-identical
+    "has waited 30 minutes" cards, which is one message to a duty officer."""
+
+    def board_with_stale(self, n: int, ages=None):
+        b = board_with([])
+        b["incidents"] = [
+            {
+                "incident_id": f"INC-{i}",
+                "title": f"Stopped traffic on NH10 near junction {i}",
+                "detail": "d",
+                "priority": "P3",
+                "needs_attention": True,
+                "age_minutes": (ages[i] if ages else 30 + i),
+                "detected_at": "2026-08-31T10:00:00",
+                "junctions": [f"J_{i}"],
+                "corridors": [f"C_{i}"],
+            }
+            for i in range(n)
+        ]
+        return b
+
+    def test_many_stale_incidents_produce_one_recommendation(self):
+        recs = recommend(NET, self.board_with_stale(5), NOW)
+        escalations = [r for r in recs if r.kind == "ESCALATE"]
+        assert len(escalations) == 1
+        assert "5 incidents" in escalations[0].headline
+
+    def test_it_names_the_oldest_and_counts_the_rest(self):
+        recs = recommend(NET, self.board_with_stale(6), NOW)
+        e = next(r for r in recs if r.kind == "ESCALATE")
+        assert "2 more" in " ".join(e.because)
+
+    def test_a_single_stale_incident_reads_naturally(self):
+        recs = recommend(NET, self.board_with_stale(1), NOW)
+        e = next(r for r in recs if r.kind == "ESCALATE")
+        assert "1 incident has been waiting" in e.headline
+
+    def test_fresh_incidents_do_not_escalate(self):
+        recs = recommend(NET, self.board_with_stale(3, ages={0: 5, 1: 9, 2: 12}), NOW)
+        assert not [r for r in recs if r.kind == "ESCALATE"]
+
+    def test_a_p1_makes_the_escalation_urgent(self):
+        b = self.board_with_stale(2)
+        b["incidents"][0]["priority"] = "P1"
+        e = next(r for r in recommend(NET, b, NOW) if r.kind == "ESCALATE")
+        assert e.urgency == "NOW"
+
+
+class TestUnlocatedJunctionsAreDeclared:
+    """Recommending a posting somewhere we cannot locate must say so."""
+
+    def test_an_unconfirmed_name_is_repeated_in_the_caveat(self):
+        target = "J_WALL_FORD_SEVOKE_CROSSING"
+        junction = NET.junction(target)
+        assert junction is not None and junction.name_unconfirmed
+
+        cids = approaches_to(target, 3)
+        recs = recommend(NET, board_with([(c, 1.5, 4.0) for c in cids]), NOW)
+        post = next(r for r in recs if r.kind == "POST")
+        assert "2011 mobility plan" in post.cannot_know
+
+    def test_a_confirmed_junction_carries_no_caveat(self):
+        cids = approaches_to("J_VENUS_MORE", 3)
+        recs = recommend(NET, board_with([(c, 1.5, 4.0) for c in cids]), NOW)
+        post = next(r for r in recs if r.kind == "POST" and "Venus More" in r.headline)
+        assert "mobility plan" not in post.cannot_know
+        assert "approximate" not in post.cannot_know.lower()

@@ -30,9 +30,21 @@ export function NetworkPlan({
   const model = useMemo(() => {
     if (!board || !network) return null;
 
+    // Only the junctions that carry corridors. Bagdogra Airport is 10 km west
+    // with no corridor of its own, and including it stretched the bounds far
+    // enough to squeeze the city an officer works into the right-hand third of
+    // the canvas, leaving a third of the primary screen blank.
+    const connected = new Set<string>();
+    network.corridors.forEach((c) => {
+      connected.add(c.from_junction);
+      connected.add(c.to_junction);
+    });
+
     const pts: [number, number][] = [];
     board.corridors.forEach((c) => c.runs.forEach((r) => pts.push(...r.path)));
-    network.junctions.forEach((j) => pts.push([j.lon, j.lat]));
+    network.junctions
+      .filter((j) => connected.has(j.junction_id))
+      .forEach((j) => pts.push([j.lon, j.lat]));
     if (pts.length < 2) return null;
 
     const lons = pts.map((p) => p[0]);
@@ -47,12 +59,17 @@ export function NetworkPlan({
     const spanX = (maxLon - minLon) * k;
     const spanY = maxLat - minLat;
     const H = Math.max(360, Math.min(900, (W * spanY) / (spanX || 1)));
-    const pad = 34;
+    // Labels sit to the right of their node and the widest is ~150 units, so
+    // the right margin is larger than the others. Without it "Wall Ford Bypass
+    // Crossing" ran past the viewBox and was clipped mid-word.
+    const pad = 44;
+    const padRight = 150;
 
-    const x = (lon: number) => pad + ((lon - minLon) * k / (spanX || 1)) * (W - pad * 2);
+    const x = (lon: number) =>
+      pad + (((lon - minLon) * k) / (spanX || 1)) * (W - pad - padRight);
     const y = (lat: number) => H - pad - ((lat - minLat) / (spanY || 1)) * (H - pad * 2);
 
-    return { W, H, x, y };
+    return { W, H, x, y, midLon: (minLon + maxLon) / 2 };
   }, [board, network]);
 
   if (!model || !board || !network) {
@@ -65,15 +82,19 @@ export function NetworkPlan({
     );
   }
 
-  const { W, H, x, y } = model;
-  const connected = new Set<string>();
+  const { W, H, x, y, midLon } = model;
+  const connectedIds = new Set<string>();
   network.corridors.forEach((c) => {
-    connected.add(c.from_junction);
-    connected.add(c.to_junction);
+    connectedIds.add(c.from_junction);
+    connectedIds.add(c.to_junction);
   });
 
+  const approximate = network.junctions.filter(
+    (j) => connectedIds.has(j.junction_id) && j.pin_approximate,
+  ).length;
+
   return (
-    <figure className={`overflow-hidden rounded-lg border border-line bg-surface ${className ?? ""}`}>
+    <figure className={`relative overflow-hidden rounded-lg border border-line bg-surface ${className ?? ""}`}>
       <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" role="img"
         aria-label="Siliguri road network, coloured by measured traffic speed">
         {/* Roads, drawn worst last so a jam is never hidden under a clear road. */}
@@ -87,8 +108,8 @@ export function NetworkPlan({
                   points={r.path.map(([lon, lat]) => `${x(lon).toFixed(1)},${y(lat).toFixed(1)}`).join(" ")}
                   fill="none"
                   stroke={`rgb(${RUN_COLOUR[speed].join(",")})`}
-                  strokeWidth={speed === "TRAFFIC_JAM" ? 5 : speed === "SLOW" ? 4 : 2}
-                  strokeOpacity={speed === "NORMAL" ? 0.5 : 0.95}
+                  strokeWidth={speed === "TRAFFIC_JAM" ? 5.5 : speed === "SLOW" ? 4 : 1.5}
+                  strokeOpacity={speed === "NORMAL" ? 0.28 : 0.95}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
@@ -99,7 +120,7 @@ export function NetworkPlan({
         )}
 
         {network.junctions
-          .filter((j) => connected.has(j.junction_id))
+          .filter((j) => connectedIds.has(j.junction_id))
           .map((j) => (
             <g key={j.junction_id}>
               <circle cx={x(j.lon)} cy={y(j.lat)} r={3.5} fill="#fff"
@@ -108,9 +129,19 @@ export function NetworkPlan({
                 strokeDasharray={j.pin_approximate ? "2 2" : undefined}>
                 <title>{j.pin_approximate ? `${j.name} — approximate location` : j.name}</title>
               </circle>
-              <text x={x(j.lon)} y={y(j.lat) - 7} textAnchor="middle"
-                style={{ fontSize: 10, fontWeight: 500, paintOrder: "stroke", stroke: "#fff", strokeWidth: 3 }}
-                fill="#4A5568">
+              <text
+                x={x(j.lon) + (j.lon > midLon ? -7 : 7)}
+                y={y(j.lat) + 3.5}
+                textAnchor={j.lon > midLon ? "end" : "start"}
+                style={{
+                  fontSize: 10.5,
+                  fontWeight: 500,
+                  paintOrder: "stroke",
+                  stroke: "#fff",
+                  strokeWidth: 3.5,
+                }}
+                fill={j.pin_approximate ? "#7A8598" : "#39424F"}
+              >
                 {j.name}
               </text>
             </g>
@@ -129,6 +160,42 @@ export function NetworkPlan({
           );
         })}
       </svg>
+
+      <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border border-line bg-surface/95 px-3 py-2 shadow-[var(--shadow-card)]">
+        <p className="label mb-1.5">Measured on the road</p>
+        <div className="flex flex-col gap-1">
+          {(
+            [
+              ["NORMAL", "Moving", 1.5, 0.28],
+              ["SLOW", "Slow", 4, 0.95],
+              ["TRAFFIC_JAM", "Stopped", 5.5, 0.95],
+            ] as const
+          ).map(([k, label, weight, opacity]) => (
+            <span key={k} className="flex items-center gap-2 text-[length:var(--text-2xs)] text-ink-2">
+              <span
+                aria-hidden
+                className="inline-block w-5 rounded"
+                style={{
+                  background: `rgb(${RUN_COLOUR[k].join(",")})`,
+                  height: weight,
+                  opacity,
+                }}
+              />
+              {label}
+            </span>
+          ))}
+          {approximate > 0 && (
+            <span className="mt-1 flex items-center gap-2 border-t border-line pt-1.5 text-[length:var(--text-2xs)] text-ink-2">
+              <span
+                aria-hidden
+                className="inline-block h-2.5 w-2.5 rounded-full border border-dashed"
+                style={{ borderColor: "#98A2B3" }}
+              />
+              {approximate} junction{approximate === 1 ? "" : "s"} located approximately
+            </span>
+          )}
+        </div>
+      </div>
     </figure>
   );
 }
