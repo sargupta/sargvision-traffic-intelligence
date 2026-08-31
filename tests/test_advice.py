@@ -107,3 +107,33 @@ class TestHonesty:
         recs = recommend(NET, board_with([]), NOW)
         assert len(recs) == 1
         assert recs[0].kind == "STAND_DOWN"
+
+
+class TestCopy:
+    """User-facing text in a police product. A grammar error undermines the
+    care everything else shows."""
+
+    def _watch(self, deployable: int):
+        degraded = []
+        for jid in list(NET.junctions)[:6]:
+            for cid in approaches_to(jid, 3):
+                degraded.append((cid, 1.5, 5.0))
+        recs = recommend(NET, board_with(degraded), NOW, deployable=deployable)
+        return next(r for r in recs if r.kind == "WATCH")
+
+    def test_singular_agreement(self):
+        # Pick a cap that leaves exactly one junction over.
+        for cap in range(1, 6):
+            try:
+                w = self._watch(cap)
+            except StopIteration:
+                continue
+            if w.headline.startswith("1 more junction"):
+                assert "also shows" in w.headline, w.headline
+                assert "junctions" not in w.headline
+                return
+
+    def test_plural_agreement(self):
+        w = self._watch(1)
+        if not w.headline.startswith("1 more junction "):
+            assert "junctions" in w.headline and "also show " in w.headline, w.headline

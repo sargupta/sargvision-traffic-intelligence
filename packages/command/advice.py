@@ -153,7 +153,7 @@ def recommend(
                 urgency="ADVISORY",
                 headline=(
                     f"{not_recommended} more junction{'s' if not_recommended > 1 else ''} "
-                    "also show converging delay"
+                    f"{'also show' if not_recommended > 1 else 'also shows'} converging delay"
                 ),
                 detail=(
                     f"Ranked below the {deployable} above by the travel time at stake, and not "
