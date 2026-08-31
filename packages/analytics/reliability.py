@@ -31,8 +31,8 @@ class Bands:
     describe what counts as dependable *here*.
     """
 
-    reliable: float = 15.0        # under this much buffer, plan against the median
-    moderate: float = 30.0        # under this, allow a margin
+    reliable: float = 15.0  # under this much buffer, plan against the median
+    moderate: float = 30.0  # under this, allow a margin
     # at or above `moderate`, the median is not a usable planning figure
 
     def classify(self, buffer_pct: float) -> str:
@@ -52,9 +52,7 @@ def score(
     obs: pl.DataFrame, bands: Bands = SILIGURI, min_samples: int = MIN_SAMPLES
 ) -> pl.DataFrame:
     scored = (
-        obs.with_columns(
-            (pl.col("traffic_seconds") / (pl.col("distance_m") / 1000)).alias("_spk")
-        )
+        obs.with_columns((pl.col("traffic_seconds") / (pl.col("distance_m") / 1000)).alias("_spk"))
         .group_by("movement_id")
         .agg(
             pl.col("movement_name").first(),

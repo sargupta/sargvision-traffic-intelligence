@@ -27,12 +27,13 @@ from scipy import stats
 
 from packages.intelligence.finding import Confidence, Evidence, Finding, Kind, View
 
-FDR_Q = 0.05          # false discovery rate the run is held to
-MIN_GROUP = 60        # smallest sample either side of a comparison
+FDR_Q = 0.05  # false discovery rate the run is held to
+MIN_GROUP = 60  # smallest sample either side of a comparison
 EVENING = (17, 18, 19, 20, 21)
 
 
 # ── evidence validation ──────────────────────────────────────────────────────
+
 
 def benjamini_hochberg(p_values: list[float], q: float = FDR_Q) -> list[bool]:
     """Which p-values survive at false discovery rate q. Order is preserved."""
@@ -78,6 +79,7 @@ def _pace(obs: pl.DataFrame) -> pl.DataFrame:
 
 
 # ── detectors ────────────────────────────────────────────────────────────────
+
 
 def detect_unreliable(reliability: pl.DataFrame, obs: pl.DataFrame) -> list[dict]:
     """Movements you cannot plan around, relative to the rest of the city."""
@@ -253,49 +255,51 @@ def detect_asymmetry(obs: pl.DataFrame, movements: pl.DataFrame) -> list[dict]:
             {
                 "p": float(p),
                 "n": n_total,
-                "build": lambda r=row, p=float(p), u=float(u), pct=pct, sn=slow_name,
-                fn=fast_name, na=int(fwd.len()), nb=int(rev.len()), nt=n_total,
-                ma=med_a, mb=med_b, nm=names: Finding(
-                    id=f"ASY_{'_'.join(sorted(nm.values()))}",
-                    kind=Kind.ASYMMETRY,
-                    title=f"{sn} → {fn} is the slower direction",
-                    claim=(
-                        f"Travelling {sn} to {fn} is {pct:.0f}% slower per kilometre than "
-                        f"the return leg, across {nt:,} observations."
-                    ),
-                    interpretation=(
-                        "A difference this size between two directions of the same pair is "
-                        "not geometry — the distance is the same both ways. It points at "
-                        "something directional: a junction that only binds one way, "
-                        "kerbside activity on one side, or a turn that has to cross traffic."
-                    ),
-                    limitation=(
-                        "Zone pairs are not roads, and the two directions may not use the "
-                        "same route at all. The test shows the distributions differ; it "
-                        "cannot say why, and this data carries no vehicle types or turns."
-                    ),
-                    evidence=Evidence(
-                        observations=nt,
-                        test="Mann-Whitney U on pace, two-sided",
-                        statistic=round(u, 1),
-                        p_value=p,
-                        effect=round(pct, 2),
-                        effect_unit="% difference in median pace",
-                        comparison=f"{na:,} observations one way against {nb:,} the other",
-                    ),
-                    view=View(
-                        layout="compare",
-                        focus_movements=[f"{v}__{w}" for v in nm.values() for w in nm.values() if v != w],
-                        focus_zones=list(nm.values()),
-                        encode="asymmetry",
-                        series=["pace"],
-                    ),
-                    confidence=_confidence(nt, p),
-                    impact=min(1.0, nt / 8000),
-                    novelty=min(1.0, pct / 25),
-                    recurrence=1.0,
-                    movements=[f"{v}__{w}" for v in nm.values() for w in nm.values() if v != w],
-                    zones=list(nm.values()),
+                "build": lambda r=row, p=float(p), u=float(u), pct=pct, sn=slow_name, fn=fast_name, na=int(fwd.len()), nb=int(rev.len()), nt=n_total, ma=med_a, mb=med_b, nm=names: (
+                    Finding(
+                        id=f"ASY_{'_'.join(sorted(nm.values()))}",
+                        kind=Kind.ASYMMETRY,
+                        title=f"{sn} → {fn} is the slower direction",
+                        claim=(
+                            f"Travelling {sn} to {fn} is {pct:.0f}% slower per kilometre than "
+                            f"the return leg, across {nt:,} observations."
+                        ),
+                        interpretation=(
+                            "A difference this size between two directions of the same pair is "
+                            "not geometry — the distance is the same both ways. It points at "
+                            "something directional: a junction that only binds one way, "
+                            "kerbside activity on one side, or a turn that has to cross traffic."
+                        ),
+                        limitation=(
+                            "Zone pairs are not roads, and the two directions may not use the "
+                            "same route at all. The test shows the distributions differ; it "
+                            "cannot say why, and this data carries no vehicle types or turns."
+                        ),
+                        evidence=Evidence(
+                            observations=nt,
+                            test="Mann-Whitney U on pace, two-sided",
+                            statistic=round(u, 1),
+                            p_value=p,
+                            effect=round(pct, 2),
+                            effect_unit="% difference in median pace",
+                            comparison=f"{na:,} observations one way against {nb:,} the other",
+                        ),
+                        view=View(
+                            layout="compare",
+                            focus_movements=[
+                                f"{v}__{w}" for v in nm.values() for w in nm.values() if v != w
+                            ],
+                            focus_zones=list(nm.values()),
+                            encode="asymmetry",
+                            series=["pace"],
+                        ),
+                        confidence=_confidence(nt, p),
+                        impact=min(1.0, nt / 8000),
+                        novelty=min(1.0, pct / 25),
+                        recurrence=1.0,
+                        movements=[f"{v}__{w}" for v in nm.values() for w in nm.values() if v != w],
+                        zones=list(nm.values()),
+                    )
                 ),
             }
         )
@@ -327,46 +331,47 @@ def detect_period(obs: pl.DataFrame, movements: pl.DataFrame) -> list[dict]:
             {
                 "p": float(p),
                 "n": n_total,
-                "build": lambda r=row, p=float(p), u=float(u), pct=pct,
-                ne=int(evening.len()), nt=n_total: Finding(
-                    id=f"EVE_{r['movement_id']}",
-                    kind=Kind.PERIOD,
-                    title=f"{r['movement_name']} loses its evening",
-                    claim=(
-                        f"Between 17:00 and 21:00, {r['movement_name']} runs {pct:.0f}% "
-                        f"slower per kilometre than it does across the rest of the day."
-                    ),
-                    interpretation=(
-                        "The evening is when this movement stops resembling itself. If staff "
-                        "or signal timing are allocated on a whole-day average, this is the "
-                        "window that average is hiding."
-                    ),
-                    limitation=(
-                        "The evening window is defined as 17:00-21:00 by us, not derived. "
-                        "The comparison is against the same movement's other hours, so it "
-                        "says nothing about how this movement compares to the city."
-                    ),
-                    evidence=Evidence(
-                        observations=nt,
-                        test="Mann-Whitney U on pace, evening greater than rest of day",
-                        statistic=round(u, 1),
-                        p_value=p,
-                        effect=round(pct, 2),
-                        effect_unit="% slower per km in the evening",
-                        comparison=f"{ne:,} evening observations against {nt - ne:,} others",
-                    ),
-                    view=View(
-                        layout="timeline",
-                        focus_movements=[r["movement_id"]],
-                        focus_hours=list(EVENING),
-                        encode="delay",
-                        series=["median_tti"],
-                    ),
-                    confidence=_confidence(nt, p),
-                    impact=min(1.0, nt / 8000),
-                    novelty=min(1.0, pct / 25),
-                    recurrence=0.9,
-                    movements=[r["movement_id"]],
+                "build": lambda r=row, p=float(p), u=float(u), pct=pct, ne=int(evening.len()), nt=n_total: (
+                    Finding(
+                        id=f"EVE_{r['movement_id']}",
+                        kind=Kind.PERIOD,
+                        title=f"{r['movement_name']} loses its evening",
+                        claim=(
+                            f"Between 17:00 and 21:00, {r['movement_name']} runs {pct:.0f}% "
+                            f"slower per kilometre than it does across the rest of the day."
+                        ),
+                        interpretation=(
+                            "The evening is when this movement stops resembling itself. If staff "
+                            "or signal timing are allocated on a whole-day average, this is the "
+                            "window that average is hiding."
+                        ),
+                        limitation=(
+                            "The evening window is defined as 17:00-21:00 by us, not derived. "
+                            "The comparison is against the same movement's other hours, so it "
+                            "says nothing about how this movement compares to the city."
+                        ),
+                        evidence=Evidence(
+                            observations=nt,
+                            test="Mann-Whitney U on pace, evening greater than rest of day",
+                            statistic=round(u, 1),
+                            p_value=p,
+                            effect=round(pct, 2),
+                            effect_unit="% slower per km in the evening",
+                            comparison=f"{ne:,} evening observations against {nt - ne:,} others",
+                        ),
+                        view=View(
+                            layout="timeline",
+                            focus_movements=[r["movement_id"]],
+                            focus_hours=list(EVENING),
+                            encode="delay",
+                            series=["median_tti"],
+                        ),
+                        confidence=_confidence(nt, p),
+                        impact=min(1.0, nt / 8000),
+                        novelty=min(1.0, pct / 25),
+                        recurrence=0.9,
+                        movements=[r["movement_id"]],
+                    )
                 ),
             }
         )
@@ -397,53 +402,54 @@ def detect_day_type(obs: pl.DataFrame, movements: pl.DataFrame) -> list[dict]:
             {
                 "p": float(p),
                 "n": n_total,
-                "build": lambda r=row, p=float(p), u=float(u), pct=pct,
-                nw=int(wd.len()), ne=int(we.len()), nt=n_total: Finding(
-                    id=f"DAY_{r['movement_id']}",
-                    kind=Kind.DAY_TYPE,
-                    title=(
-                        f"{r['movement_name']} "
-                        + ("empties at the weekend" if pct > 0 else "is worse at the weekend")
-                    ),
-                    claim=(
-                        f"{r['movement_name']} runs {abs(pct):.0f}% "
-                        f"{'slower' if pct > 0 else 'faster'} per kilometre on weekdays "
-                        f"than at weekends."
-                    ),
-                    interpretation=(
-                        "A movement that clears at the weekend is carrying commuting or "
-                        "business travel, and demand-side measures can reach it. One that "
-                        "does not is carrying something that does not observe a weekend."
-                        if pct > 0
-                        else "This movement is busier at the weekend than on weekdays, which "
-                        "points at retail, market or leisure travel rather than commuting."
-                    ),
-                    limitation=(
-                        "One 2019 window covering monsoon into early winter. Festival weeks "
-                        "are inside it and are not separated out, and a public holiday is "
-                        "counted as whatever weekday it fell on."
-                    ),
-                    evidence=Evidence(
-                        observations=nt,
-                        test="Mann-Whitney U on pace, weekday against weekend",
-                        statistic=round(u, 1),
-                        p_value=p,
-                        effect=round(abs(pct), 2),
-                        effect_unit="% difference in median pace",
-                        comparison=f"{nw:,} weekday observations against {ne:,} weekend",
-                    ),
-                    view=View(
-                        layout="compare",
-                        focus_movements=[r["movement_id"]],
-                        day_types=["WEEKDAY", "WEEKEND"],
-                        encode="delay",
-                        series=["weekday_tti", "weekend_tti"],
-                    ),
-                    confidence=_confidence(nt, p),
-                    impact=min(1.0, nt / 8000),
-                    novelty=min(1.0, abs(pct) / 20),
-                    recurrence=0.95,
-                    movements=[r["movement_id"]],
+                "build": lambda r=row, p=float(p), u=float(u), pct=pct, nw=int(wd.len()), ne=int(we.len()), nt=n_total: (
+                    Finding(
+                        id=f"DAY_{r['movement_id']}",
+                        kind=Kind.DAY_TYPE,
+                        title=(
+                            f"{r['movement_name']} "
+                            + ("empties at the weekend" if pct > 0 else "is worse at the weekend")
+                        ),
+                        claim=(
+                            f"{r['movement_name']} runs {abs(pct):.0f}% "
+                            f"{'slower' if pct > 0 else 'faster'} per kilometre on weekdays "
+                            f"than at weekends."
+                        ),
+                        interpretation=(
+                            "A movement that clears at the weekend is carrying commuting or "
+                            "business travel, and demand-side measures can reach it. One that "
+                            "does not is carrying something that does not observe a weekend."
+                            if pct > 0
+                            else "This movement is busier at the weekend than on weekdays, which "
+                            "points at retail, market or leisure travel rather than commuting."
+                        ),
+                        limitation=(
+                            "One 2019 window covering monsoon into early winter. Festival weeks "
+                            "are inside it and are not separated out, and a public holiday is "
+                            "counted as whatever weekday it fell on."
+                        ),
+                        evidence=Evidence(
+                            observations=nt,
+                            test="Mann-Whitney U on pace, weekday against weekend",
+                            statistic=round(u, 1),
+                            p_value=p,
+                            effect=round(abs(pct), 2),
+                            effect_unit="% difference in median pace",
+                            comparison=f"{nw:,} weekday observations against {ne:,} weekend",
+                        ),
+                        view=View(
+                            layout="compare",
+                            focus_movements=[r["movement_id"]],
+                            day_types=["WEEKDAY", "WEEKEND"],
+                            encode="delay",
+                            series=["weekday_tti", "weekend_tti"],
+                        ),
+                        confidence=_confidence(nt, p),
+                        impact=min(1.0, nt / 8000),
+                        novelty=min(1.0, abs(pct) / 20),
+                        recurrence=0.95,
+                        movements=[r["movement_id"]],
+                    )
                 ),
             }
         )
@@ -460,9 +466,7 @@ def detect_recurrence(anomalies: pl.DataFrame, scored_total: int, obs: pl.DataFr
         return []
 
     base_rate = anomalies.height / max(scored_total, 1)
-    per_bin = (
-        obs.group_by("movement_id", "hour").len().rename({"len": "scored"})
-    )
+    per_bin = obs.group_by("movement_id", "hour").len().rename({"len": "scored"})
     hits = (
         anomalies.group_by("movement_id", "hour")
         .agg(pl.len().alias("hits"), pl.col("movement_name").first())

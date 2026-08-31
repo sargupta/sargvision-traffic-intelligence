@@ -26,9 +26,7 @@ OUT_WEB = Path("apps/web/public/data/insights.json")
 def main() -> None:
     tables = {
         name: pl.read_parquet(CURATED / f"{name}.parquet")
-        for name in (
-            "observations", "movements", "reliability", "baselines", "anomalies", "zones"
-        )
+        for name in ("observations", "movements", "reliability", "baselines", "anomalies", "zones")
     }
     manifest = json.loads((CURATED / "manifest.json").read_text())
     scored_total = manifest["row_counts"]["observations"]
@@ -69,9 +67,7 @@ def main() -> None:
         f"rejected by FDR {run.rejected_fdr} (q = {run.fdr_q})\n"
     )
     for f in run.findings:
-        print(
-            f"  [{f.priority:.3f}] {f.confidence.value:<8} {f.kind.value:<13} {f.title}"
-        )
+        print(f"  [{f.priority:.3f}] {f.confidence.value:<8} {f.kind.value:<13} {f.title}")
     print(f"\n{len(run.edges)} graph edges")
 
 

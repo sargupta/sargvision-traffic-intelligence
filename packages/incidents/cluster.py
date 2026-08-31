@@ -118,9 +118,7 @@ def cluster_chokes(
     for members in groups.values():
         lats = [c.midpoint[0] for _, c in members]
         lons = [c.midpoint[1] for _, c in members]
-        severity = max(
-            (c.severity for _, c in members), key=lambda s: SEVERITY_RANK.get(s, 0)
-        )
+        severity = max((c.severity for _, c in members), key=lambda s: SEVERITY_RANK.get(s, 0))
         clusters.append(
             ChokeCluster(
                 centre=(sum(lats) / len(lats), sum(lons) / len(lons)),

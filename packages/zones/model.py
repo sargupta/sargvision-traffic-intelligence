@@ -52,9 +52,7 @@ K_RANGE = range(4, 13)
 
 
 def to_metres(lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
-    return np.column_stack(
-        [(lat - LAT_ORIGIN) * M_PER_DEG_LAT, (lon - LON_ORIGIN) * M_PER_DEG_LON]
-    )
+    return np.column_stack([(lat - LAT_ORIGIN) * M_PER_DEG_LAT, (lon - LON_ORIGIN) * M_PER_DEG_LON])
 
 
 def to_degrees(xy: np.ndarray) -> np.ndarray:
@@ -63,7 +61,9 @@ def to_degrees(xy: np.ndarray) -> np.ndarray:
     )
 
 
-def _kmeanspp(points: np.ndarray, weights: np.ndarray, k: int, rng: np.random.Generator) -> np.ndarray:
+def _kmeanspp(
+    points: np.ndarray, weights: np.ndarray, k: int, rng: np.random.Generator
+) -> np.ndarray:
     """k-means++ seeding, weighted by how many observations sit at each point."""
     centres = np.empty((k, 2))
     first = rng.choice(len(points), p=weights / weights.sum())
@@ -155,11 +155,7 @@ def _name_zones(centres_deg: np.ndarray) -> list[tuple[str, float, str]]:
     pairs: list[tuple[float, int, int]] = []
     for zi, (lat, lon) in enumerate(centres_deg):
         for li, mark in enumerate(LANDMARKS):
-            d = float(
-                np.hypot(
-                    (lat - mark.lat) * M_PER_DEG_LAT, (lon - mark.lon) * M_PER_DEG_LON
-                )
-            )
+            d = float(np.hypot((lat - mark.lat) * M_PER_DEG_LAT, (lon - mark.lon) * M_PER_DEG_LON))
             pairs.append((d, zi, li))
     pairs.sort()
 
@@ -247,9 +243,7 @@ def assign(df: pl.DataFrame, model: ZoneModel) -> pl.DataFrame:
     names = model.zones["zone_name"].to_list()
 
     def nearest(lat_col: str, lon_col: str) -> tuple[list[str], list[str]]:
-        pts = to_metres(
-            df[lat_col].to_numpy().astype(float), df[lon_col].to_numpy().astype(float)
-        )
+        pts = to_metres(df[lat_col].to_numpy().astype(float), df[lon_col].to_numpy().astype(float))
         d = ((pts[:, None, :] - centres[None, :, :]) ** 2).sum(axis=2)
         idx = d.argmin(axis=1)
         return [ids[i] for i in idx], [names[i] for i in idx]

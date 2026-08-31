@@ -4,6 +4,7 @@ Too few alerts and no habit forms, so the product becomes non-essential. Too man
 officers stop reading. The target band is monitored continuously and the thresholds
 move to serve it — not the other way round.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

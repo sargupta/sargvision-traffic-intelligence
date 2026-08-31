@@ -47,8 +47,8 @@ class Thresholds:
     elevated: float = 1.25
     high: float = 1.45
     severe: float = 1.75
-    clear: float = 1.15           # hysteresis: leave a state below this
-    min_excess_minutes: float = 1.0   # ignore a big ratio on a two-minute hop
+    clear: float = 1.15  # hysteresis: leave a state below this
+    min_excess_minutes: float = 1.0  # ignore a big ratio on a two-minute hop
 
     def band(self, index: float, excess_minutes: float) -> str:
         if excess_minutes < self.min_excess_minutes:
@@ -88,7 +88,7 @@ CADENCE = {
     "HIGH": timedelta(minutes=3),
     "ELEVATED": timedelta(minutes=6),
     "NORMAL": timedelta(minutes=15),
-    "UNKNOWN": timedelta(minutes=2),   # never seen: get a first reading soon
+    "UNKNOWN": timedelta(minutes=2),  # never seen: get a first reading soon
 }
 
 # Overnight there is no sergeant to send. Conditions are still recorded so the
@@ -100,6 +100,7 @@ QUIET_CADENCE = timedelta(minutes=30)
 
 def _is_quiet(at: datetime) -> bool:
     return at.hour >= 23 or at.hour < 5
+
 
 # A condition must hold this long before it becomes an incident. Traffic
 # fluctuates; a single poll is not a problem. Tunable because the right value
@@ -357,9 +358,13 @@ class CommandCentre:
 
             jid, jname, dist = self._nearest_junction(lat, lon)
             roads = next(
-                (r.roads for c in cluster.corridors
-                 if (st := self.status.get(c)) is not None
-                 and (r := st.latest) is not None and r.roads),
+                (
+                    r.roads
+                    for c in cluster.corridors
+                    if (st := self.status.get(c)) is not None
+                    and (r := st.latest) is not None
+                    and r.roads
+                ),
                 "",
             )
             where = f"{roads}, near {jname}" if roads else f"near {jname}"
@@ -392,9 +397,14 @@ class CommandCentre:
                     "corroborating_corridors": cluster.corroboration,
                     "worst_index": round(
                         max(
-                            (st.index or 1.0 for c in cluster.corridors if (st := self.status.get(c))),
+                            (
+                                st.index or 1.0
+                                for c in cluster.corridors
+                                if (st := self.status.get(c))
+                            ),
                             default=1.0,
-                        ), 3
+                        ),
+                        3,
                     ),
                     "distance_to_junction_m": round(dist),
                     "junction_vc_ratio_2011": junction.vc_ratio,
@@ -403,7 +413,11 @@ class CommandCentre:
                 limitation=(
                     "Location comes from Google traffic data on the route polyline. "
                     "It shows where traffic is slow, not why. "
-                    + ("The nearest junction pin is approximate. " if junction.pin_is_approximate else "")
+                    + (
+                        "The nearest junction pin is approximate. "
+                        if junction.pin_is_approximate
+                        else ""
+                    )
                     + "No cause is known until an officer reports one."
                 ),
                 last_seen_at=now,
@@ -440,7 +454,10 @@ class CommandCentre:
 
         open_incidents = sorted(
             (i for i in self.incidents.values() if i.is_open),
-            key=lambda i: ({"P1": 0, "P2": 1, "P3": 2, "P4": 3}[i.priority.value], -i.age_minutes(moment)),
+            key=lambda i: (
+                {"P1": 0, "P2": 1, "P3": 2, "P4": 3}[i.priority.value],
+                -i.age_minutes(moment),
+            ),
         )
         return {
             "at": moment.isoformat(timespec="seconds"),
@@ -459,18 +476,26 @@ class CommandCentre:
                     "index": round(s.index, 3) if s.index is not None else None,
                     "excess_minutes": round(s.latest.excess_minutes, 1) if s.latest else None,
                     "duration_minutes": round(s.latest.duration_s / 60, 1) if s.latest else None,
-                    "typical_minutes": round(s.latest.static_duration_s / 60, 1) if s.latest else None,
+                    "typical_minutes": round(s.latest.static_duration_s / 60, 1)
+                    if s.latest
+                    else None,
                     "roads": s.latest.roads if s.latest else "",
                     "trend_per_10min": round(t, 3) if (t := s.trend()) is not None else None,
                     "held_minutes": round(s.held_for(moment).total_seconds() / 60, 1),
                     "speed_kmh": round(s.latest.mean_speed_kmh, 1) if s.latest else None,
-                    "choke_points": [c.as_dict() for c in (s.latest.choke_points if s.latest else ())],
+                    "choke_points": [
+                        c.as_dict() for c in (s.latest.choke_points if s.latest else ())
+                    ],
                     # The carriageway Google routed over, split at every change
                     # of traffic classification. This is what lets the map draw
                     # the road instead of a line between two dots.
                     "runs": [r.as_dict() for r in (s.latest.speed_runs if s.latest else ())],
-                    "observed_at": s.latest.observed_at.isoformat(timespec="seconds") if s.latest else None,
-                    "approximate_location": self.network.corridors[s.corridor_id].located_approximately,
+                    "observed_at": s.latest.observed_at.isoformat(timespec="seconds")
+                    if s.latest
+                    else None,
+                    "approximate_location": self.network.corridors[
+                        s.corridor_id
+                    ].located_approximately,
                 }
                 for s in sorted(self.status.values(), key=lambda x: -(x.index or 0))
             ],

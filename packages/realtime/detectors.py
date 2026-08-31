@@ -15,10 +15,10 @@ from enum import Enum
 from packages.realtime.state import CityState, MovementState, Status
 
 # Calibrated against the Siliguri distribution. Configuration, not constants.
-VELOCITY_ALARM = 6.0        # deviation points gained per 10 minutes
-PERSISTENCE_ALARM = 20.0    # minutes a movement must hold an elevated state
-VARIABILITY_ALARM = 22.0    # coefficient of variation, %
-CLUSTER_MIN = 2             # movements sharing a zone before it is a cluster
+VELOCITY_ALARM = 6.0  # deviation points gained per 10 minutes
+PERSISTENCE_ALARM = 20.0  # minutes a movement must hold an elevated state
+VARIABILITY_ALARM = 22.0  # coefficient of variation, %
+CLUSTER_MIN = 2  # movements sharing a zone before it is a cluster
 
 
 class Signal(str, Enum):
@@ -51,7 +51,9 @@ class LiveFinding:
         Multiplicative, so a severe but momentary blip does not outrank a
         moderate condition that has held for an hour across three movements.
         """
-        sev = {"CRITICAL": 1.0, "HIGH": 0.75, "MODERATE": 0.5, "NORMAL": 0.2}.get(self.severity, 0.3)
+        sev = {"CRITICAL": 1.0, "HIGH": 0.75, "MODERATE": 0.5, "NORMAL": 0.2}.get(
+            self.severity, 0.3
+        )
         conf = {"HIGH": 1.0, "MODERATE": 0.7, "LOW": 0.4}.get(self.confidence, 0.4)
         persist = min(1.0, self.persistence_minutes / 45) if self.persistence_minutes else 0.35
         breadth = min(1.0, 0.5 + 0.25 * len(self.movements))
@@ -194,7 +196,9 @@ def detect_variability(city: CityState, now: datetime) -> list[LiveFinding]:
                 evidence={
                     "coefficient_of_variation_pct": round(cv, 1),
                     "readings_in_window": len(m.window(now)),
-                    "deviation_pct": round(m.deviation_pct, 1) if m.deviation_pct is not None else None,
+                    "deviation_pct": round(m.deviation_pct, 1)
+                    if m.deviation_pct is not None
+                    else None,
                     "test": "coefficient of variation of pace over 2 hours",
                 },
                 movements=[m.movement_id],

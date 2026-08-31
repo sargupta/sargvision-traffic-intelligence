@@ -4,6 +4,7 @@ The platform must not be architected around one vendor. Everything upstream of t
 protocol is swappable: historical open data today, an authorised live product later,
 first-party probe data eventually.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

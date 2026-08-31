@@ -30,34 +30,138 @@ BBOX = {"south": 26.60, "north": 26.83, "west": 88.30, "east": 88.55}
 # V/C ratios from CMP 2011, published in Siliguri CDP 2041. Accident evidence
 # from Roy, Mohammadi & Roy, Geographies 6(2):55 (2026).
 JUNCTIONS: list[dict] = [
-    {"name": "Jalpai More", "query": "Jalpai More, Siliguri, West Bengal", "vc": 1.14, "control": "NON_SIGNALISED"},
-    {"name": "Mahananda Bridge", "query": "Mahananda Bridge, Hill Cart Road, Siliguri", "vc": 1.13, "control": "SIGNALISED"},
-    {"name": "Champasari More", "query": "Champasari More, Siliguri, West Bengal", "vc": 1.09, "control": "SIGNALISED"},
-    {"name": "Darjeeling More", "query": "Darjeeling More, Siliguri, West Bengal", "vc": 1.03, "control": "SIGNALISED"},
-    {"name": "Pani Tanki More", "query": "Panitanki More, Siliguri, West Bengal", "vc": 0.81, "control": "SIGNALISED"},
-    {"name": "Check Post More", "query": "Checkpost More, Siliguri, West Bengal", "vc": 0.77, "control": "SIGNALISED"},
-    {"name": "Jhankaar More", "query": "Jhankar More, Hyderpara, Siliguri", "vc": 0.75, "control": "MIXED"},
-    {"name": "Wall Ford Bypass Crossing", "query": "Eastern Bypass, Siliguri, West Bengal", "vc": 0.69, "control": "NON_SIGNALISED"},
-    {"name": "Air View More", "query": "Air View More, Siliguri, West Bengal", "vc": 0.60, "control": "SIGNALISED"},
-    {"name": "Thana More", "query": "Thana More, Siliguri, West Bengal", "vc": 0.52, "control": "SIGNALISED"},
-    {"name": "Wall Ford Sevoke Crossing", "query": "Sevoke Road, Siliguri, West Bengal", "vc": 0.48, "control": "SIGNALISED"},
-    {"name": "Sevoke More", "query": "Sevoke More, Siliguri, West Bengal", "vc": 0.41, "control": "SIGNALISED"},
-    {"name": "Venus More", "query": "Venus More, Siliguri, West Bengal", "vc": 0.39, "control": "SIGNALISED"},
-    {"name": "Ashighar More", "query": "Ashighar More, Siliguri, West Bengal", "vc": 0.38, "control": "NON_SIGNALISED"},
-    {"name": "Mallaguri Crossing", "query": "Mallaguri, Siliguri, West Bengal", "vc": 0.08, "control": "GRADE_SEPARATED"},
+    {
+        "name": "Jalpai More",
+        "query": "Jalpai More, Siliguri, West Bengal",
+        "vc": 1.14,
+        "control": "NON_SIGNALISED",
+    },
+    {
+        "name": "Mahananda Bridge",
+        "query": "Mahananda Bridge, Hill Cart Road, Siliguri",
+        "vc": 1.13,
+        "control": "SIGNALISED",
+    },
+    {
+        "name": "Champasari More",
+        "query": "Champasari More, Siliguri, West Bengal",
+        "vc": 1.09,
+        "control": "SIGNALISED",
+    },
+    {
+        "name": "Darjeeling More",
+        "query": "Darjeeling More, Siliguri, West Bengal",
+        "vc": 1.03,
+        "control": "SIGNALISED",
+    },
+    {
+        "name": "Pani Tanki More",
+        "query": "Panitanki More, Siliguri, West Bengal",
+        "vc": 0.81,
+        "control": "SIGNALISED",
+    },
+    {
+        "name": "Check Post More",
+        "query": "Checkpost More, Siliguri, West Bengal",
+        "vc": 0.77,
+        "control": "SIGNALISED",
+    },
+    {
+        "name": "Jhankaar More",
+        "query": "Jhankar More, Hyderpara, Siliguri",
+        "vc": 0.75,
+        "control": "MIXED",
+    },
+    {
+        "name": "Wall Ford Bypass Crossing",
+        "query": "Eastern Bypass, Siliguri, West Bengal",
+        "vc": 0.69,
+        "control": "NON_SIGNALISED",
+    },
+    {
+        "name": "Air View More",
+        "query": "Air View More, Siliguri, West Bengal",
+        "vc": 0.60,
+        "control": "SIGNALISED",
+    },
+    {
+        "name": "Thana More",
+        "query": "Thana More, Siliguri, West Bengal",
+        "vc": 0.52,
+        "control": "SIGNALISED",
+    },
+    {
+        "name": "Wall Ford Sevoke Crossing",
+        "query": "Sevoke Road, Siliguri, West Bengal",
+        "vc": 0.48,
+        "control": "SIGNALISED",
+    },
+    {
+        "name": "Sevoke More",
+        "query": "Sevoke More, Siliguri, West Bengal",
+        "vc": 0.41,
+        "control": "SIGNALISED",
+    },
+    {
+        "name": "Venus More",
+        "query": "Venus More, Siliguri, West Bengal",
+        "vc": 0.39,
+        "control": "SIGNALISED",
+    },
+    {
+        "name": "Ashighar More",
+        "query": "Ashighar More, Siliguri, West Bengal",
+        "vc": 0.38,
+        "control": "NON_SIGNALISED",
+    },
+    {
+        "name": "Mallaguri Crossing",
+        "query": "Mallaguri, Siliguri, West Bengal",
+        "vc": 0.08,
+        "control": "GRADE_SEPARATED",
+    },
     # Not in the CMP table but named repeatedly in the local literature.
-    {"name": "Court More", "query": "Court More, Siliguri, West Bengal", "vc": None, "control": "UNKNOWN"},
-    {"name": "Naukaghat", "query": "Naukaghat, Siliguri, West Bengal", "vc": None, "control": "UNKNOWN"},
-    {"name": "NJP Station", "query": "New Jalpaiguri Railway Station, Siliguri", "vc": None, "control": "UNKNOWN"},
-    {"name": "Siliguri Junction", "query": "Siliguri Junction Railway Station, West Bengal", "vc": None, "control": "UNKNOWN"},
-    {"name": "Bagdogra Airport", "query": "Bagdogra Airport, West Bengal", "vc": None, "control": "UNKNOWN"},
+    {
+        "name": "Court More",
+        "query": "Court More, Siliguri, West Bengal",
+        "vc": None,
+        "control": "UNKNOWN",
+    },
+    {
+        "name": "Naukaghat",
+        "query": "Naukaghat, Siliguri, West Bengal",
+        "vc": None,
+        "control": "UNKNOWN",
+    },
+    {
+        "name": "NJP Station",
+        "query": "New Jalpaiguri Railway Station, Siliguri",
+        "vc": None,
+        "control": "UNKNOWN",
+    },
+    {
+        "name": "Siliguri Junction",
+        "query": "Siliguri Junction Railway Station, West Bengal",
+        "vc": None,
+        "control": "UNKNOWN",
+    },
+    {
+        "name": "Bagdogra Airport",
+        "query": "Bagdogra Airport, West Bengal",
+        "vc": None,
+        "control": "UNKNOWN",
+    },
 ]
 
 
 def geocode(query: str) -> dict | None:
     url = "https://maps.googleapis.com/maps/api/geocode/json?" + urllib.parse.urlencode(
-        {"address": query, "key": KEY, "region": "in",
-         "bounds": f"{BBOX['south']},{BBOX['west']}|{BBOX['north']},{BBOX['east']}"}
+        {
+            "address": query,
+            "key": KEY,
+            "region": "in",
+            "bounds": f"{BBOX['south']},{BBOX['west']}|{BBOX['north']},{BBOX['east']}",
+        }
     )
     with urllib.request.urlopen(url, timeout=20) as r:
         payload = json.loads(r.read())

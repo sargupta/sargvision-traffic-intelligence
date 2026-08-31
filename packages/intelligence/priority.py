@@ -13,6 +13,7 @@ A +35% delay lasting 45 minutes on a critical corridor outranks a +70% spike las
 5 minutes on a minor one. Deviation alone cannot express that, which is why the two
 are separate quantities.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -20,8 +21,8 @@ import numpy as np
 from packages.domain.canonical import Confidence
 from packages.domain.models import CorridorImportance, Priority
 
-MAGNITUDE_REFERENCE = 60.0   # the CRITICAL threshold
-MAGNITUDE_CEILING = 2.0      # a +120% event is not four times as urgent as +30%
+MAGNITUDE_REFERENCE = 60.0  # the CRITICAL threshold
+MAGNITUDE_CEILING = 2.0  # a +120% event is not four times as urgent as +30%
 
 
 def magnitude_factor(deviation_pct: float) -> float:

@@ -142,8 +142,11 @@ class Toolbox:
     def get_current_state(self, status: str | None = None) -> dict:
         """What the city is doing right now, according to the running loop."""
         if self.loop is None:
-            return {"tool": "get_current_state", "available": False,
-                    "reason": "no live loop is running in this process"}
+            return {
+                "tool": "get_current_state",
+                "available": False,
+                "reason": "no live loop is running in this process",
+            }
         snap = self.loop.snapshot()
         movements = snap["movements"]
         if status:
@@ -162,8 +165,11 @@ class Toolbox:
     def get_recent_changes(self, limit: int = 8) -> dict:
         """What the intelligence engine has raised, most important first."""
         if self.loop is None:
-            return {"tool": "get_recent_changes", "available": False,
-                    "reason": "no live loop is running in this process"}
+            return {
+                "tool": "get_recent_changes",
+                "available": False,
+                "reason": "no live loop is running in this process",
+            }
         return {
             "tool": "get_recent_changes",
             "available": True,
@@ -188,7 +194,9 @@ SCHEMAS: list[dict] = [
         "description": "Current status of every monitored movement: deviation from expected travel time, status band, how long it has held. Use for anything about now.",
         "parameters": {
             "type": "object",
-            "properties": {"status": {"type": "string", "enum": ["NORMAL", "MODERATE", "HIGH", "CRITICAL"]}},
+            "properties": {
+                "status": {"type": "string", "enum": ["NORMAL", "MODERATE", "HIGH", "CRITICAL"]}
+            },
         },
     },
     {
@@ -208,14 +216,20 @@ SCHEMAS: list[dict] = [
     {
         "name": "get_movement_summary",
         "description": "Historical median travel time, delay and speed for a movement, or the busiest movements.",
-        "parameters": {"type": "object", "properties": {"movement": {"type": "string"}, "limit": {"type": "integer"}}},
+        "parameters": {
+            "type": "object",
+            "properties": {"movement": {"type": "string"}, "limit": {"type": "integer"}},
+        },
     },
     {
         "name": "get_reliability",
         "description": "Which movements are dependable and which are not, by buffer time. Use for 'unreliable', 'unpredictable', 'variable'.",
         "parameters": {
             "type": "object",
-            "properties": {"order": {"type": "string", "enum": ["worst", "best"]}, "limit": {"type": "integer"}},
+            "properties": {
+                "order": {"type": "string", "enum": ["worst", "best"]},
+                "limit": {"type": "integer"},
+            },
         },
     },
     {
@@ -232,7 +246,10 @@ SCHEMAS: list[dict] = [
     {
         "name": "get_anomalies",
         "description": "Historical departures from baseline in the 2019 data. NOT live events.",
-        "parameters": {"type": "object", "properties": {"movement": {"type": "string"}, "limit": {"type": "integer"}}},
+        "parameters": {
+            "type": "object",
+            "properties": {"movement": {"type": "string"}, "limit": {"type": "integer"}},
+        },
     },
     {
         "name": "get_data_confidence",

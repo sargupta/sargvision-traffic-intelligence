@@ -41,7 +41,7 @@ class FeedEntry:
     finding: LiveFinding
     first_seen: datetime
     last_seen: datetime
-    state: str = "ACTIVE"          # ACTIVE | RESOLVED
+    state: str = "ACTIVE"  # ACTIVE | RESOLVED
     components: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
@@ -228,13 +228,17 @@ class IntelligenceLoop:
                     "origin_zone": m.origin_zone,
                     "dest_zone": m.dest_zone,
                     "status": m.status.value,
-                    "deviation_pct": round(m.deviation_pct, 1) if m.deviation_pct is not None else None,
-                    "current_minutes": round(m.latest.traffic_seconds / 60, 1) if m.latest else None,
+                    "deviation_pct": round(m.deviation_pct, 1)
+                    if m.deviation_pct is not None
+                    else None,
+                    "current_minutes": round(m.latest.traffic_seconds / 60, 1)
+                    if m.latest
+                    else None,
                     "expected_minutes": (
                         round(
-                            self._baseline_for(m.movement_id, self.city.updated_at).expected_seconds(
-                                m.latest.distance_m
-                            )
+                            self._baseline_for(
+                                m.movement_id, self.city.updated_at
+                            ).expected_seconds(m.latest.distance_m)
                             / 60,
                             1,
                         )
@@ -253,11 +257,7 @@ class IntelligenceLoop:
         }
 
     def feed_entries(self, include_resolved: bool = False) -> list[dict]:
-        entries = [
-            e
-            for e in self.feed.values()
-            if include_resolved or e.state == "ACTIVE"
-        ]
+        entries = [e for e in self.feed.values() if include_resolved or e.state == "ACTIVE"]
         entries.sort(key=lambda e: e.finding.priority, reverse=True)
         return [e.as_dict() for e in entries[:FEED_LIMIT]]
 

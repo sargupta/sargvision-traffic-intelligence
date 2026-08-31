@@ -16,18 +16,40 @@ from packages.zones.model import MAX_NAME_DISTANCE_M, assign, build_zones
 def _synthetic(n_per_bin: int = 60) -> pl.DataFrame:
     """Two movements, one hour, known distances and paces."""
     common = dict(
-        movement_id="A__B", movement_name="A → B", day_type="WEEKDAY", hour=9,
-        origin_zone="SIL_Z00", origin_zone_name="A", dest_zone="SIL_Z01",
-        dest_zone_name="B", delay_pct=20.0, tti=1.2, speed_kmh=30.0,
-        origin_lat=26.71, origin_lon=88.42, dest_lat=26.72, dest_lon=88.43,
+        movement_id="A__B",
+        movement_name="A → B",
+        day_type="WEEKDAY",
+        hour=9,
+        origin_zone="SIL_Z00",
+        origin_zone_name="A",
+        dest_zone="SIL_Z01",
+        dest_zone_name="B",
+        delay_pct=20.0,
+        tti=1.2,
+        speed_kmh=30.0,
+        origin_lat=26.71,
+        origin_lon=88.42,
+        dest_lat=26.72,
+        dest_lon=88.43,
     )
     rows = []
     for _ in range(n_per_bin):
         # A short trip and a long trip at the SAME pace: 120 s/km.
-        rows.append(common | dict(distance_m=1000.0, traffic_seconds=120.0,
-                                  freeflow_seconds=100.0, delay_seconds=20.0))
-        rows.append(common | dict(distance_m=8000.0, traffic_seconds=960.0,
-                                  freeflow_seconds=800.0, delay_seconds=160.0))
+        rows.append(
+            common
+            | dict(
+                distance_m=1000.0, traffic_seconds=120.0, freeflow_seconds=100.0, delay_seconds=20.0
+            )
+        )
+        rows.append(
+            common
+            | dict(
+                distance_m=8000.0,
+                traffic_seconds=960.0,
+                freeflow_seconds=800.0,
+                delay_seconds=160.0,
+            )
+        )
     return pl.DataFrame(rows)
 
 
@@ -63,7 +85,7 @@ class TestPaceBaselines:
         assert worst["severity"][0] == "CRITICAL"
 
     def test_expected_minutes_scales_with_this_journey(self):
-        """"Expected 18 min" must mean 18 for THIS trip, not for the average trip."""
+        """ "Expected 18 min" must mean 18 for THIS trip, not for the average trip."""
         obs = _synthetic()
         baselines = base.build(obs, min_samples=30)
         scored = anom.score(obs, baselines)
@@ -123,14 +145,32 @@ class TestReliability:
         rows = []
         for i in range(300):
             pace = 100.0 + (i % 30) * 2  # identical spread for both
-            rows.append(dict(movement_id="SHORT", movement_name="s", origin_zone="A",
-                             origin_zone_name="A", dest_zone="B", dest_zone_name="B",
-                             distance_m=1000.0, traffic_seconds=pace * 1.0,
-                             speed_kmh=3600.0 / pace))
-            rows.append(dict(movement_id="LONG", movement_name="l", origin_zone="A",
-                             origin_zone_name="A", dest_zone="B", dest_zone_name="B",
-                             distance_m=8000.0, traffic_seconds=pace * 8.0,
-                             speed_kmh=3600.0 / pace))
+            rows.append(
+                dict(
+                    movement_id="SHORT",
+                    movement_name="s",
+                    origin_zone="A",
+                    origin_zone_name="A",
+                    dest_zone="B",
+                    dest_zone_name="B",
+                    distance_m=1000.0,
+                    traffic_seconds=pace * 1.0,
+                    speed_kmh=3600.0 / pace,
+                )
+            )
+            rows.append(
+                dict(
+                    movement_id="LONG",
+                    movement_name="l",
+                    origin_zone="A",
+                    origin_zone_name="A",
+                    dest_zone="B",
+                    dest_zone_name="B",
+                    distance_m=8000.0,
+                    traffic_seconds=pace * 8.0,
+                    speed_kmh=3600.0 / pace,
+                )
+            )
         scored = rel.score(pl.DataFrame(rows), min_samples=100)
         buffers = dict(zip(scored["movement_id"], scored["buffer_pct"], strict=True))
         assert buffers["SHORT"] == pytest.approx(buffers["LONG"], abs=1e-9)

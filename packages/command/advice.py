@@ -22,7 +22,7 @@ from packages.network.model import Network
 CONVERGENCE_MIN = 2
 
 # An alternative is only worth naming if it is genuinely better.
-DIVERSION_MARGIN = 0.20      # 20% faster than the congested route
+DIVERSION_MARGIN = 0.20  # 20% faster than the congested route
 DIVERSION_MAX_EXTRA_M = 2500  # and not a wild detour
 
 # You cannot post more officers than you have.
@@ -37,11 +37,11 @@ DEPLOYABLE_UNITS = 3
 
 @dataclass
 class Recommendation:
-    kind: str                  # POST | DIVERT | ESCALATE | WATCH | STAND_DOWN
-    urgency: str               # NOW | THIS_SHIFT | ADVISORY
+    kind: str  # POST | DIVERT | ESCALATE | WATCH | STAND_DOWN
+    urgency: str  # NOW | THIS_SHIFT | ADVISORY
     headline: str
     detail: str
-    because: list[str]         # the evidence, in plain sentences
+    because: list[str]  # the evidence, in plain sentences
     cannot_know: str
     junctions: list[str] = field(default_factory=list)
     corridors: list[str] = field(default_factory=list)
@@ -94,9 +94,7 @@ def recommend(
         for jid, apps in inbound.items()
         if len(apps) >= CONVERGENCE_MIN and network.junction(jid) is not None
     ]
-    candidates.sort(
-        key=lambda kv: -sum(c.get("excess_minutes") or 0 for c in kv[1])
-    )
+    candidates.sort(key=lambda kv: -sum(c.get("excess_minutes") or 0 for c in kv[1]))
     not_recommended = max(0, len(candidates) - deployable)
 
     for junction_id, approaches in candidates[:deployable]:
@@ -118,19 +116,28 @@ def recommend(
                 ),
                 because=[
                     f"{c['name']} is {c['index']:.2f}× its typical time"
-                    f"{f', {c['excess_minutes']:+.0f} min' if c.get('excess_minutes') is not None else ''}"
+                    f"{f', {c["excess_minutes"]:+.0f} min' if c.get('excess_minutes') is not None else ''}"
                     for c in sorted(approaches, key=lambda x: -(x.get("index") or 0))
                 ]
-                + [f"Together they account for about {total_excess:.0f} minutes of extra travel per journey set."]
+                + [
+                    f"Together they account for about {total_excess:.0f} minutes of extra travel per journey set."
+                ]
                 + (
-                    [f"{junction.name} measured V/C {junction.vc_ratio:.2f} in the 2011 survey — "
-                     f"{'already over capacity' if (junction.vc_ratio or 0) >= 1.0 else 'within its designed capacity'}."]
-                    if junction.vc_ratio is not None else []
+                    [
+                        f"{junction.name} measured V/C {junction.vc_ratio:.2f} in the 2011 survey — "
+                        f"{'already over capacity' if (junction.vc_ratio or 0) >= 1.0 else 'within its designed capacity'}."
+                    ]
+                    if junction.vc_ratio is not None
+                    else []
                 ),
                 cannot_know=(
                     "Whether the approaches share a cause. They share a destination, which is "
                     "why one post covers them, but the reason each is slow is not in this data."
-                    + (" The pin for this junction is approximate." if junction.pin_is_approximate else "")
+                    + (
+                        " The pin for this junction is approximate."
+                        if junction.pin_is_approximate
+                        else ""
+                    )
                 ),
                 junctions=[junction_id],
                 corridors=[c["corridor_id"] for c in approaches],
@@ -186,7 +193,8 @@ def recommend(
                 continue
             leg2 = next(
                 (
-                    x for x in network.corridors.values()
+                    x
+                    for x in network.corridors.values()
                     if x.from_junction == other.to_junction
                     and x.to_junction == corridor.to_junction
                 ),

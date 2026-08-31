@@ -73,12 +73,15 @@ class ReplayProvider:
     def __init__(self, observations: pl.DataFrame, replay_date: int, speed: float = 60.0):
         self.speed = speed
         self.replay_date = replay_date
-        self._day = observations.filter(pl.col("date") == replay_date) if "date" in observations.columns else observations
+        self._day = (
+            observations.filter(pl.col("date") == replay_date)
+            if "date" in observations.columns
+            else observations
+        )
         # Pre-bucket to five minutes so a sample is a median rather than one trip.
         self._buckets = (
             self._day.with_columns(
-                (pl.col("hour").cast(pl.Int64) * 60 + (pl.col("minute_of_day") % 60))
-                .alias("_mod")
+                (pl.col("hour").cast(pl.Int64) * 60 + (pl.col("minute_of_day") % 60)).alias("_mod")
             )
             .with_columns((pl.col("_mod") // 5 * 5).alias("bucket"))
             .group_by("movement_id", "bucket")
@@ -165,8 +168,14 @@ class GoogleRoutesProvider:
         with httpx.Client(timeout=10.0) as client:
             for m in movements:
                 body = {
-                    "origin": {"location": {"latLng": {"latitude": m.origin_lat, "longitude": m.origin_lon}}},
-                    "destination": {"location": {"latLng": {"latitude": m.dest_lat, "longitude": m.dest_lon}}},
+                    "origin": {
+                        "location": {
+                            "latLng": {"latitude": m.origin_lat, "longitude": m.origin_lon}
+                        }
+                    },
+                    "destination": {
+                        "location": {"latLng": {"latitude": m.dest_lat, "longitude": m.dest_lon}}
+                    },
                     "travelMode": "DRIVE",
                     "routingPreference": "TRAFFIC_AWARE",
                 }

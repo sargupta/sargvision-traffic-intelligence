@@ -1,4 +1,5 @@
 """Fetch the Siliguri observations. CC BY 4.0, no login required."""
+
 from __future__ import annotations
 
 from pathlib import Path

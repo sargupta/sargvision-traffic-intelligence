@@ -3,6 +3,7 @@
 These are the stable contracts every provider must produce and every engine consumes.
 The intelligence layer must not care where an observation came from.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -18,6 +19,7 @@ class Confidence(str):
     number without its confidence would imply city-wide intelligence the data cannot
     support.
     """
+
     HIGH = "HIGH"
     MODERATE = "MODERATE"
     LOW = "LOW"
@@ -45,6 +47,7 @@ class BaselineSource(str):
     Blueprint §12: fallbacks must be visible in metadata. A user must be able to see
     that a figure came from a coarser fallback rather than the preferred unit.
     """
+
     UNIT_1KM = "UNIT_1KM"
     UNIT_2KM_FALLBACK = "UNIT_2KM_FALLBACK"
     CITY_FALLBACK = "CITY_FALLBACK"
@@ -54,6 +57,7 @@ class BaselineSource(str):
 @dataclass(frozen=True)
 class TrafficObservation:
     """§10 — the canonical observation. Every provider emits this shape."""
+
     observation_id: str
     source_id: str
     source_type: str
@@ -64,7 +68,7 @@ class TrafficObservation:
     origin_lon: float
     dest_lat: float
     dest_lon: float
-    unit_id: str                      # OD zone pair. NOT a segment - see the spike.
+    unit_id: str  # OD zone pair. NOT a segment - see the spike.
     distance_m: int
     traffic_duration_s: int
     free_flow_duration_s: int
@@ -72,7 +76,11 @@ class TrafficObservation:
 
     @property
     def travel_time_ratio(self) -> float:
-        return self.traffic_duration_s / self.free_flow_duration_s if self.free_flow_duration_s else 0.0
+        return (
+            self.traffic_duration_s / self.free_flow_duration_s
+            if self.free_flow_duration_s
+            else 0.0
+        )
 
     @property
     def delay_s(self) -> int:
@@ -80,12 +88,17 @@ class TrafficObservation:
 
     @property
     def speed_proxy_kmh(self) -> float:
-        return (self.distance_m / 1000) / (self.traffic_duration_s / 3600) if self.traffic_duration_s else 0.0
+        return (
+            (self.distance_m / 1000) / (self.traffic_duration_s / 3600)
+            if self.traffic_duration_s
+            else 0.0
+        )
 
 
 @dataclass(frozen=True)
 class UnitMetric:
     """§10 SegmentMetric, renamed. The spike removed segments; the unit is an OD zone pair."""
+
     unit_id: str
     time_bucket: str
     observation_count: int
@@ -103,6 +116,7 @@ class UnitMetric:
 @dataclass(frozen=True)
 class TrafficAnomaly:
     """§10 — one abnormal reading. Not yet an event."""
+
     anomaly_id: str
     unit_id: str
     observed_at: datetime
@@ -118,6 +132,7 @@ class TrafficAnomaly:
 @dataclass(frozen=True)
 class Investigation:
     """§10 — the assembled evidence behind one event. What the Copilot is handed."""
+
     investigation_id: str
     event_id: str
     evidence_items: list[dict] = field(default_factory=list)

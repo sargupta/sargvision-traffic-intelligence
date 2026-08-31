@@ -58,7 +58,11 @@ def main() -> None:
     freeflow_mean = df["ff_speed"].mean()
 
     shares = []
-    for obs, ff in ((observed_median, freeflow_median), (observed_agg, freeflow_agg), (observed_mean, freeflow_mean)):
+    for obs, ff in (
+        (observed_median, freeflow_median),
+        (observed_agg, freeflow_agg),
+        (observed_mean, freeflow_mean),
+    ):
         shares.append((ff - obs) / (REFERENCE_SPEED_KMH - obs) * 100)
 
     f1 = {
@@ -70,9 +74,24 @@ def main() -> None:
         "congestion_share_pct_low": int(min(shares)),
         "congestion_share_pct_high": int(-(-max(shares) // 1)),
         "estimators": [
-            {"method": "median of per-observation speeds", "observed": round(observed_median, 2), "freeflow": round(freeflow_median, 2), "share_pct": round(shares[0], 1)},
-            {"method": "distance-weighted aggregate", "observed": round(observed_agg, 2), "freeflow": round(freeflow_agg, 2), "share_pct": round(shares[1], 1)},
-            {"method": "mean of per-observation speeds", "observed": round(observed_mean, 2), "freeflow": round(freeflow_mean, 2), "share_pct": round(shares[2], 1)},
+            {
+                "method": "median of per-observation speeds",
+                "observed": round(observed_median, 2),
+                "freeflow": round(freeflow_median, 2),
+                "share_pct": round(shares[0], 1),
+            },
+            {
+                "method": "distance-weighted aggregate",
+                "observed": round(observed_agg, 2),
+                "freeflow": round(freeflow_agg, 2),
+                "share_pct": round(shares[1], 1),
+            },
+            {
+                "method": "mean of per-observation speeds",
+                "observed": round(observed_mean, 2),
+                "freeflow": round(freeflow_mean, 2),
+                "share_pct": round(shares[2], 1),
+            },
         ],
         "n": total,
     }
@@ -81,12 +100,21 @@ def main() -> None:
     def by_hour(frame: pl.DataFrame) -> list[dict]:
         agg = (
             frame.group_by("hour")
-            .agg(pl.col("tti").median().alias("tti"), pl.col("speed").median().alias("speed"), pl.len().alias("n"))
+            .agg(
+                pl.col("tti").median().alias("tti"),
+                pl.col("speed").median().alias("speed"),
+                pl.len().alias("n"),
+            )
             .sort("hour")
             .filter(pl.col("n") >= MIN_BIN)
         )
         return [
-            {"hour": int(r["hour"]), "tti": round(r["tti"], 3), "speed": round(r["speed"], 2), "n": int(r["n"])}
+            {
+                "hour": int(r["hour"]),
+                "tti": round(r["tti"], 3),
+                "speed": round(r["speed"], 2),
+                "n": int(r["n"]),
+            }
             for r in agg.iter_rows(named=True)
         ]
 
@@ -173,6 +201,7 @@ def main() -> None:
             for pos, i in enumerate(order):
                 out[i] = float(pos)
             return out
+
         rx, ry = ranks(xs), ranks(ys)
         mx, my = sum(rx) / len(rx), sum(ry) / len(ry)
         num = sum((a - mx) * (b - my) for a, b in zip(rx, ry, strict=True))
@@ -211,7 +240,8 @@ def main() -> None:
         for lat, lon in [cell_centroid(cell, GRID_1KM)]
     ]
     coverage_summary = {
-        b: sum(1 for c in coverage if c["b"] == b) for b in ("HIGH", "MODERATE", "LOW", "INSUFFICIENT")
+        b: sum(1 for c in coverage if c["b"] == b)
+        for b in ("HIGH", "MODERATE", "LOW", "INSUFFICIENT")
     }
 
     payload = {
@@ -241,7 +271,12 @@ def main() -> None:
     print(f"wrote {OUT}  ({OUT.stat().st_size / 1024:.0f} KB)")
     print(json.dumps({k: v for k, v in f1.items() if k != "estimators"}, indent=2))
     print("F2", json.dumps(f2["summary"]))
-    print("F3 weekend", json.dumps(f3["weekend_summary"]), "ratio", f3["weekend_share_of_weekday_peak"])
+    print(
+        "F3 weekend",
+        json.dumps(f3["weekend_summary"]),
+        "ratio",
+        f3["weekend_share_of_weekday_peak"],
+    )
     print("F4", json.dumps({k: v for k, v in f4.items() if k != "corridors"}))
     print("coverage", coverage_summary, "cells", len(coverage))
 

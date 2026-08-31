@@ -27,8 +27,10 @@ def client():
 
     class StubProbe:
         name, is_live, retains_durations = "stub", False, False
+
         def read(self, *a, **k):
             return None
+
         def provenance(self):
             return {"source": "stub"}
 
@@ -84,6 +86,7 @@ class TestOperationalSecurity:
 
     def test_cors_does_not_default_to_wildcard(self):
         from apps.api import main
+
         assert "*" not in main._ORIGINS, "a missing CORS_ORIGINS must fail closed"
 
 
@@ -104,6 +107,7 @@ class TestPollingEconomy:
         from datetime import datetime
 
         from packages.command.centre import _is_quiet
+
         assert _is_quiet(datetime(2026, 8, 30, 2, 0))
         assert _is_quiet(datetime(2026, 8, 30, 23, 30))
         assert not _is_quiet(datetime(2026, 8, 30, 9, 0))
@@ -111,12 +115,14 @@ class TestPollingEconomy:
 
     def test_a_quiet_corridor_is_asked_less_often_than_a_failing_one(self):
         from packages.command.centre import CADENCE
+
         assert CADENCE["NORMAL"] > CADENCE["ELEVATED"] > CADENCE["HIGH"]
 
     def test_a_corridor_is_not_polled_before_it_is_due(self):
         from datetime import datetime, timedelta
 
         from packages.command.centre import CorridorStatus
+
         s = CorridorStatus(corridor_id="C_X", name="x")
         now = datetime(2026, 8, 30, 12, 0)
         assert s.is_due(now), "never-read corridors must be due immediately"
@@ -129,6 +135,7 @@ class TestPollingEconomy:
         from datetime import datetime, timedelta
 
         from packages.command.centre import CorridorStatus
+
         s = CorridorStatus(corridor_id="C_X", name="x")
         now = datetime(2026, 8, 30, 12, 0)
         s.band = "HIGH"
@@ -147,18 +154,33 @@ class TestPollingEconomy:
 
         class Stub:
             name, is_live, retains_durations = "stub", False, False
-            def read(self, *a, **k): return None
-            def provenance(self): return {}
+
+            def read(self, *a, **k):
+                return None
+
+            def provenance(self):
+                return {}
 
         centre = CommandCentre(network=load_network(), probe=Stub())
         centre.confirm_after = timedelta(0)
         for st in centre.status.values():
             st.band = "HIGH"
         cluster = ChokeCluster(
-            centre=(26.7245, 88.4156), severity="TRAFFIC_JAM",
-            members=[("C_X", ChokePoint(
-                severity="TRAFFIC_JAM", start=(26.7245, 88.4156), end=(26.7246, 88.4157),
-                midpoint=(26.7245, 88.4156), length_m=400.0, share_of_corridor=0.4))],
+            centre=(26.7245, 88.4156),
+            severity="TRAFFIC_JAM",
+            members=[
+                (
+                    "C_X",
+                    ChokePoint(
+                        severity="TRAFFIC_JAM",
+                        start=(26.7245, 88.4156),
+                        end=(26.7246, 88.4157),
+                        midpoint=(26.7245, 88.4156),
+                        length_m=400.0,
+                        share_of_corridor=0.4,
+                    ),
+                )
+            ],
         )
         at_night = centre._raise_incidents([cluster], datetime(2026, 8, 30, 2, 30))
         assert at_night == []

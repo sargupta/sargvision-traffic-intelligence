@@ -102,9 +102,9 @@ def build_observations(df: pl.DataFrame) -> pl.DataFrame:
             pl.col("traffic_s").cast(pl.Float64).alias("traffic_seconds"),
             pl.col("notraffic_s").cast(pl.Float64).alias("freeflow_seconds"),
             (pl.col("traffic_s") - pl.col("notraffic_s")).alias("delay_seconds"),
-            (
-                (pl.col("traffic_s") - pl.col("notraffic_s")) / pl.col("notraffic_s") * 100
-            ).alias("delay_pct"),
+            ((pl.col("traffic_s") - pl.col("notraffic_s")) / pl.col("notraffic_s") * 100).alias(
+                "delay_pct"
+            ),
             (pl.col("traffic_s") / pl.col("notraffic_s")).alias("tti"),
             pl.col("speed").cast(pl.Float64).alias("speed_kmh"),
             pl.col("ff_speed").cast(pl.Float64).alias("freeflow_speed_kmh"),
@@ -125,8 +125,6 @@ def validate(obs: pl.DataFrame) -> dict[str, int | bool]:
         "nonpositive_freeflow": obs.filter(pl.col("freeflow_seconds") <= 0).height,
         "nonpositive_distance": obs.filter(pl.col("distance_m") <= 0).height,
         "non_primary_route": obs.filter(pl.col("route_rank") != obs["route_rank"].min()).height,
-        "hour_out_of_range": obs.filter(
-            (pl.col("hour") < 0) | (pl.col("hour") > 23)
-        ).height,
+        "hour_out_of_range": obs.filter((pl.col("hour") < 0) | (pl.col("hour") > 23)).height,
         "duplicate_ids": obs.height - obs["observation_id"].n_unique(),
     }

@@ -43,6 +43,7 @@ IST = ZoneInfo("Asia/Kolkata")
 def now() -> datetime:
     return datetime.now(IST).replace(tzinfo=None)
 
+
 # 34 corridors every 3 minutes is 680 requests an hour. That number is the bill
 # and the compliance surface; it is deliberately one constant.
 POLL_SECONDS = float(os.environ.get("POLL_SECONDS", "180"))
@@ -109,7 +110,9 @@ def health() -> dict:
         "cycles": c.cycles if c else 0,
         "last_poll": c.last_poll.isoformat(timespec="seconds") if c and c.last_poll else None,
         "poll_seconds": POLL_SECONDS,
-        "started_at": STATE["started_at"].isoformat(timespec="seconds") if STATE["started_at"] else None,
+        "started_at": STATE["started_at"].isoformat(timespec="seconds")
+        if STATE["started_at"]
+        else None,
     }
 
 
@@ -217,11 +220,7 @@ def city_profile(day_type: str = Query("WEEKDAY")) -> dict:
     path = CURATED / "patterns_hourly.parquet"
     if not path.exists():
         raise HTTPException(404, "city profile has not been built")
-    frame = (
-        pl.read_parquet(path)
-        .filter(pl.col("day_type") == day_type.upper())
-        .sort("hour")
-    )
+    frame = pl.read_parquet(path).filter(pl.col("day_type") == day_type.upper()).sort("hour")
     return {
         "day_type": day_type.upper(),
         "hours": [
@@ -289,7 +288,12 @@ def incidents(state: str | None = Query(None), include_closed: bool = Query(Fals
         items = [i for i in items if i.state.value == state.upper()]
     elif not include_closed:
         items = [i for i in items if i.is_open]
-    items.sort(key=lambda i: ({"P1": 0, "P2": 1, "P3": 2, "P4": 3}[i.priority.value], -i.age_minutes(moment)))
+    items.sort(
+        key=lambda i: (
+            {"P1": 0, "P2": 1, "P3": 2, "P4": 3}[i.priority.value],
+            -i.age_minutes(moment),
+        )
+    )
     return {"incidents": [i.as_dict(moment) for i in items], "count": len(items)}
 
 

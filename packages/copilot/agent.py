@@ -275,7 +275,12 @@ class Copilot:
                 next_step="Retry once the model is reachable, or query the tool directly.",
                 tools_called=[tool],
             ),
-            view={"layout": "feed", "encode": "deviation", "focus_movements": [], "focus_zones": []},
+            view={
+                "layout": "feed",
+                "encode": "deviation",
+                "focus_movements": [],
+                "focus_zones": [],
+            },
             tool_trace=[{"tool": tool, "args": {}}],
             model="deterministic-fallback",
             degraded=True,

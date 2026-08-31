@@ -1,4 +1,5 @@
 """The contracts are the product's integrity guarantees. Test them first."""
+
 import pytest
 
 from packages.analytics.anomalies import SILIGURI

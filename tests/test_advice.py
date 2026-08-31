@@ -17,23 +17,30 @@ def board_with(degraded: list[tuple[str, float, float]]) -> dict:
     corridors = []
     for cid, corridor in by_id.items():
         hit = next((d for d in degraded if d[0] == cid), None)
-        corridors.append({
-            "corridor_id": cid, "name": corridor.name,
-            "band": "HIGH" if hit else "NORMAL",
-            "index": hit[1] if hit else 1.0,
-            "excess_minutes": hit[2] if hit else 0.0,
-            "duration_minutes": 10.0, "typical_minutes": 8.0,
-            "roads": "NH10", "trend_per_10min": None, "held_minutes": 0,
-            "choke_points": [], "runs": [], "observed_at": None,
-            "approximate_location": False, "speed_kmh": 20.0,
-        })
+        corridors.append(
+            {
+                "corridor_id": cid,
+                "name": corridor.name,
+                "band": "HIGH" if hit else "NORMAL",
+                "index": hit[1] if hit else 1.0,
+                "excess_minutes": hit[2] if hit else 0.0,
+                "duration_minutes": 10.0,
+                "typical_minutes": 8.0,
+                "roads": "NH10",
+                "trend_per_10min": None,
+                "held_minutes": 0,
+                "choke_points": [],
+                "runs": [],
+                "observed_at": None,
+                "approximate_location": False,
+                "speed_kmh": 20.0,
+            }
+        )
     return {"corridors": corridors, "incidents": []}
 
 
 def approaches_to(junction_id: str, n: int) -> list[str]:
-    return [
-        c.corridor_id for c in NET.corridors.values() if c.to_junction == junction_id
-    ][:n]
+    return [c.corridor_id for c in NET.corridors.values() if c.to_junction == junction_id][:n]
 
 
 class TestConvergence:
@@ -81,9 +88,7 @@ class TestDeployability:
         """Two badly delayed approaches beat four barely delayed ones."""
         big = approaches_to("J_VENUS_MORE", 2)
         small = approaches_to("J_COURT_MORE", 4)
-        board = board_with(
-            [(c, 2.0, 12.0) for c in big] + [(c, 1.3, 1.0) for c in small]
-        )
+        board = board_with([(c, 2.0, 12.0) for c in big] + [(c, 1.3, 1.0) for c in small])
         recs = recommend(NET, board, NOW, deployable=1)
         posts = [r for r in recs if r.kind == "POST"]
         assert posts and "Venus More" in posts[0].headline

@@ -25,7 +25,7 @@ from packages.providers.live import Sample
 # Calibrated on the Siliguri 2019 distribution, not copied from a generic table.
 # These are configuration and must be recalibrated for any other city.
 NORMAL, MODERATE, HIGH, CRITICAL = 0.0, 30.0, 45.0, 60.0
-RESOLVE = 20.0            # hysteresis: leave a state below this, not at entry
+RESOLVE = 20.0  # hysteresis: leave a state below this, not at entry
 WINDOW = timedelta(hours=2)
 MIN_FOR_TREND = 4
 
@@ -35,7 +35,7 @@ class Status(str, Enum):
     MODERATE = "MODERATE"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
-    UNKNOWN = "UNKNOWN"      # no baseline — we cannot say, and we say so
+    UNKNOWN = "UNKNOWN"  # no baseline — we cannot say, and we say so
 
 
 def classify(deviation_pct: float) -> Status:
@@ -89,7 +89,7 @@ class MovementState:
     dest_name: str = ""
     readings: deque[Reading] = field(default_factory=lambda: deque(maxlen=240))
     status: Status = Status.UNKNOWN
-    since: datetime | None = None      # when the current status began
+    since: datetime | None = None  # when the current status began
 
     # ── current values ───────────────────────────────────────────────────────
     @property

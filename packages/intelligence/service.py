@@ -5,6 +5,7 @@
 Never API -> LLM -> Database. The Copilot's tools call this service, exactly as the
 HTTP routes do, so the AI can reach nothing the API cannot.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -21,7 +22,7 @@ from packages.intelligence.priority import score
 from packages.providers.historical import HistoricalProvider
 from packages.replay.clock import ReplaySession
 
-MIN_UNIT_OBS = 30   # publish floor. Below this no baseline is published at all.
+MIN_UNIT_OBS = 30  # publish floor. Below this no baseline is published at all.
 
 
 class TrafficIntelligenceService:
@@ -43,9 +44,7 @@ class TrafficIntelligenceService:
             raw = self.provider.fetch_observations(datetime(2019, 1, 1), datetime(2020, 1, 1))
             df = baselines.prepare(raw)
 
-            fine = conf.annotate(
-                baselines.build(df, unit="unit_id"), BaselineSource.UNIT_1KM
-            )
+            fine = conf.annotate(baselines.build(df, unit="unit_id"), BaselineSource.UNIT_1KM)
             coarse = conf.annotate(
                 baselines.build(df, unit="unit_id_2km"), BaselineSource.UNIT_2KM_FALLBACK
             )
@@ -85,19 +84,22 @@ class TrafficIntelligenceService:
         )
         out = []
         for row in worst.iter_rows(named=True):
-            value, band = score(row["peak_deviation_pct"], 30.0,
-                                CorridorImportance.NORMAL, row["confidence"])
-            out.append({
-                "unit_id": row["unit_id"],
-                "peak_deviation_pct": round(row["peak_deviation_pct"], 1),
-                "occurrences": row["occurrences"],
-                "severity": anomalies.SILIGURI.classify(row["peak_deviation_pct"]).value,
-                "priority": band.value,
-                "priority_score": value,
-                "confidence": row["confidence"],
-                "sample_size": row["sample_size"],
-                "baseline_source": row["baseline_source"],
-            })
+            value, band = score(
+                row["peak_deviation_pct"], 30.0, CorridorImportance.NORMAL, row["confidence"]
+            )
+            out.append(
+                {
+                    "unit_id": row["unit_id"],
+                    "peak_deviation_pct": round(row["peak_deviation_pct"], 1),
+                    "occurrences": row["occurrences"],
+                    "severity": anomalies.SILIGURI.classify(row["peak_deviation_pct"]).value,
+                    "priority": band.value,
+                    "priority_score": value,
+                    "confidence": row["confidence"],
+                    "sample_size": row["sample_size"],
+                    "baseline_source": row["baseline_source"],
+                }
+            )
         return out
 
     def city_summary(self) -> dict:
@@ -116,12 +118,16 @@ class TrafficIntelligenceService:
         scored, _ = self._prepared()
         days = scored["date"].n_unique()
         out = []
-        for threshold in (anomalies.SILIGURI.moderate, anomalies.SILIGURI.high,
-                          anomalies.SILIGURI.critical):
+        for threshold in (
+            anomalies.SILIGURI.moderate,
+            anomalies.SILIGURI.high,
+            anomalies.SILIGURI.critical,
+        ):
             n = scored.filter(pl.col("deviation_pct") >= threshold).height
             r = DensityReading(threshold_pct=threshold, events=n, days=days)
-            out.append({"threshold_pct": threshold, "events": n,
-                        "per_day": r.per_day, "status": r.status})
+            out.append(
+                {"threshold_pct": threshold, "events": n, "per_day": r.per_day, "status": r.status}
+            )
         return out
 
     def city_insights(self) -> list[Metric]:
@@ -144,21 +150,25 @@ class TrafficIntelligenceService:
         peak_hour = int(hourly["hour"][0])
         return [
             Metric(
-                name="peak_hour", value=f"{peak_hour:02d}:00", unit="",
+                name="peak_hour",
+                value=f"{peak_hour:02d}:00",
+                unit="",
                 definition="Hour with the highest median travel time index.",
                 source=prov["source"],
                 derivation="Median TTI grouped by hour across all 101,418 prepared "
-                           "observations (not the scored subset).",
+                "observations (not the scored subset).",
                 limitation=prov["limitation"],
             ),
             Metric(
-                name="median_speed", value=round(full["speed_kmh"].median(), 2), unit="km/h",
+                name="median_speed",
+                value=round(full["speed_kmh"].median(), 2),
+                unit="km/h",
                 definition="Median observed travel speed across all prepared observations.",
                 source=prov["source"],
                 derivation="distance_m/1000 over traffic_seconds/3600, median over all "
-                           "101,418 valid primary-route observations.",
+                "101,418 valid primary-route observations.",
                 limitation="City-wide across mixed trip lengths; not corridor-specific. "
-                           + prov["limitation"],
+                + prov["limitation"],
             ),
         ]
 

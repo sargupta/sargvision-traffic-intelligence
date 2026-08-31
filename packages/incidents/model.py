@@ -45,21 +45,27 @@ TERMINAL = {IncidentState.CLOSED, IncidentState.STOOD_DOWN, IncidentState.LAPSED
 # that never happened.
 TRANSITIONS: dict[IncidentState, set[IncidentState]] = {
     IncidentState.DETECTED: {
-        IncidentState.ACKNOWLEDGED, IncidentState.STOOD_DOWN, IncidentState.LAPSED,
+        IncidentState.ACKNOWLEDGED,
+        IncidentState.STOOD_DOWN,
+        IncidentState.LAPSED,
     },
     IncidentState.ACKNOWLEDGED: {
-        IncidentState.ASSIGNED, IncidentState.CLEARING, IncidentState.STOOD_DOWN,
+        IncidentState.ASSIGNED,
+        IncidentState.CLEARING,
+        IncidentState.STOOD_DOWN,
         IncidentState.LAPSED,
     },
     IncidentState.ASSIGNED: {
-        IncidentState.ON_SCENE, IncidentState.ACKNOWLEDGED, IncidentState.STOOD_DOWN,
+        IncidentState.ON_SCENE,
+        IncidentState.ACKNOWLEDGED,
+        IncidentState.STOOD_DOWN,
         IncidentState.LAPSED,
     },
     IncidentState.ON_SCENE: {IncidentState.CLEARING, IncidentState.RESOLVED},
     IncidentState.CLEARING: {IncidentState.RESOLVED, IncidentState.ON_SCENE},
     IncidentState.RESOLVED: {IncidentState.CLOSED, IncidentState.ACKNOWLEDGED},
     IncidentState.CLOSED: set(),
-    IncidentState.STOOD_DOWN: {IncidentState.ACKNOWLEDGED},   # reopen if it returns
+    IncidentState.STOOD_DOWN: {IncidentState.ACKNOWLEDGED},  # reopen if it returns
     IncidentState.LAPSED: {IncidentState.ACKNOWLEDGED},
 }
 
@@ -72,18 +78,18 @@ class IncidentKind(str, Enum):
     rank it high and be wrong about why.
     """
 
-    CONGESTION = "CONGESTION"          # slower than typical, right now
-    CHOKE_POINT = "CHOKE_POINT"        # a located stretch of stopped traffic
-    SPREADING = "SPREADING"            # several corridors degrading together
-    SAFETY = "SAFETY"                  # structural accident risk, not congestion
-    DATA_GAP = "DATA_GAP"              # we cannot see here
+    CONGESTION = "CONGESTION"  # slower than typical, right now
+    CHOKE_POINT = "CHOKE_POINT"  # a located stretch of stopped traffic
+    SPREADING = "SPREADING"  # several corridors degrading together
+    SAFETY = "SAFETY"  # structural accident risk, not congestion
+    DATA_GAP = "DATA_GAP"  # we cannot see here
 
 
 class Priority(str, Enum):
-    P1 = "P1"    # act now
-    P2 = "P2"    # act this shift
-    P3 = "P3"    # watch
-    P4 = "P4"    # record only
+    P1 = "P1"  # act now
+    P2 = "P2"  # act this shift
+    P3 = "P3"  # watch
+    P4 = "P4"  # record only
 
 
 @dataclass(frozen=True)
@@ -91,7 +97,7 @@ class Note:
     at: datetime
     author: str
     text: str
-    kind: str = "NOTE"     # NOTE | CAUSE | ACTION | OUTCOME
+    kind: str = "NOTE"  # NOTE | CAUSE | ACTION | OUTCOME
 
     def as_dict(self) -> dict:
         return {
@@ -147,7 +153,7 @@ class Incident:
     priority: Priority
     title: str
     detail: str
-    location_name: str                       # "Hill Cart Road, near Air View More"
+    location_name: str  # "Hill Cart Road, near Air View More"
     lat: float
     lon: float
     corridors: list[str]
@@ -164,7 +170,9 @@ class Incident:
     resolved_at: datetime | None = None
 
     # ── lifecycle ────────────────────────────────────────────────────────────
-    def move(self, to: IncidentState, by: str, reason: str | None = None, at: datetime | None = None) -> None:
+    def move(
+        self, to: IncidentState, by: str, reason: str | None = None, at: datetime | None = None
+    ) -> None:
         allowed = TRANSITIONS[self.state]
         if to not in allowed:
             raise IllegalTransition(
@@ -180,7 +188,9 @@ class Incident:
     def acknowledge(self, by: str, at: datetime | None = None) -> None:
         self.move(IncidentState.ACKNOWLEDGED, by, at=at)
 
-    def assign(self, to_officer: str, by: str, unit: str | None = None, at: datetime | None = None) -> None:
+    def assign(
+        self, to_officer: str, by: str, unit: str | None = None, at: datetime | None = None
+    ) -> None:
         moment = at or datetime.now()
         if self.state is IncidentState.DETECTED:
             self.acknowledge(by, at=moment)
@@ -188,7 +198,9 @@ class Incident:
         self.owner = to_officer
         self.move(IncidentState.ASSIGNED, by, reason=f"to {to_officer}", at=moment)
 
-    def add_note(self, author: str, text: str, kind: str = "NOTE", at: datetime | None = None) -> None:
+    def add_note(
+        self, author: str, text: str, kind: str = "NOTE", at: datetime | None = None
+    ) -> None:
         self.notes.append(Note(at or datetime.now(), author, text, kind))
 
     def stand_down(self, by: str, reason: str, at: datetime | None = None) -> None:
@@ -200,7 +212,9 @@ class Incident:
 
     def lapse(self, at: datetime | None = None) -> None:
         """Cleared before anyone acted. Counted, because it grades the alerting."""
-        self.move(IncidentState.LAPSED, by="system", reason="condition cleared before action", at=at)
+        self.move(
+            IncidentState.LAPSED, by="system", reason="condition cleared before action", at=at
+        )
 
     def close(self, by: str, outcome: str, at: datetime | None = None) -> None:
         if not outcome.strip():
@@ -241,8 +255,12 @@ class Incident:
             "corridors": self.corridors,
             "junctions": self.junctions,
             "detected_at": self.detected_at.isoformat(timespec="seconds"),
-            "last_seen_at": self.last_seen_at.isoformat(timespec="seconds") if self.last_seen_at else None,
-            "resolved_at": self.resolved_at.isoformat(timespec="seconds") if self.resolved_at else None,
+            "last_seen_at": self.last_seen_at.isoformat(timespec="seconds")
+            if self.last_seen_at
+            else None,
+            "resolved_at": self.resolved_at.isoformat(timespec="seconds")
+            if self.resolved_at
+            else None,
             "age_minutes": round(self.age_minutes(moment), 1),
             "owner": self.owner,
             "is_open": self.is_open,
@@ -252,7 +270,9 @@ class Incident:
             "assignments": [a.as_dict() for a in self.assignments],
             "notes": [n.as_dict() for n in self.notes],
             "history": [h.as_dict() for h in self.history],
-            "next_actions": [s.value for s in sorted(TRANSITIONS[self.state], key=lambda x: x.value)],
+            "next_actions": [
+                s.value for s in sorted(TRANSITIONS[self.state], key=lambda x: x.value)
+            ],
         }
 
 

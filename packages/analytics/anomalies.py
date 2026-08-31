@@ -75,9 +75,9 @@ def score(
 
     return (
         joined.with_columns(
-            (
-                (pl.col("pace") - pl.col("median_pace")) / pl.col("median_pace") * 100
-            ).alias("deviation_pct"),
+            ((pl.col("pace") - pl.col("median_pace")) / pl.col("median_pace") * 100).alias(
+                "deviation_pct"
+            ),
             # Expected time for a journey of *this* length, so the two figures
             # an officer compares are like for like.
             (pl.col("median_pace") * pl.col("distance_m") / 1000 / 60)
@@ -101,9 +101,7 @@ def score(
 
 
 def anomalies_only(scored: pl.DataFrame) -> pl.DataFrame:
-    return scored.filter(pl.col("severity") != "EXPECTED").sort(
-        "deviation_pct", descending=True
-    )
+    return scored.filter(pl.col("severity") != "EXPECTED").sort("deviation_pct", descending=True)
 
 
 def summary(scored: pl.DataFrame) -> pl.DataFrame:

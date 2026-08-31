@@ -3,6 +3,7 @@
 This is the demonstrator's data source. It is NOT live monitoring, and
 `is_live = False` is checked by the API so the UI can never mislabel it.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

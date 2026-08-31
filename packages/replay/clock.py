@@ -7,6 +7,7 @@ valid architecture proof — and exactly why the mode must be labelled everywher
 surfaces. Claiming live monitoring while replaying history would destroy the
 credibility this product sells.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -23,12 +24,14 @@ class ReplaySession:
     observations: pl.DataFrame
     trackers: dict[str, CorridorTracker] = field(default_factory=dict)
     events: list[dict] = field(default_factory=list)
-    is_live: bool = False          # never true. checked by the API.
+    is_live: bool = False  # never true. checked by the API.
     mode: str = "HISTORICAL_REPLAY"
 
     def run(self) -> Iterator[dict]:
         """Yield one tick per hour, with any state transitions in that hour."""
-        for (hour,), chunk in self.observations.sort("hour").group_by(["hour"], maintain_order=True):
+        for (hour,), chunk in self.observations.sort("hour").group_by(
+            ["hour"], maintain_order=True
+        ):
             tick = {"hour": int(hour), "transitions": [], "mode": self.mode}
             for row in chunk.iter_rows(named=True):
                 cid = row["corridor_id"]

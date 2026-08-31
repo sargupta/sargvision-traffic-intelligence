@@ -10,13 +10,14 @@ The spike made this mandatory rather than optional: at the 1 km unit only 9.5% o
 spatial units carry usable evidence, so a system that published a baseline everywhere
 would be fabricating precision across two thirds of the city.
 """
+
 from __future__ import annotations
 
 import polars as pl
 
 from packages.domain.canonical import BaselineSource, Confidence
 
-MIN_PUBLISH = 30      # per BIN (unit x day_type x hour). Below this, nothing is published.
+MIN_PUBLISH = 30  # per BIN (unit x day_type x hour). Below this, nothing is published.
 
 # NOTE: 30 is a per-bin floor, not the per-unit figure from the spike. A bin holds a
 # fraction of its unit's observations, so applying a unit-level threshold to bins
@@ -38,7 +39,7 @@ MIN_PUBLISH = 30      # per BIN (unit x day_type x hour). Below this, nothing is
 # Recurrence claims must therefore be floored in DAYS, not observations. This
 # constant is stated here so the window engine cannot quietly inherit the wrong
 # one when it is built.
-MIN_DAYS_FOR_RECURRENCE = 12   # comparable days, matched on day type
+MIN_DAYS_FOR_RECURRENCE = 12  # comparable days, matched on day type
 
 
 def annotate(baselines: pl.DataFrame, source: str = BaselineSource.UNIT_1KM) -> pl.DataFrame:

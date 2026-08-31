@@ -80,12 +80,12 @@ def decode_polyline(encoded: str) -> list[tuple[float, float]]:
 class ChokePoint:
     """A stretch of a corridor that is slower than the rest of it."""
 
-    severity: str                      # SLOW | TRAFFIC_JAM
+    severity: str  # SLOW | TRAFFIC_JAM
     start: tuple[float, float]
     end: tuple[float, float]
     midpoint: tuple[float, float]
     length_m: float
-    share_of_corridor: float           # 0-1, how much of the route this is
+    share_of_corridor: float  # 0-1, how much of the route this is
 
     def as_dict(self) -> dict:
         return {
@@ -108,7 +108,7 @@ class SpeedRun:
     part of it.
     """
 
-    speed: str                                  # NORMAL | SLOW | TRAFFIC_JAM
+    speed: str  # NORMAL | SLOW | TRAFFIC_JAM
     path: tuple[tuple[float, float], ...]
     length_m: float
 

@@ -20,13 +20,13 @@ from typing import Any
 
 
 class Kind(str, Enum):
-    RELIABILITY = "RELIABILITY"          # this movement is hard to plan around
-    DIVERGENCE = "DIVERGENCE"            # two things that should agree, do not
-    ASYMMETRY = "ASYMMETRY"              # one direction differs from the other
-    PERIOD = "PERIOD"                    # a time window behaves differently
-    DAY_TYPE = "DAY_TYPE"                # weekday and weekend differ
-    RECURRENCE = "RECURRENCE"            # the same departure keeps happening
-    EVIDENCE_GAP = "EVIDENCE_GAP"        # we cannot see here
+    RELIABILITY = "RELIABILITY"  # this movement is hard to plan around
+    DIVERGENCE = "DIVERGENCE"  # two things that should agree, do not
+    ASYMMETRY = "ASYMMETRY"  # one direction differs from the other
+    PERIOD = "PERIOD"  # a time window behaves differently
+    DAY_TYPE = "DAY_TYPE"  # weekday and weekend differ
+    RECURRENCE = "RECURRENCE"  # the same departure keeps happening
+    EVIDENCE_GAP = "EVIDENCE_GAP"  # we cannot see here
 
 
 class Confidence(str, Enum):
@@ -59,12 +59,12 @@ class View:
     always the one the evidence supports.
     """
 
-    layout: str                     # map+detail | compare | timeline | coverage
+    layout: str  # map+detail | compare | timeline | coverage
     focus_movements: list[str] = field(default_factory=list)
     focus_zones: list[str] = field(default_factory=list)
     focus_hours: list[int] = field(default_factory=list)
     day_types: list[str] = field(default_factory=list)
-    encode: str = "reliability"     # what the arcs should mean
+    encode: str = "reliability"  # what the arcs should mean
     series: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -82,9 +82,9 @@ class Finding:
     evidence: Evidence
     view: View
     confidence: Confidence
-    impact: float          # 0-1, how much travel it touches
-    novelty: float         # 0-1, how far from what the rest of the city does
-    recurrence: float      # 0-1, how consistently it repeats
+    impact: float  # 0-1, how much travel it touches
+    novelty: float  # 0-1, how far from what the rest of the city does
+    recurrence: float  # 0-1, how consistently it repeats
     movements: list[str] = field(default_factory=list)
     zones: list[str] = field(default_factory=list)
     related: list[str] = field(default_factory=list)
@@ -98,9 +98,7 @@ class Finding:
         an unrepeatable, low-confidence result to the top of the feed.
         """
         weight = {Confidence.HIGH: 1.0, Confidence.MODERATE: 0.65, Confidence.LOW: 0.3}
-        return round(
-            self.impact * weight[self.confidence] * self.novelty * self.recurrence, 4
-        )
+        return round(self.impact * weight[self.confidence] * self.novelty * self.recurrence, 4)
 
     def as_dict(self) -> dict[str, Any]:
         return {

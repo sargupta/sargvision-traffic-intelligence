@@ -22,10 +22,19 @@ NOW = datetime(2026, 8, 30, 15, 0)
 
 def make(**kw) -> Incident:
     base = dict(
-        incident_id="INC-TEST", kind=IncidentKind.CHOKE_POINT, priority=Priority.P1,
-        title="t", detail="d", location_name="NH10", lat=26.72, lon=88.41,
-        corridors=["C_A__B"], junctions=["J_A"], detected_at=NOW,
-        evidence={}, limitation="unknown cause",
+        incident_id="INC-TEST",
+        kind=IncidentKind.CHOKE_POINT,
+        priority=Priority.P1,
+        title="t",
+        detail="d",
+        location_name="NH10",
+        lat=26.72,
+        lon=88.41,
+        corridors=["C_A__B"],
+        junctions=["J_A"],
+        detected_at=NOW,
+        evidence={},
+        limitation="unknown cause",
     )
     return Incident(**{**base, **kw})
 
@@ -127,31 +136,41 @@ class TestClustering:
 
     def choke(self, lat, lon, severity="TRAFFIC_JAM", length=300.0):
         return ChokePoint(
-            severity=severity, start=(lat, lon), end=(lat + 0.001, lon),
-            midpoint=(lat, lon), length_m=length, share_of_corridor=0.3,
+            severity=severity,
+            start=(lat, lon),
+            end=(lat + 0.001, lon),
+            midpoint=(lat, lon),
+            length_m=length,
+            share_of_corridor=0.3,
         )
 
     def test_same_jam_on_several_corridors_merges(self):
-        clusters = cluster_chokes({
-            "C_1": [self.choke(26.7245, 88.4156)],
-            "C_2": [self.choke(26.7246, 88.4157)],
-            "C_3": [self.choke(26.7244, 88.4155)],
-        })
+        clusters = cluster_chokes(
+            {
+                "C_1": [self.choke(26.7245, 88.4156)],
+                "C_2": [self.choke(26.7246, 88.4157)],
+                "C_3": [self.choke(26.7244, 88.4155)],
+            }
+        )
         assert len(clusters) == 1
         assert clusters[0].corroboration == 3
 
     def test_distant_jams_stay_separate(self):
-        clusters = cluster_chokes({
-            "C_1": [self.choke(26.7245, 88.4156)],
-            "C_2": [self.choke(26.7500, 88.4400)],
-        })
+        clusters = cluster_chokes(
+            {
+                "C_1": [self.choke(26.7245, 88.4156)],
+                "C_2": [self.choke(26.7500, 88.4400)],
+            }
+        )
         assert len(clusters) == 2
 
     def test_cluster_takes_the_worst_severity(self):
-        clusters = cluster_chokes({
-            "C_1": [self.choke(26.7245, 88.4156, severity="SLOW")],
-            "C_2": [self.choke(26.7246, 88.4157, severity="TRAFFIC_JAM")],
-        })
+        clusters = cluster_chokes(
+            {
+                "C_1": [self.choke(26.7245, 88.4156, severity="SLOW")],
+                "C_2": [self.choke(26.7246, 88.4157, severity="TRAFFIC_JAM")],
+            }
+        )
         assert clusters[0].severity == "TRAFFIC_JAM"
 
     def test_no_chokes_gives_no_clusters(self):
@@ -172,19 +191,35 @@ class TestIncidentContinuity:
 
         class Stub:
             name, is_live, retains_durations = "stub", False, False
-            def read(self, *a, **k): return None
-            def provenance(self): return {}
+
+            def read(self, *a, **k):
+                return None
+
+            def provenance(self):
+                return {}
 
         centre = CommandCentre(network=load_network(), probe=Stub())
         return centre
 
     def cluster_at(self, lat, lon, length=400.0):
         from packages.incidents.cluster import ChokeCluster
+
         return ChokeCluster(
-            centre=(lat, lon), severity="TRAFFIC_JAM",
-            members=[("C_X", ChokePoint(
-                severity="TRAFFIC_JAM", start=(lat, lon), end=(lat, lon),
-                midpoint=(lat, lon), length_m=length, share_of_corridor=0.4))],
+            centre=(lat, lon),
+            severity="TRAFFIC_JAM",
+            members=[
+                (
+                    "C_X",
+                    ChokePoint(
+                        severity="TRAFFIC_JAM",
+                        start=(lat, lon),
+                        end=(lat, lon),
+                        midpoint=(lat, lon),
+                        length_m=length,
+                        share_of_corridor=0.4,
+                    ),
+                )
+            ],
         )
 
     def test_drifting_centroid_stays_one_incident(self):
@@ -196,7 +231,9 @@ class TestIncidentContinuity:
         first = centre._raise_incidents([self.cluster_at(26.72450, 88.41560)], NOW)
         assert len(first) == 1
         # 40 m away on the next poll — the same jam breathing.
-        again = centre._raise_incidents([self.cluster_at(26.72486, 88.41560)], NOW + timedelta(minutes=5))
+        again = centre._raise_incidents(
+            [self.cluster_at(26.72486, 88.41560)], NOW + timedelta(minutes=5)
+        )
         assert again == [], "a drifting centroid must reattach, not spawn a second incident"
         assert len([i for i in centre.incidents.values() if i.is_open]) == 1
 
@@ -206,5 +243,7 @@ class TestIncidentContinuity:
         for status in centre.status.values():
             status.band = "HIGH"
         centre._raise_incidents([self.cluster_at(26.72450, 88.41560)], NOW)
-        far = centre._raise_incidents([self.cluster_at(26.74000, 88.43000)], NOW + timedelta(minutes=5))
+        far = centre._raise_incidents(
+            [self.cluster_at(26.74000, 88.43000)], NOW + timedelta(minutes=5)
+        )
         assert len(far) == 1

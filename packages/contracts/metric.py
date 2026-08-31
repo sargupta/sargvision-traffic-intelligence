@@ -12,6 +12,7 @@ therefore cannot reach a dashboard, a brief, or the Copilot.
 Principle 4: every important insight is traceable to evidence.
 Principle 5: every important claim states its limitation.
 """
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass

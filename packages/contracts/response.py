@@ -8,6 +8,7 @@ construct.
 
 Principle 3: the system distinguishes observation from interpretation from hypothesis.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -17,11 +18,11 @@ from packages.contracts.metric import Metric
 
 @dataclass(frozen=True)
 class AnswerContract:
-    observation: str      # what the data shows — fact
-    comparison: str       # how it compares to baseline — fact
-    interpretation: str   # why it is operationally relevant — inference, labelled
-    limitation: str       # what the data does NOT establish — mandatory
-    next_step: str        # what an officer should investigate
+    observation: str  # what the data shows — fact
+    comparison: str  # how it compares to baseline — fact
+    interpretation: str  # why it is operationally relevant — inference, labelled
+    limitation: str  # what the data does NOT establish — mandatory
+    next_step: str  # what an officer should investigate
     evidence: list[Metric] = field(default_factory=list)
     tools_called: list[str] = field(default_factory=list)
 

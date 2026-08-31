@@ -32,7 +32,7 @@ class MonitoredMovement:
     dest_name: str
     dest_lat: float
     dest_lon: float
-    priority: str            # HIGH | MEDIUM | LOW
+    priority: str  # HIGH | MEDIUM | LOW
     sampling_seconds: int
     active: bool
     baseline_observations: int
@@ -65,9 +65,7 @@ class Registry:
         path.write_text(json.dumps([m.as_dict() for m in self.movements], indent=1))
 
 
-def build_from_analytics(
-    movements: pl.DataFrame, reliability: pl.DataFrame
-) -> Registry:
+def build_from_analytics(movements: pl.DataFrame, reliability: pl.DataFrame) -> Registry:
     """Derive the registry from what the baseline layer can actually support.
 
     A movement is only worth monitoring live if there is a historical baseline

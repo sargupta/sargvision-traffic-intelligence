@@ -5,6 +5,7 @@
 A single abnormal reading is not an event. Persistence is required, and exit uses
 hysteresis so a corridor hovering at the threshold does not flap.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

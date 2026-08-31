@@ -1,4 +1,5 @@
 """Domain entities. No I/O, no framework, no dataframes."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from enum import Enum
 
 class Severity(str, Enum):
     """How abnormal is it? Calibrated against Siliguri observations."""
+
     EXPECTED = "EXPECTED"
     MODERATE = "MODERATE"
     HIGH = "HIGH"
@@ -16,6 +18,7 @@ class Severity(str, Enum):
 
 class Priority(str, Enum):
     """How much attention does it deserve? Not the same question as severity."""
+
     P1 = "P1"
     P2 = "P2"
     P3 = "P3"
@@ -71,7 +74,11 @@ class Observation:
 
     @property
     def speed_kmh(self) -> float:
-        return (self.distance_m / 1000) / (self.traffic_seconds / 3600) if self.traffic_seconds else 0.0
+        return (
+            (self.distance_m / 1000) / (self.traffic_seconds / 3600)
+            if self.traffic_seconds
+            else 0.0
+        )
 
 
 @dataclass(frozen=True)

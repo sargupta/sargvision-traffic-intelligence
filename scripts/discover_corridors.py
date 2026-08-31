@@ -152,15 +152,18 @@ def main() -> None:
                     "to_junction": dst["junction_id"],
                     "to_name": dst["name"],
                     "name": f"{src['name']} → {dst['name']}",
-                # Retained so the interface can say how sure it is of the pin at
-                # each end; the corridor is only as located as its junctions.
-                "pin_quality": min(
-                    a["match_quality"], b["match_quality"],
-                    key=lambda q: {"CONFIRMED": 0, "NEAR": 1, "ROAD_ONLY": 2}[q],
-                ) if a["match_quality"] == b["match_quality"] else "MIXED",
-                "endpoints_quality": [a["match_quality"], b["match_quality"]],
-            }
-        )
+                    # Retained so the interface can say how sure it is of the pin at
+                    # each end; the corridor is only as located as its junctions.
+                    "pin_quality": min(
+                        a["match_quality"],
+                        b["match_quality"],
+                        key=lambda q: {"CONFIRMED": 0, "NEAR": 1, "ROAD_ONLY": 2}[q],
+                    )
+                    if a["match_quality"] == b["match_quality"]
+                    else "MIXED",
+                    "endpoints_quality": [a["match_quality"], b["match_quality"]],
+                }
+            )
         print(
             f"{a['name']:<26} → {b['name']:<26} road {road_m:>5} m  "
             f"crow {crow:>5.0f} m  detour {detour:.2f}"

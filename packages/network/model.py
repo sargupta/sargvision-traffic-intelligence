@@ -25,9 +25,9 @@ class Junction:
     name: str
     lat: float
     lon: float
-    control: str                # SIGNALISED | NON_SIGNALISED | MIXED | GRADE_SEPARATED
-    vc_ratio: float | None      # CMP 2011, via Siliguri CDP 2041
-    match_quality: str          # CONFIRMED | NEAR | ROAD_ONLY
+    control: str  # SIGNALISED | NON_SIGNALISED | MIXED | GRADE_SEPARATED
+    vc_ratio: float | None  # CMP 2011, via Siliguri CDP 2041
+    match_quality: str  # CONFIRMED | NEAR | ROAD_ONLY
     match_note: str
     formatted_address: str | None = None
 
@@ -80,8 +80,7 @@ class Network:
 
     def corridors_at(self, junction_id: str) -> list[Corridor]:
         return [
-            c for c in self.corridors.values()
-            if junction_id in (c.from_junction, c.to_junction)
+            c for c in self.corridors.values() if junction_id in (c.from_junction, c.to_junction)
         ]
 
     def neighbours(self, junction_id: str) -> list[str]:
@@ -91,9 +90,7 @@ class Network:
         return sorted(set(out))
 
 
-def load_network(
-    junctions_path: Path = JUNCTIONS, corridors_path: Path = CORRIDORS
-) -> Network:
+def load_network(junctions_path: Path = JUNCTIONS, corridors_path: Path = CORRIDORS) -> Network:
     junctions = {
         j["junction_id"]: Junction(
             junction_id=j["junction_id"],

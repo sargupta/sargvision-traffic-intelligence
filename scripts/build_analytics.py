@@ -81,7 +81,9 @@ def main() -> None:
     print(f"movements              {movements.height:>9,} of {model.k * model.k} possible")
     print(f"reliability            {reliability.height:>9,} movements scored")
     print(f"scored observations    {scored.height:>9,} ({scored.height / obs.height:.1%} of total)")
-    print(f"historical anomalies   {found.height:>9,} ({found.height / max(scored.height,1):.1%} of scored)")
+    print(
+        f"historical anomalies   {found.height:>9,} ({found.height / max(scored.height, 1):.1%} of scored)"
+    )
 
     tables: dict[str, pl.DataFrame] = {
         "zones": model.zones,
@@ -121,7 +123,10 @@ def main() -> None:
             "zone_max_name_distance_m": MAX_NAME_DISTANCE_M,
             "baseline_min_samples": base.MIN_SAMPLES,
             "reliability_min_samples": rel.MIN_SAMPLES,
-            "reliability_bands": {"reliable": rel.SILIGURI.reliable, "moderate": rel.SILIGURI.moderate},
+            "reliability_bands": {
+                "reliable": rel.SILIGURI.reliable,
+                "moderate": rel.SILIGURI.moderate,
+            },
             "anomaly_thresholds": {
                 "moderate": anom.SILIGURI.moderate,
                 "high": anom.SILIGURI.high,

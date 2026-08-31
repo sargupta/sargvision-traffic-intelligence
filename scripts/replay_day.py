@@ -35,7 +35,9 @@ def main() -> None:
     now = day.replace(hour=5)
     end = day.replace(hour=23)
 
-    print(f"replaying {day:%A %d %B %Y} · {len(registry.active)} movements · {TICK.seconds // 60}-minute ticks\n")
+    print(
+        f"replaying {day:%A %d %B %Y} · {len(registry.active)} movements · {TICK.seconds // 60}-minute ticks\n"
+    )
 
     while now <= end:
         result = loop.tick(now)
@@ -51,7 +53,9 @@ def main() -> None:
     print("\n── end of day ─────────────────────────────────────────────")
     active = loop.feed_entries()
     resolved = [e for e in loop.feed.values() if e.state == "RESOLVED"]
-    print(f"ticks {loop.ticks} · findings raised {len(loop.feed)} · still active {len(active)} · resolved {len(resolved)}")
+    print(
+        f"ticks {loop.ticks} · findings raised {len(loop.feed)} · still active {len(active)} · resolved {len(resolved)}"
+    )
     print(f"\nfinal state: {loop.city.headline()}")
     print(f"counts: {loop.city.counts()}")
 

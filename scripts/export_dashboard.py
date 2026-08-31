@@ -42,9 +42,18 @@ def main() -> None:
         anomalies.sort("deviation_pct", descending=True)
         .head(ANOMALY_LIMIT)
         .select(
-            "observation_id", "movement_id", "movement_name", "observed_at", "hour",
-            "day_type", "expected_minutes", "observed_minutes", "deviation_pct",
-            "severity", "baseline_confidence", "distance_m",
+            "observation_id",
+            "movement_id",
+            "movement_name",
+            "observed_at",
+            "hour",
+            "day_type",
+            "expected_minutes",
+            "observed_minutes",
+            "deviation_pct",
+            "severity",
+            "baseline_confidence",
+            "distance_m",
         )
         .with_columns(
             pl.col("observed_at").dt.strftime("%Y-%m-%d %H:%M").alias("observed_at"),
@@ -55,7 +64,10 @@ def main() -> None:
 
     bundle = {
         "meta": {
-            **{k: manifest[k] for k in ("built_at", "mode", "is_live", "window", "canonical_sample")},
+            **{
+                k: manifest[k]
+                for k in ("built_at", "mode", "is_live", "window", "canonical_sample")
+            },
             "config": manifest["config"],
             "quality_gate": manifest["quality_gate"],
             "row_counts": manifest["row_counts"],
@@ -74,10 +86,20 @@ def main() -> None:
         "baselines": rows(
             "baselines",
             [
-                "movement_id", "movement_name", "day_type", "hour", "sample_size",
-                "confidence", "expected_minutes", "normal_low_minutes",
-                "normal_high_minutes", "median_pace", "median_tti",
-                "median_speed_kmh", "median_delay_pct", "median_distance_m",
+                "movement_id",
+                "movement_name",
+                "day_type",
+                "hour",
+                "sample_size",
+                "confidence",
+                "expected_minutes",
+                "normal_low_minutes",
+                "normal_high_minutes",
+                "median_pace",
+                "median_tti",
+                "median_speed_kmh",
+                "median_delay_pct",
+                "median_distance_m",
             ],
         ),
         "patterns_hourly": rows("patterns_hourly"),
