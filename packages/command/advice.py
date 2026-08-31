@@ -25,6 +25,15 @@ CONVERGENCE_MIN = 2
 DIVERSION_MARGIN = 0.20      # 20% faster than the congested route
 DIVERSION_MAX_EXTRA_M = 2500  # and not a wild detour
 
+# You cannot post more officers than you have.
+#
+# At Monday peak, seven junctions showed converging delay and the engine
+# recommended a posting at all seven — against a roster with five field units,
+# two of whom are already committed. Advice that cannot be carried out is a
+# list, and a list is what the officer already had. Recommendations are capped
+# at what is deployable and the remainder is stated as a count, not hidden.
+DEPLOYABLE_UNITS = 3
+
 
 @dataclass
 class Recommendation:
@@ -54,7 +63,12 @@ def _degraded(board_corridors: list[dict]) -> list[dict]:
     return [c for c in board_corridors if c.get("band") in ("ELEVATED", "HIGH", "SEVERE")]
 
 
-def recommend(network: Network, board: dict, now: datetime) -> list[Recommendation]:
+def recommend(
+    network: Network,
+    board: dict,
+    now: datetime,
+    deployable: int = DEPLOYABLE_UNITS,
+) -> list[Recommendation]:
     corridors = board.get("corridors", [])
     incidents = board.get("incidents", [])
     degraded = _degraded(corridors)
@@ -72,11 +86,20 @@ def recommend(network: Network, board: dict, now: datetime) -> list[Recommendati
             continue
         inbound.setdefault(corridor.to_junction, []).append(c)
 
-    for junction_id, approaches in sorted(
-        inbound.items(), key=lambda kv: -len(kv[1])
-    ):
-        if len(approaches) < CONVERGENCE_MIN:
-            continue
+    # Rank by the travel time actually at stake, not by how many roads are
+    # involved: four approaches each a minute late matter less than two that
+    # are six minutes late.
+    candidates = [
+        (jid, apps)
+        for jid, apps in inbound.items()
+        if len(apps) >= CONVERGENCE_MIN and network.junction(jid) is not None
+    ]
+    candidates.sort(
+        key=lambda kv: -sum(c.get("excess_minutes") or 0 for c in kv[1])
+    )
+    not_recommended = max(0, len(candidates) - deployable)
+
+    for junction_id, approaches in candidates[:deployable]:
         junction = network.junction(junction_id)
         if junction is None:
             continue
@@ -112,6 +135,41 @@ def recommend(network: Network, board: dict, now: datetime) -> list[Recommendati
                 ),
                 junctions=[junction_id],
                 corridors=[c["corridor_id"] for c in approaches],
+            )
+        )
+
+    if not_recommended:
+        # Said out loud rather than silently truncated. An officer who can see
+        # eight junctions in trouble on the map and is offered three postings
+        # needs to know the other five were ranked and dropped, not missed.
+        worst_dropped = [
+            network.junction(jid).name
+            for jid, _ in candidates[deployable : deployable + 3]
+            if network.junction(jid)
+        ]
+        out.append(
+            Recommendation(
+                kind="WATCH",
+                urgency="ADVISORY",
+                headline=(
+                    f"{not_recommended} more junction{'s' if not_recommended > 1 else ''} "
+                    "also show converging delay"
+                ),
+                detail=(
+                    f"Ranked below the {deployable} above by the travel time at stake, and not "
+                    f"recommended because there are only {deployable} units to send. "
+                    + (f"Next in order: {', '.join(worst_dropped)}." if worst_dropped else "")
+                ),
+                because=[
+                    f"{len(candidates)} junctions have {CONVERGENCE_MIN}+ approaches above typical.",
+                    f"Recommendations are capped at {deployable} — the number that can actually be deployed.",
+                ],
+                cannot_know=(
+                    "Whether a different ordering would serve the city better. The ranking is by "
+                    "excess travel time, which weights a long delay on one road above short "
+                    "delays on several."
+                ),
+                junctions=[jid for jid, _ in candidates[deployable:]],
             )
         )
 
