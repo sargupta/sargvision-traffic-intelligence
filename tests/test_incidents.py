@@ -354,15 +354,29 @@ class TestQueueBudget:
 
         class Stub:
             name, is_live, retains_durations = "stub", False, False
-            def read(self, *a, **k): return None
-            def provenance(self): return {}
+
+            def read(self, *a, **k):
+                return None
+
+            def provenance(self):
+                return {}
 
         c = CommandCentre(network=load_network(), probe=Stub())
         for n, p in enumerate(priorities):
             c.incidents[f"INC-{n}"] = Incident(
-                incident_id=f"INC-{n}", kind=IncidentKind.CHOKE_POINT, priority=p,
-                title="t", detail="d", location_name="NH10", lat=26.7, lon=88.4,
-                corridors=[], junctions=[], detected_at=NOW, evidence={}, limitation="x",
+                incident_id=f"INC-{n}",
+                kind=IncidentKind.CHOKE_POINT,
+                priority=p,
+                title="t",
+                detail="d",
+                location_name="NH10",
+                lat=26.7,
+                lon=88.4,
+                corridors=[],
+                junctions=[],
+                detected_at=NOW,
+                evidence={},
+                limitation="x",
             )
         return c
 
@@ -397,7 +411,9 @@ class TestHeadlineCountsTheWholeQueue:
 
     def test_it_does_not_undercount_behind_the_p1s(self):
         """It said "2 incidents needing action now" while six sat unowned."""
-        c = self.centre_with([Priority.P1, Priority.P1, Priority.P2, Priority.P3, Priority.P3, Priority.P3])
+        c = self.centre_with(
+            [Priority.P1, Priority.P1, Priority.P2, Priority.P3, Priority.P3, Priority.P3]
+        )
         headline = c.board(NOW)["headline"]
         assert "2 incidents needing action now" in headline
         assert "4 more waiting" in headline
