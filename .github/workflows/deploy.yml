@@ -94,6 +94,12 @@ jobs:
           gcloud run deploy traffic-api \
             --image="$REGISTRY/traffic-api:${{ needs.guard.outputs.sha }}" \
             --project="$PROJECT_ID" --region="$REGION" --quiet
+          # A previous rollback pins traffic to a named revision, and Cloud Run
+          # then stops migrating to the latest. Without this, one bad deploy
+          # freezes the service silently: later revisions build, report healthy,
+          # and serve nothing.
+          gcloud run services update-traffic traffic-api \
+            --project="$PROJECT_ID" --region="$REGION" --to-latest --quiet
 
       - name: Verify every endpoint the interface depends on
         run: |
@@ -110,6 +116,12 @@ jobs:
             [ "$CODE" = "200" ] || FAILED=1
           done
           [ "$FAILED" = "0" ] || { echo "::error::A required endpoint is not answering"; exit 1; }
+          SERVING=$(gcloud run services describe traffic-api --project="$PROJECT_ID" \
+                      --region="$REGION" --format='value(status.traffic[0].revisionName)')
+          LATEST=$(gcloud run services describe traffic-api --project="$PROJECT_ID" \
+                      --region="$REGION" --format='value(status.latestReadyRevisionName)')
+          echo "serving $SERVING, latest ready $LATEST"
+          [ "$SERVING" = "$LATEST" ] || { echo "::error::Traffic is pinned to $SERVING, not the revision just deployed"; exit 1; }
 
       - name: Roll back if the smoke test failed
         if: failure()
@@ -162,6 +174,9 @@ jobs:
           gcloud run deploy siliguri-command \
             --image="$REGISTRY/siliguri-command:${{ needs.guard.outputs.sha }}" \
             --project="$PROJECT_ID" --region="$REGION" --quiet
+          # See the API job: a rollback pins traffic, and nothing else un-pins it.
+          gcloud run services update-traffic siliguri-command \
+            --project="$PROJECT_ID" --region="$REGION" --to-latest --quiet
 
       - name: Verify every route renders
         run: |
