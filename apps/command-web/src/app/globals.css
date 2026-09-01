@@ -106,15 +106,60 @@
 
 /* ── Print. The shift handover and the daily brief are records. ──────────── */
 @media print {
-  @page { size: A4; margin: 14mm; }
-  body { background: #fff; font-size: 10pt; }
+  @page { size: A4; margin: 15mm 14mm 18mm 20mm; }   /* 20mm left clears a punch */
+  body { background: #fff; }
+
+  /* `body { font-size: 10pt }` reached almost nothing. Two dozen nodes carry an
+     explicit size through text-[length:var(--text-*)], and rem resolves against
+     html, which that rule never touched. Redefining the custom properties is
+     the only edit that reaches every one of them. */
+  :root {
+    --text-2xs:  8pt;
+    --text-xs:   8.5pt;
+    --text-sm:   9pt;
+    --text-base: 9.5pt;
+    --text-md:   11pt;
+    --text-lg:   12pt;
+    --text-xl:   14pt;
+    --text-2xl:  18pt;
+    --text-3xl:  22pt;
+    --text-num:  26pt;
+    --color-ink-3: #3F4652;    /* a 4.9:1 screen grey is close to nothing on a laser */
+  }
+
   .no-print { display: none !important; }
   .print-only { display: block !important; }
   .page-break { break-before: page; }
   a[href]::after { content: ""; }
-  /* Status must survive a monochrome printer, so bands print as text and rule
-     weight rather than as colour alone. */
-  [data-band] { border-left-width: 3px !important; }
+  a { text-decoration: none; color: inherit; }
+
+  /* Nothing that scrolls on screen may clip on paper. */
+  [class*="overflow-"] { overflow: visible !important; }
+  main { height: auto !important; max-height: none !important; }
+
+  article, li[data-band] { break-inside: avoid; box-shadow: none !important; }
+  h2, h3 { break-after: avoid; }
+  p, li { orphans: 3; widows: 3; }
+  thead { display: table-header-group; }   /* 68 rows run to several pages */
+
+  /* Rank has to survive a monochrome printer. Measured on the five status
+     tokens: they span 7.78 L* in total and --color-high sits 0.56 L* from
+     --color-elev, so on a mono laser they are one ink. A uniform 3px rule —
+     what this block used to set — therefore carried no rank at all. Style and
+     weight do. */
+  [data-band="P1"], [data-band="SEVERE"], [data-band="NOW"] {
+    border-left: 4px solid #000 !important;
+  }
+  [data-band="P2"], [data-band="HIGH"], [data-band="THIS_SHIFT"] {
+    border-left: 2px solid #000 !important;
+  }
+  [data-band="P3"], [data-band="ELEVATED"], [data-band="ADVISORY"] {
+    border-left: 2px dashed #000 !important;
+  }
+  [data-band="P4"], [data-band="NORMAL"], [data-band="UNKNOWN"] {
+    border-left: 1px dotted #000 !important;
+  }
+  [data-band] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 .print-only { display: none; }
 
