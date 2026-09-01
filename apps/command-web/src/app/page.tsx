@@ -10,7 +10,7 @@ import { Empty } from "@/components/Bits";
 import { IncidentCard } from "@/components/IncidentCard";
 import {
   getAdvice, getNetwork, getRoster, useBoard,
-  type Incident, type NetworkPayload, type Officer, type Recommendation,
+  type Band, type Incident, type NetworkPayload, type Officer, type Recommendation,
 } from "@/lib/api";
 
 const OFFICER = "DO-1";
@@ -30,6 +30,7 @@ export default function Board() {
   const [network, setNetwork] = useState<NetworkPayload | null>(null);
   const [roster, setRoster] = useState<Officer[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [bandFilter, setBandFilter] = useState<Band | null>(null);
 
   // On macOS the overlay scrollbar means an internally-scrolling column looks
   // identical to one that ends. At 1366x768 that hid the action bar of the
@@ -183,10 +184,28 @@ export default function Board() {
               ] as const
             ).map(([label, n, colour]) => (
               <div key={label} className="text-center">
-                <dd className="tnum text-[length:var(--text-2xl)] font-semibold leading-none" style={{ color: n ? colour : "var(--color-ink-3)" }}>
-                  {n}
-                </dd>
-                <dt className="label mt-1">{label}</dt>
+                <button
+                  type="button"
+                  disabled={n === 0}
+                  onClick={() => {
+                    setBandFilter(label.toUpperCase() as Band);
+                    setView("table");
+                  }}
+                  aria-label={
+                    n === 0
+                      ? `No corridors ${label.toLowerCase()}`
+                      : `Show the ${n} ${label.toLowerCase()} corridor${n === 1 ? "" : "s"}`
+                  }
+                  className="block enabled:cursor-pointer disabled:cursor-default"
+                >
+                  <span
+                    className="tnum block text-[length:var(--text-2xl)] font-semibold leading-none"
+                    style={{ color: n ? colour : "var(--color-ink-3)" }}
+                  >
+                    {n}
+                  </span>
+                  <span className="label mt-1 block">{label}</span>
+                </button>
               </div>
             ))}
             <div className="border-l border-line pl-6">
@@ -223,7 +242,13 @@ export default function Board() {
             <div className="relative h-[24rem] min-h-0 xl:h-full">
               {view === "table" ? (
                 <div className="h-full overflow-y-auto rounded-lg border border-line bg-surface p-3" style={{ scrollbarGutter: "stable" }}>
-                  {board && <CorridorTable corridors={board.corridors} />}
+                  {board && (
+                    <CorridorTable
+                      corridors={board.corridors}
+                      band={bandFilter}
+                      onClearBand={() => setBandFilter(null)}
+                    />
+                  )}
                 </div>
               ) : view === "map" ? (
                 <FlowMap

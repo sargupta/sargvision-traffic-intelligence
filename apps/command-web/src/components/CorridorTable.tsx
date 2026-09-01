@@ -14,11 +14,21 @@ const BAND_ORDER: Record<Band, number> = {
 /** Every corridor, always. The incident list is what needs action; this is what
  *  is true — an officer asked "what about Hill Cart Road" must be able to
  *  answer without waiting for it to become a problem. */
-export function CorridorTable({ corridors }: { corridors: CorridorRow[] }) {
+export function CorridorTable({
+  corridors,
+  band = null,
+  onClearBand,
+}: {
+  corridors: CorridorRow[];
+  /** Set when the officer arrived here by clicking a figure in the summary. */
+  band?: Band | null;
+  onClearBand?: () => void;
+}) {
   const [sort, setSort] = useState<SortKey>("band");
   const [onlyProblems, setOnlyProblems] = useState(false);
 
   const rows = [...corridors]
+    .filter((c) => (band ? c.band === band : true))
     .filter((c) => (onlyProblems ? c.band !== "NORMAL" && c.band !== "UNKNOWN" : true))
     .sort((a, b) => {
       switch (sort) {
@@ -55,6 +65,17 @@ export function CorridorTable({ corridors }: { corridors: CorridorRow[] }) {
             {rows.length} of {corridors.length}
           </span>
         </h2>
+        {band && (
+          <button
+            type="button"
+            onClick={onClearBand}
+            className="flex items-center gap-1.5 rounded-full border border-line-firm bg-sunken px-2.5 py-1 text-[length:var(--text-2xs)] font-medium text-ink-2 hover:bg-surface no-print"
+          >
+            {band.charAt(0) + band.slice(1).toLowerCase()} only
+            <span aria-hidden>&times;</span>
+            <span className="sr-only">Clear the filter</span>
+          </button>
+        )}
         <label className="flex cursor-pointer items-center gap-2 text-[length:var(--text-sm)] text-ink-2 no-print">
           <input
             type="checkbox"
