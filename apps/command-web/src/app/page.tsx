@@ -30,6 +30,11 @@ export default function Board() {
   const [network, setNetwork] = useState<NetworkPayload | null>(null);
   const [roster, setRoster] = useState<Officer[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+
+  // A count with no way to reach what it counts is a report, not a board.
+  function jumpToQueue() {
+    document.getElementById("queue")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   const [overrides, setOverrides] = useState<Record<string, Incident>>({});
   const [advice, setAdvice] = useState<Recommendation[]>([]);
 
@@ -108,6 +113,17 @@ export default function Board() {
             <p className="mt-1 text-[length:var(--text-xl)] font-semibold leading-snug">
               {board?.headline ?? "Connecting…"}
             </p>
+            {needsAction.length > 0 && (
+              <button
+                type="button"
+                onClick={jumpToQueue}
+                className="mt-2 rounded bg-navy px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-white transition-colors hover:bg-navy-2 no-print"
+              >
+                {needsAction.length === 1
+                  ? "Take the incident"
+                  : `Work the ${needsAction.length} incidents`}
+              </button>
+            )}
           </div>
 
           <dl className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -126,16 +142,28 @@ export default function Board() {
                 <dt className="label mt-1">{label}</dt>
               </div>
             ))}
-            <div className="border-l border-line pl-6 text-center">
-              <dd
-                className="tnum text-[length:var(--text-2xl)] font-semibold leading-none"
-                style={{ color: board?.over_budget ? "var(--color-high)" : undefined }}
+            <div className="border-l border-line pl-6">
+              <button
+                type="button"
+                onClick={jumpToQueue}
+                disabled={needsAction.length === 0}
+                aria-label={
+                  needsAction.length === 0
+                    ? "No incidents awaiting an officer"
+                    : `Go to the ${needsAction.length} awaiting an officer`
+                }
+                className="block text-center enabled:cursor-pointer disabled:cursor-default"
               >
-                {needsAction.length}
-              </dd>
-              <dt className="label mt-1">
-                {board?.over_budget ? "Over the alert budget" : "Awaiting an officer"}
-              </dt>
+                <span
+                  className="tnum block text-[length:var(--text-2xl)] font-semibold leading-none"
+                  style={{ color: board?.over_budget ? "var(--color-high)" : undefined }}
+                >
+                  {needsAction.length}
+                </span>
+                <span className="label mt-1 block">
+                  {board?.over_budget ? "Over the alert budget" : "Awaiting an officer"}
+                </span>
+              </button>
             </div>
           </dl>
         </section>
@@ -209,9 +237,15 @@ export default function Board() {
           </div>
 
           <div className="order-2 flex max-h-none flex-col gap-4 xl:max-h-[calc(100dvh-13rem)] xl:overflow-y-auto xl:pr-1">
-            <Advice items={advice} />
+            <Advice
+              items={advice}
+              incidents={incidents}
+              officer={OFFICER}
+              onSelectIncident={setSelected}
+              onChanged={onChanged}
+            />
 
-            <section>
+            <section id="queue">
               <h2 className="mb-2.5 flex items-baseline gap-2 text-[length:var(--text-md)] font-semibold">
                 Needs an officer
                 <span className="tnum text-[length:var(--text-sm)] font-normal text-ink-3">

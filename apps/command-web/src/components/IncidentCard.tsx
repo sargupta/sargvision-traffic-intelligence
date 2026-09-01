@@ -64,8 +64,15 @@ export function IncidentCard({
 
   const onDuty = roster.filter((o) => o.on_duty && o.role !== "DUTY_OFFICER");
 
+  // The action bar sits below the evidence, which on a 768px screen is off the
+  // bottom of the card. Whatever the single most useful next step is, it also
+  // appears in the header, where the officer's eye already is.
+  const HOISTED = ["ACKNOWLEDGED", "ASSIGNED", "ON_SCENE", "RESOLVED"];
+  const primary = HOISTED.find((a) => incident.next_actions.includes(a));
+
   return (
     <article
+      id={`incident-${incident.incident_id}`}
       data-band={incident.priority}
       onClick={onSelect}
       className={`card overflow-hidden border-l-[3px] transition-shadow ${
@@ -93,6 +100,19 @@ export function IncidentCard({
           <span className="tnum ml-auto text-[length:var(--text-2xs)] text-ink-3">
             {minutes(incident.age_minutes)} old
           </span>
+          {primary && (
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={(e) => {
+                e.stopPropagation();
+                trigger(primary);
+              }}
+              className="rounded bg-navy px-2.5 py-1 text-[length:var(--text-2xs)] font-semibold text-white transition-colors hover:bg-navy-2 disabled:opacity-40 no-print"
+            >
+              {ACTION_LABEL[primary]}
+            </button>
+          )}
         </div>
 
         <h3 className="mt-2.5 text-[length:var(--text-md)] font-semibold leading-snug">
