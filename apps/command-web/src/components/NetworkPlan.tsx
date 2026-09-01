@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RUN_COLOUR, type Board, type NetworkPayload } from "@/lib/api";
+import { RUN_COLOUR, RUN_STYLE, type Board, type NetworkPayload } from "@/lib/api";
 
 /** The network drawn from its own coordinates, with no basemap and no GPU.
  *
@@ -335,11 +335,17 @@ export function NetworkPlan({
                       .join(" ")}
                     fill="none"
                     stroke={`rgb(${RUN_COLOUR[speed].join(",")})`}
-                    strokeWidth={
-                      (speed === "TRAFFIC_JAM" ? 5.5 : speed === "SLOW" ? 4 : 1.5) / s
+                    strokeWidth={RUN_STYLE[speed].width / s}
+                    strokeOpacity={RUN_STYLE[speed].opacity}
+                    strokeDasharray={
+                      RUN_STYLE[speed].dash
+                        ? RUN_STYLE[speed].dash!
+                            .split(" ")
+                            .map((n) => Number(n) / s)
+                            .join(" ")
+                        : undefined
                     }
-                    strokeOpacity={speed === "NORMAL" ? 0.28 : 0.95}
-                    strokeLinecap="round"
+                    strokeLinecap={RUN_STYLE[speed].dash ? "butt" : "round"}
                     strokeLinejoin="round"
                   >
                     <title>{`${c.name} · ${speed.replace("_", " ").toLowerCase()} · ${Math.round(r.length_m)} m`}</title>
@@ -452,24 +458,30 @@ export function NetworkPlan({
         <div className="flex flex-col gap-1">
           {(
             [
-              ["NORMAL", "Moving", 1.5, 0.28],
-              ["SLOW", "Slow", 4, 0.95],
-              ["TRAFFIC_JAM", "Stopped", 5.5, 0.95],
+              ["NORMAL", "Moving"],
+              ["SLOW", "Slow"],
+              ["TRAFFIC_JAM", "Stopped"],
             ] as const
-          ).map(([k, label, weight, opacity]) => (
+          ).map(([k, label]) => (
             <span
               key={k}
               className="flex items-center gap-2 text-[length:var(--text-2xs)] text-ink-2"
             >
-              <span
-                aria-hidden
-                className="inline-block w-5 rounded"
-                style={{
-                  background: `rgb(${RUN_COLOUR[k].join(",")})`,
-                  height: weight,
-                  opacity,
-                }}
-              />
+              {/* The swatch carries the dash too, so the legend teaches the
+                  second channel rather than only the colour. */}
+              <svg aria-hidden width="22" height="8" className="shrink-0 overflow-visible">
+                <line
+                  x1="0"
+                  y1="4"
+                  x2="22"
+                  y2="4"
+                  stroke={`rgb(${RUN_COLOUR[k].join(",")})`}
+                  strokeWidth={RUN_STYLE[k].width}
+                  strokeOpacity={RUN_STYLE[k].opacity}
+                  strokeDasharray={RUN_STYLE[k].dash}
+                  strokeLinecap={RUN_STYLE[k].dash ? "butt" : "round"}
+                />
+              </svg>
               {label}
             </span>
           ))}

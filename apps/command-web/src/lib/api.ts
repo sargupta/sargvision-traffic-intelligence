@@ -46,13 +46,37 @@ export interface CorridorRow {
   approximate_location: boolean;
 }
 
-/** What the traffic classification means on the road, and on screen.
- *  Values are the same family the band tags use, so the map and the table
- *  cannot disagree about what amber means. */
+/** What the traffic classification means on the road.
+ *
+ *  Deliberately NOT the text tokens. Slow and stopped were --color-high and
+ *  --color-sev, which sit 18 degrees apart in hue with a lightness gap of 5 —
+ *  fine as text where a word carries the meaning, indistinguishable as two 4px
+ *  lines on a map. Measured: deltaE 17.6.
+ *
+ *  These are chosen for lines instead. Slow moves lighter and more yellow,
+ *  stopped moves darker: deltaE 45.3 with a lightness gap of 27. The lightness
+ *  gap is the part that survives a thin stroke, a colour-vision deficiency, and
+ *  a monochrome laser — under which the old three collapsed onto each other.
+ *
+ *  Contrast on white, against the 3:1 floor for a graphical object:
+ *  moving 5.87:1, slow 3.19:1, stopped 8.31:1.
+ */
 export const RUN_COLOUR: Record<SpeedRun["speed"], [number, number, number]> = {
-  NORMAL: [21, 115, 71],       // --color-ok
-  SLOW: [181, 71, 8],          // --color-high
-  TRAFFIC_JAM: [179, 35, 24],  // --color-sev
+  NORMAL: [21, 115, 71],       // #157347
+  SLOW: [217, 119, 6],         // #D97706 — lighter, more yellow
+  TRAFFIC_JAM: [153, 27, 27],  // #991B1B — darker
+};
+
+/** Colour is never the only channel. Weight and dash carry the same meaning,
+ *  so the map reads when printed in grey and when the reader cannot separate
+ *  red from orange. Dashed reads as impeded; solid as blocked. */
+export const RUN_STYLE: Record<
+  SpeedRun["speed"],
+  { width: number; dash: string | undefined; opacity: number }
+> = {
+  NORMAL: { width: 1.5, dash: undefined, opacity: 0.3 },
+  SLOW: { width: 4, dash: "9 5", opacity: 0.95 },
+  TRAFFIC_JAM: { width: 6, dash: undefined, opacity: 1 },
 };
 
 export interface Note {

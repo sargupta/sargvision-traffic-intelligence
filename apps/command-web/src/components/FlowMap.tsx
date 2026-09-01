@@ -5,7 +5,7 @@ import { GoogleMapsOverlay } from "@deck.gl/google-maps";
 import { PathLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { TripsLayer } from "@deck.gl/geo-layers";
 import { LIGHT_MAP, loadMaps } from "@/lib/maps";
-import { RUN_COLOUR, type Board, type NetworkPayload } from "@/lib/api";
+import { RUN_COLOUR, RUN_STYLE, type Board, type NetworkPayload } from "@/lib/api";
 
 const KEY = process.env.NEXT_PUBLIC_MAPS_API_KEY ?? "";
 
@@ -62,9 +62,10 @@ export function FlowMap({
       c.runs.map((r) => ({
         path: r.path,
         colour: RUN_COLOUR[r.speed],
-        // A jam is drawn thicker: it is both worse and, being shorter, easier
-        // to miss at this zoom.
-        width: r.speed === "TRAFFIC_JAM" ? 9 : r.speed === "SLOW" ? 7 : 4,
+        // Same ratios as the plan, scaled up for the basemap where the roads
+        // compete with tiles. A jam is thickest: it is both worse and, being
+        // shorter, easier to miss.
+        width: RUN_STYLE[r.speed].width * 1.6,
         corridor: c.corridor_id,
         label: `${c.name} · ${r.speed.replace("_", " ").toLowerCase()} · ${Math.round(r.length_m)} m`,
       })),
@@ -295,11 +296,16 @@ export function FlowMap({
             ] as const
           ).map(([k, label]) => (
             <span key={k} className="flex items-center gap-2 text-[length:var(--text-2xs)] text-ink-2">
-              <span
-                aria-hidden
-                className="inline-block h-1 w-5 rounded"
-                style={{ background: `rgb(${RUN_COLOUR[k].join(",")})`, height: k === "NORMAL" ? 2 : 4 }}
-              />
+              <svg aria-hidden width="22" height="8" className="shrink-0 overflow-visible">
+                <line
+                  x1="0" y1="4" x2="22" y2="4"
+                  stroke={`rgb(${RUN_COLOUR[k].join(",")})`}
+                  strokeWidth={RUN_STYLE[k].width}
+                  strokeOpacity={RUN_STYLE[k].opacity}
+                  strokeDasharray={RUN_STYLE[k].dash}
+                  strokeLinecap={RUN_STYLE[k].dash ? "butt" : "round"}
+                />
+              </svg>
               {label}
             </span>
           ))}
