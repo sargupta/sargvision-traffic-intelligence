@@ -18,11 +18,42 @@ import { RUN_COLOUR, RUN_STYLE, type Board, type NetworkPayload } from "@/lib/ap
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
 
+// Room kept clear on the right for junction labels, which are drawn outward
+// from their node. A layout margin, not a projection term: both axes still
+// share one scale, so the city keeps its shape.
+const LABEL_GUTTER = 92;
+const INSET = 12;
+
+/** The host's pixel box, so the drawing can be projected straight into CSS px.
+ *
+ *  The viewBox was a fixed 1000x900 fiction. Because the city is portrait
+ *  (4.81 km east-west by 7.30 km north-south) that box forced a choice between
+ *  distorting the map and letterboxing it, and the code did the first: the
+ *  clamp returned 900 where the true aspect wanted 1526, drawing east-west
+ *  1.5x longer per kilometre than north-south. Measuring the container removes
+ *  the choice — one scale factor for both axes, and one viewBox unit is one
+ *  CSS pixel, which is also what makes the labels a real 12px.
+ */
+function useBox(ref: React.RefObject<HTMLElement | null>) {
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => {
+      const r = e.contentRect;
+      setBox((b) => (Math.abs(b.w - r.width) < 1 && Math.abs(b.h - r.height) < 1 ? b : { w: r.width, h: r.height }));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return box;
+}
+
 // Roughly the width of a character at the label's base size, in viewBox units.
 // Used to reserve space before the browser has measured anything, because
 // decluttering has to happen during render.
-const CHAR_W = 5.4;
-const LINE_H = 12;
+const CHAR_W = 6.2;
+const LINE_H = 14;
 
 interface Placed {
   id: string;
@@ -58,6 +89,8 @@ export function NetworkPlan({
   onSelectIncident: (id: string) => void;
   className?: string;
 }) {
+  const hostRef = useRef<HTMLElement | null>(null);
+  const box = useBox(hostRef);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -66,6 +99,7 @@ export function NetworkPlan({
 
   const model = useMemo(() => {
     if (!board || !network) return null;
+    if (box.w < 40 || box.h < 40) return null; // not measured yet
 
     // Only the junctions that carry corridors. Bagdogra Airport is 10 km west
     // with no corridor of its own, and including it stretched the bounds far
@@ -94,19 +128,26 @@ export function NetworkPlan({
     // Equirectangular at this latitude keeps the city's shape honest; a raw
     // lat/lon stretch would squash Siliguri east-to-west by about 11%.
     const k = Math.cos((((minLat + maxLat) / 2) * Math.PI) / 180);
-    const W = 1000;
-    const spanX = (maxLon - minLon) * k;
-    const spanY = maxLat - minLat;
-    const H = Math.max(360, Math.min(900, (W * spanY) / (spanX || 1)));
-    const pad = 44;
-    const padRight = 150;
+    const spanX = (maxLon - minLon) * k || 1e-9;
+    const spanY = maxLat - minLat || 1e-9;
 
-    const x = (lon: number) =>
-      pad + (((lon - minLon) * k) / (spanX || 1)) * (W - pad - padRight);
-    const y = (lat: number) => H - pad - ((lat - minLat) / (spanY || 1)) * (H - pad * 2);
+    const W = box.w;
+    const H = box.h;
+    const availW = Math.max(40, W - INSET - LABEL_GUTTER);
+    const availH = Math.max(40, H - INSET * 2);
+
+    // One scale for both axes. This is the whole correctness fix: any pair of
+    // per-axis scales makes distance and bearing on the plan a lie, and the
+    // duty officer reads "which is nearer" straight off it.
+    const scale = Math.min(availW / spanX, availH / spanY);
+    const ox = INSET + (availW - spanX * scale) / 2;
+    const oy = INSET + (availH - spanY * scale) / 2;
+
+    const x = (lon: number) => ox + (lon - minLon) * k * scale;
+    const y = (lat: number) => oy + (maxLat - lat) * scale; // north up
 
     return { W, H, x, y, midLon: (minLon + maxLon) / 2, connected };
-  }, [board, network]);
+  }, [board, network, box.w, box.h]);
 
   /** Which labels can be drawn without colliding, at the current zoom.
    *
@@ -282,14 +323,18 @@ export function NetworkPlan({
   }, [reset]);
 
   if (!model || !board || !network) {
+    // Same element and same ref as the drawn state. The projection needs the
+    // host's measured size, so if the placeholder dropped the ref the observer
+    // would never attach and the map would never get one.
     return (
-      <div
-        className={`grid place-items-center rounded-lg border border-line bg-surface ${className ?? ""}`}
+      <figure
+        ref={hostRef}
+        className={`grid h-full w-full place-items-center rounded-lg border border-line bg-surface ${className ?? ""}`}
       >
         <p className="p-6 text-center text-[length:var(--text-sm)] text-ink-2">
-          Waiting for the first readings.
+          {board && network ? "Drawing the network…" : "Waiting for the first readings."}
         </p>
-      </div>
+      </figure>
     );
   }
 
@@ -301,6 +346,7 @@ export function NetworkPlan({
 
   return (
     <figure
+      ref={hostRef}
       className={`relative overflow-hidden rounded-lg border border-line bg-surface ${className ?? ""}`}
     >
       <svg
@@ -378,7 +424,7 @@ export function NetworkPlan({
               y={l.ty}
               textAnchor={l.anchor}
               style={{
-                fontSize: 10.5 / s,
+                fontSize: 12 / s,
                 fontWeight: 500,
                 paintOrder: "stroke",
                 stroke: "#fff",
