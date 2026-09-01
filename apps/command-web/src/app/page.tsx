@@ -41,9 +41,29 @@ export default function Board() {
     if (!el) return;
     setRailMore(Math.max(0, el.scrollHeight - el.clientHeight - Math.ceil(el.scrollTop)));
   }, []);
+  // The board is a fixed-height console: it fills exactly what the command bar
+  // leaves and never scrolls as a page. The bar's height is measured rather
+  // than hardcoded — it is 49px today, and a calc() against a guessed number
+  // is how a console ends up one scrollbar tall.
+  const [chromeH, setChromeH] = useState(0);
+  const [consoleMode, setConsoleMode] = useState(false);
   useEffect(() => {
-    document.body.classList.add("board-shell");
-    return () => document.body.classList.remove("board-shell");
+    const el = document.querySelector("header");
+    if (!el) return;
+    const read = () => setChromeH(el.getBoundingClientRect().height);
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  useEffect(() => {
+    // Only the wide layout is a console. Narrow, the board stacks and is meant
+    // to scroll like a document, so it must not be pinned to the viewport.
+    const mq = window.matchMedia("(min-width: 80rem)");
+    const on = () => setConsoleMode(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
   }, []);
 
   // A count with no way to reach what it counts is a report, not a board.
@@ -134,7 +154,8 @@ export default function Board() {
           scrollers never engage. */}
       <main
         id="main"
-        className="mx-auto flex w-full max-w-[130rem] flex-1 flex-col gap-4 px-4 py-4 lg:px-6 xl:min-h-0 xl:overflow-hidden"
+        className="mx-auto flex w-full max-w-[130rem] flex-1 flex-col gap-4 px-4 py-4 lg:px-6 xl:min-h-0 xl:flex-none xl:overflow-hidden"
+        style={consoleMode && chromeH ? { height: `calc(100dvh - ${chromeH}px)` } : undefined}
       >
         {error && (
           <p className="mb-4 rounded-md border border-line bg-sev-tint px-4 py-2.5 text-[length:var(--text-sm)]" style={{ color: "var(--color-sev)" }}>

@@ -145,7 +145,3 @@
    scrolls and each region scrolls inside itself. Other routes (network,
    handover, field) are documents and keep normal page scrolling, so this is
    applied by the board while it is mounted rather than to every route. */
-body.board-shell {
-  height: 100dvh;
-  overflow: hidden;
-}
