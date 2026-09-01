@@ -22,7 +22,7 @@ export const viewport: Viewport = { themeColor: "#0A1628", width: "device-width"
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-IN" className={`${inter.variable} ${mono.variable}`}>
-      <body>
+      <body className="flex min-h-dvh flex-col">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded focus:bg-navy focus:px-3 focus:py-2 focus:text-white"

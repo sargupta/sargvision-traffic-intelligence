@@ -140,3 +140,12 @@
   text-transform: uppercase;
   color: var(--color-ink-3);
 }
+
+/* The board, and only the board, is a fixed-height console: the page never
+   scrolls and each region scrolls inside itself. Other routes (network,
+   handover, field) are documents and keep normal page scrolling, so this is
+   applied by the board while it is mounted rather than to every route. */
+body.board-shell {
+  height: 100dvh;
+  overflow: hidden;
+}
