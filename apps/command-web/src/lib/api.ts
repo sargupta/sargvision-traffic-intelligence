@@ -124,6 +124,9 @@ export interface Board {
   unowned: number;
   incidents: Incident[];
   corridors: CorridorRow[];
+  /** Cadence the collector is running at, so the screen can date its own
+   *  figures rather than assume a threshold. */
+  poll_seconds?: number;
 }
 
 export interface Junction {

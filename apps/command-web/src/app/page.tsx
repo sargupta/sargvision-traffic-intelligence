@@ -135,7 +135,13 @@ export default function Board() {
 
   return (
     <>
-      <Chrome at={board?.at} connected={connected} cycle={board?.cycle} officer="Duty Officer" />
+      <Chrome
+        at={board?.at}
+        connected={connected}
+        cycle={board?.cycle}
+        officer="Duty Officer"
+        pollSeconds={board?.poll_seconds}
+      />
 
       {/* The page does not scroll. Three regions scroll inside themselves, so
           there is never a fold hiding the action bar — which at 1366x768 was

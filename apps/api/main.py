@@ -122,8 +122,14 @@ def health() -> dict:
 
 @app.get("/api/board")
 def board() -> dict:
-    """Everything the duty officer's main screen needs, in one request."""
-    return centre().board()
+    """Everything the duty officer's main screen needs, in one request.
+
+    `poll_seconds` travels with the payload so the screen can say when a
+    reading has gone stale instead of guessing a threshold. The cadence is
+    adaptive and set by deployment, so a number compiled into the web build
+    would be wrong the first time it changed.
+    """
+    return {**centre().board(), "poll_seconds": POLL_SECONDS}
 
 
 @app.get("/api/advice")
