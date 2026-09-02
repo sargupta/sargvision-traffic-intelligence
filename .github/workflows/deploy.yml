@@ -68,6 +68,18 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
+      # Without these the describe below fails, the guard silently takes its
+      # HEAD~1 fallback, and a docs-only tip commit skips a deploy that carried
+      # everything before it. That is not hypothetical: the write-auth gate
+      # merged to main and this workflow reported success having deployed
+      # nothing, because the tip commit only touched a markdown file.
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/937908328857/locations/global/workloadIdentityPools/github/providers/github-oidc
+          service_account: github-deployer@sargvision-traffic-intel.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
       - id: decide
         run: |
           SHA=$(git rev-parse --short HEAD)
@@ -97,8 +109,14 @@ jobs:
             echo "comparing against the running revision $DEPLOYED"
             CHANGED=$(git diff --name-only "$DEPLOYED" HEAD || echo "")
           else
-            echo "no usable deployed SHA; falling back to the last commit"
-            CHANGED=$(git diff --name-only HEAD~1 HEAD || echo "")
+            # Deploy, do not skip. Not knowing what is running is a reason to
+            # ship the tip, not a reason to assume it is already there: a
+            # needless deploy costs a few minutes, a silent skip leaves main
+            # and production disagreeing while every check reports green.
+            echo "::warning::Could not read the running revision; deploying both rather than guessing"
+            echo "api=true" >> "$GITHUB_OUTPUT"
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           echo "$CHANGED"
           echo "api=$(echo "$CHANGED" | grep -qE '^(packages/|apps/api/|data/curated/|Dockerfile|pyproject)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
