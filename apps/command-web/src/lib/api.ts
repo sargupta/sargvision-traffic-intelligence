@@ -1,5 +1,7 @@
 "use client";
 
+import { getToken } from "./auth";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export const API =
@@ -160,21 +162,64 @@ async function get<T>(path: string): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+/** A refused action, carrying the status so a caller can tell the cases apart.
+ *
+ *  409 is the one that matters in a control room: it means the incident moved
+ *  under the officer's feet — usually another officer got there first, or a
+ *  slow network let the same click through twice. The API's reason is exact
+ *  and belongs in the record, but it is written in the state machine's
+ *  vocabulary ("cannot go ACKNOWLEDGED → ACKNOWLEDGED. Allowed: ..."), which
+ *  is not what to put in front of someone holding a wireless.
+ */
+export class ActionError extends Error {
+  constructor(
+    readonly status: number,
+    readonly detail: string,
+  ) {
+    super(detail);
+    this.name = "ActionError";
+  }
+
+  /** What to show the officer. */
+  get human(): string {
+    if (this.status === 409) return "Someone else has already moved this on — refreshed.";
+    if (this.status === 401)
+      return "Recording is locked. Unlock it from the top bar, then try again.";
+    if (this.status === 503)
+      return "Recording is disabled on this deployment. Nothing was saved — use the wireless.";
+    if (this.status === 422 || this.status === 400) return this.detail;
+    if (this.status >= 500) return "The command centre did not accept that. Try again.";
+    return this.detail;
+  }
+
+  /** Whether the officer needs to supply a credential before retrying. */
+  get needsToken(): boolean {
+    return this.status === 401;
+  }
+
+  /** Whether the officer's copy of this incident is now known to be stale. */
+  get stale(): boolean {
+    return this.status === 409;
+  }
+}
+
 export async function act(
   incidentId: string,
   action: string,
   body: { by: string; to?: string; unit?: string; text?: string; kind?: string },
 ): Promise<Incident> {
+  const token = getToken();
   const r = await fetch(`${API}/api/incidents/${incidentId}/${action}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   const payload = await r.json().catch(() => ({}));
   if (!r.ok) {
-    // The API refuses illegal transitions with the reason and the allowed set.
-    // Surfacing that verbatim is more useful than "something went wrong".
-    throw new Error(payload?.detail ?? `${action} failed (${r.status})`);
+    throw new ActionError(r.status, payload?.detail ?? `${action} failed (${r.status})`);
   }
   return payload as Incident;
 }

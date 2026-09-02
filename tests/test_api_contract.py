@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta
+from typing import ClassVar
 
 import pytest
 from fastapi.testclient import TestClient
@@ -39,6 +40,28 @@ def client():
     main.STATE["started_at"] = datetime(2026, 8, 30, 9, 0)
     with TestClient(main.app) as c:
         yield c
+
+
+class TestTheSuiteCannotSpendTheMapsBudget:
+    """Startup must not replace an injected centre with a live probe.
+
+    It used to. The stub below was constructed, TestClient entered, and the
+    lifespan overwrote it with a RoutesProbe and started the poll loop — so
+    every CI run made outbound calls to a metered API that is ~88% of this
+    system's running cost, and the stubbed no-data path was never exercised.
+    """
+
+    def test_startup_keeps_the_injected_centre(self, client):
+        from apps.api import main
+
+        assert type(main.STATE["centre"].probe).__name__ == "StubProbe", (
+            "startup replaced the test centre with a live probe"
+        )
+
+    def test_the_live_probe_is_not_constructed_under_test(self, client):
+        from apps.api import main
+
+        assert not main.STATE["centre"].probe.is_live
 
 
 class TestEveryRouteTheUIDependsOn:
@@ -84,6 +107,27 @@ class TestOperationalSecurity:
         body = client.get("/api/roster").json()
         assert all(o["on_duty"] for o in body["officers"]), "duty state must not be public"
 
+    def test_the_browser_preflight_permits_the_officer_token(self, client):
+        """A curl-only smoke test cannot see this one.
+
+        An Authorization header makes the browser preflight the request. When
+        allow_headers omitted Authorization the preflight came back 400
+        "Disallowed CORS headers", so every write from the control room failed
+        while every curl against the same endpoint succeeded — the same shape
+        as the dropped CORS_ORIGINS incident.
+        """
+        r = client.options(
+            "/api/incidents/INC-NOPE/acknowledge",
+            headers={
+                "Origin": "http://localhost:3050",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type",
+            },
+        )
+        assert r.status_code == 200, r.text
+        allowed = r.headers.get("access-control-allow-headers", "").lower()
+        assert "authorization" in allowed, allowed
+
     def test_cors_does_not_default_to_wildcard(self):
         from apps.api import main
 
@@ -91,12 +135,39 @@ class TestOperationalSecurity:
 
 
 class TestIncidentActions:
-    def test_unknown_incident_is_404(self, client):
-        r = client.post("/api/incidents/INC-NOPE/acknowledge", json={"by": "DO-1"})
+    """The gate runs before the lookup, and that ordering is the point.
+
+    These two used to assert 404 for an unauthenticated caller, which meant an
+    anonymous request could tell a real incident id from an invented one and
+    enumerate the register. Authentication first collapses both to 401.
+    """
+
+    AUTH: ClassVar[dict] = {"Authorization": "Bearer test-officer-token"}
+
+    def _gated(self, client, path, **kw):
+        from apps.api import main
+
+        main.AUTH_MODE, main.WRITE_TOKEN = "token", "test-officer-token"
+        try:
+            return client.post(path, json={"by": "DO-1"}, **kw)
+        finally:
+            main.AUTH_MODE = "open"
+
+    def test_an_unauthenticated_action_is_401(self, client):
+        assert self._gated(client, "/api/incidents/INC-NOPE/acknowledge").status_code == 401
+
+    def test_an_unauthenticated_caller_cannot_enumerate_incident_ids(self, client):
+        """A real id and an invented one must be indistinguishable without a token."""
+        real = self._gated(client, "/api/incidents/INC-NOPE/acknowledge").status_code
+        fake = self._gated(client, "/api/incidents/INC-ALSO-NOPE/acknowledge").status_code
+        assert real == fake == 401
+
+    def test_unknown_incident_is_404_once_authenticated(self, client):
+        r = self._gated(client, "/api/incidents/INC-NOPE/acknowledge", headers=self.AUTH)
         assert r.status_code == 404
 
-    def test_unknown_action_is_404(self, client):
-        r = client.post("/api/incidents/INC-NOPE/teleport", json={"by": "DO-1"})
+    def test_unknown_action_is_404_once_authenticated(self, client):
+        r = self._gated(client, "/api/incidents/INC-NOPE/teleport", headers=self.AUTH)
         assert r.status_code == 404
 
 

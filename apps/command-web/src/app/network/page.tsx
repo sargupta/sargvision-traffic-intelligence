@@ -58,7 +58,7 @@ export default function NetworkPage() {
 
   return (
     <>
-      <Chrome at={board?.at} connected={connected} cycle={board?.cycle} officer="Duty Officer" />
+      <Chrome at={board?.at} connected={connected} cycle={board?.cycle} officer="Duty Officer" pollSeconds={board?.poll_seconds} />
 
       <main id="main" className="mx-auto w-full max-w-[100rem] px-4 py-5 lg:px-6">
         <header className="mb-5">

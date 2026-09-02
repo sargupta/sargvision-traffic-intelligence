@@ -38,6 +38,17 @@ env:
   RUNTIME_ENV: >-
     INCIDENT_STORE=firestore,GOOGLE_CLOUD_PROJECT=sargvision-traffic-intel,CORS_ORIGINS=https://siliguri-command-937908328857.asia-south1.run.app,POLL_SECONDS=180,CONFIRM_MINUTES=8,LAPSE_MINUTES=20
 
+  # Reads are open; recording an action is not. Without this the API refuses
+  # every write with a 503 that says so, which is the safe failure — an
+  # anonymous police record is worse than a refused one. Set the repository
+  # secret WRITE_TOKEN to a long random string and give it to the control room.
+  #
+  # It is appended to RUNTIME_ENV at deploy time using gcloud's ^@^ delimiter
+  # form rather than the default comma, because a secret is opaque and a comma
+  # inside one would otherwise be read as the start of another variable and
+  # corrupt the whole environment.
+  WRITE_TOKEN: ${{ secrets.WRITE_TOKEN }}
+
 jobs:
   guard:
     name: Should we deploy
@@ -128,7 +139,7 @@ jobs:
             --image="$REGISTRY/traffic-api:${{ needs.guard.outputs.sha }}" \
             --project="$PROJECT_ID" --region="$REGION" \
             --max-instances=1 \
-            --set-env-vars="$RUNTIME_ENV" \
+            --set-env-vars="^@^${RUNTIME_ENV//,/@}@WRITE_TOKEN=${WRITE_TOKEN}" \
             --quiet
           # A previous rollback pins traffic to a named revision, and Cloud Run
           # then stops migrating to the latest. Without this, one bad deploy
@@ -160,6 +171,32 @@ jobs:
           BACKEND=$(curl -s -m 20 "$API_URL/health" | python3 -c "import json,sys; print((json.load(sys.stdin).get('store') or {}).get('backend','none'))")
           echo "incident store: $BACKEND"
           [ "$BACKEND" = "firestore" ] || { echo "::error::The service is not using durable storage"; exit 1; }
+          # Recording must never be open to the internet. This endpoint mutates
+          # police records and persists them, so a deployment that accepts an
+          # anonymous write is a failed deployment, not a warning.
+          WRITES=$(curl -s -m 20 "$API_URL/health" | python3 -c "import json,sys; print(json.load(sys.stdin).get('writes','unknown'))")
+          echo "writes: $WRITES"
+          case "$WRITES" in
+            gated) ;;
+            *) echo "::error::Recording is not gated on this deployment ($WRITES). Set the WRITE_TOKEN repository secret."; exit 1 ;;
+          esac
+          ANON=$(curl -s -o /dev/null -w '%{http_code}' -m 20 -X POST \
+                   -H 'Content-Type: application/json' -d '{"by":"ci-probe"}' \
+                   "$API_URL/api/incidents/CI-DOES-NOT-EXIST/acknowledge")
+          echo "anonymous write attempt: $ANON"
+          [ "$ANON" = "401" ] || { echo "::error::An unauthenticated write was not rejected (got $ANON)"; exit 1; }
+          # And the authorised write must survive a browser, not just curl. An
+          # Authorization header triggers a CORS preflight; a preflight that
+          # does not list the header is refused, so the control room would fail
+          # every action while every check above still passed.
+          PREFLIGHT=$(curl -s -D- -o /dev/null -m 20 -X OPTIONS "$API_URL/api/incidents/CI-DOES-NOT-EXIST/acknowledge" \
+                        -H "Origin: $WEB_URL" \
+                        -H 'Access-Control-Request-Method: POST' \
+                        -H 'Access-Control-Request-Headers: authorization,content-type' \
+                      | tr -d '\r' | grep -i '^access-control-allow-headers' | cut -d' ' -f2-)
+          echo "preflight allows: ${PREFLIGHT:-none}"
+          echo "$PREFLIGHT" | grep -qi authorization \
+            || { echo "::error::The browser cannot send an officer token — CORS does not allow Authorization"; exit 1; }
           # The control room reaches this API from a different origin, so CORS
           # is load-bearing rather than cosmetic. A deploy that drops
           # CORS_ORIGINS leaves every endpoint answering curl and nothing

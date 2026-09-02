@@ -114,7 +114,7 @@ function CorridorView() {
 
   return (
     <>
-      <Chrome at={board?.at} connected={connected} cycle={board?.cycle} officer="Duty Officer" />
+      <Chrome at={board?.at} connected={connected} cycle={board?.cycle} officer="Duty Officer" pollSeconds={board?.poll_seconds} />
       <main id="main" className="mx-auto w-full max-w-[74rem] px-4 py-5 lg:px-6">
         <Link href="/" className="text-[length:var(--text-sm)] text-ink-2 underline">← Board</Link>
 

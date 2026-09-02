@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  ACTION_LABEL, ACTION_PATH, STATE_LABEL, act, minutes,
+  ACTION_LABEL, ACTION_PATH, STATE_LABEL, ActionError, act, getIncident, minutes,
   type Incident, type Officer,
 } from "@/lib/api";
 import { Approximate, PriorityTag } from "./Bits";
@@ -48,7 +48,22 @@ export function IncidentCard({
       setText("");
       setAssignee("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (e instanceof ActionError) {
+        setError(e.human);
+        // A 409 means this card is showing a state the incident has already
+        // left. Complaining without correcting it leaves the officer looking
+        // at buttons that cannot work, so pull the real one and re-render.
+        if (e.stale) {
+          try {
+            onChanged(await getIncident(incident.incident_id));
+            setPrompt(null);
+          } catch {
+            /* the refresh is best-effort; the message already stands */
+          }
+        }
+      } else {
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setBusy(null);
     }

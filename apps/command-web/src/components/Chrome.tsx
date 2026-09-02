@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { hhmm } from "@/lib/api";
+import { clearToken, getToken, onTokenChange, setToken } from "@/lib/auth";
 
 const NAV = [
   { href: "/", label: "Board" },
@@ -117,9 +118,107 @@ export function Chrome({
             {cycle !== undefined && <span className="ml-2 text-white/45">cycle {cycle}</span>}
           </span>
 
+          <RecordingLock />
+
           <span className="hidden text-[length:var(--text-sm)] text-white/75 sm:inline">{officer}</span>
         </div>
       </div>
     </header>
+  );
+}
+
+/** Whether this console may record, and how to change that.
+ *
+ *  It sits in the bar rather than behind a menu because an officer must never
+ *  discover that recording was locked by having an action fail at the moment
+ *  they needed it. Locked is a state of the room, so it belongs next to the
+ *  live indicator.
+ */
+function RecordingLock() {
+  const [token, setTokenState] = useState("");
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  useEffect(() => {
+    const read = () => setTokenState(getToken());
+    read();
+    return onTokenChange(read);
+  }, []);
+
+  const unlocked = token.length > 0;
+
+  return (
+    <span className="relative flex items-center no-print">
+      <button
+        type="button"
+        onClick={() => {
+          setDraft("");
+          setOpen((o) => !o);
+        }}
+        aria-expanded={open}
+        title={
+          unlocked
+            ? "This console can record actions. Click to lock or replace the token."
+            : "This console cannot record actions until it is unlocked."
+        }
+        className={`rounded px-2 py-0.5 text-[length:var(--text-2xs)] font-semibold uppercase tracking-[0.08em] transition-colors ${
+          unlocked
+            ? "text-white/60 hover:bg-white/10 hover:text-white/85"
+            : "bg-amber-400/15 text-amber-300 hover:bg-amber-400/25"
+        }`}
+      >
+        {unlocked ? "Recording on" : "Recording locked"}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-[22rem] rounded-lg border border-line bg-surface p-3.5 text-ink shadow-[var(--shadow-float)]">
+          <p className="label">Officer token</p>
+          <p className="mt-1.5 text-[length:var(--text-sm)] leading-relaxed text-ink-2">
+            Needed to acknowledge, assign, stand down or close. Issued to the control
+            room; reading the board never requires it.
+          </p>
+          <input
+            type="password"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && draft.trim()) {
+                setToken(draft);
+                setOpen(false);
+              }
+            }}
+            placeholder="Paste the token"
+            aria-label="Officer token"
+            autoComplete="off"
+            className="mt-2.5 w-full rounded border border-line-firm bg-surface px-2.5 py-1.5 text-[length:var(--text-sm)]"
+          />
+          <div className="mt-2.5 flex items-center gap-2">
+            <button
+              type="button"
+              disabled={!draft.trim()}
+              onClick={() => {
+                setToken(draft);
+                setOpen(false);
+              }}
+              className="rounded bg-navy px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-white disabled:opacity-40"
+            >
+              Unlock
+            </button>
+            {unlocked && (
+              <button
+                type="button"
+                onClick={() => {
+                  clearToken();
+                  setOpen(false);
+                }}
+                className="text-[length:var(--text-sm)] text-ink-2 underline"
+              >
+                Lock this console
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </span>
   );
 }

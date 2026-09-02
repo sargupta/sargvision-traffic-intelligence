@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  API, act, getRoster, minutes, STATE_LABEL,
+  API, ActionError, act, getRoster, minutes, STATE_LABEL,
   type Incident, type Officer,
 } from "@/lib/api";
+import { setToken } from "@/lib/auth";
 
 /** What a sergeant standing at a junction can use.
  *
@@ -37,6 +38,8 @@ export default function Field() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
+  const [needsToken, setNeedsToken] = useState(false);
+  const [tokenDraft, setTokenDraft] = useState("");
 
   useEffect(() => {
     getRoster().then((r) => {
@@ -85,7 +88,12 @@ export default function Field() {
       const updated = await act(incident.incident_id, action, { by: me, ...body });
       setItems((list) => list.map((i) => (i.incident_id === updated.incident_id ? updated : i)));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (e instanceof ActionError) {
+        setError(e.human);
+        setNeedsToken(e.needsToken);
+      } else {
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setBusy(null);
     }
@@ -142,6 +150,38 @@ export default function Field() {
         <p className="mb-3 rounded-lg bg-sev-tint px-3 py-2.5 text-[length:var(--text-sm)]" style={{ color: "var(--color-sev)" }}>
           {error}
         </p>
+      )}
+
+      {needsToken && (
+        <div className="mb-3 rounded-lg border border-line-firm bg-raised p-3">
+          <p className="label">Officer token</p>
+          <p className="mt-1 text-[length:var(--text-sm)] leading-relaxed text-ink-2">
+            Enter it once on this phone to record actions.
+          </p>
+          <input
+            type="password"
+            inputMode="text"
+            autoComplete="off"
+            value={tokenDraft}
+            onChange={(e) => setTokenDraft(e.target.value)}
+            placeholder="Paste the token"
+            aria-label="Officer token"
+            className="mt-2 w-full rounded-lg border border-line-firm bg-surface px-3 py-2.5 text-[length:var(--text-md)]"
+          />
+          <button
+            type="button"
+            disabled={!tokenDraft.trim()}
+            onClick={() => {
+              setToken(tokenDraft);
+              setTokenDraft("");
+              setNeedsToken(false);
+              setError(null);
+            }}
+            className={`${BIG} mt-2 w-full bg-navy text-white disabled:opacity-40`}
+          >
+            Unlock recording
+          </button>
+        </div>
       )}
 
       <h2 className="label mb-2">Assigned to you · {mine.length}</h2>

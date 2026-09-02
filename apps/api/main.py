@@ -14,12 +14,13 @@ import asyncio
 import contextlib
 import json
 import os
+import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from fastapi import Body, FastAPI, HTTPException, Query
+from fastapi import Body, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -51,6 +52,42 @@ POLL_SECONDS = float(os.environ.get("POLL_SECONDS", "180"))
 
 STATE: dict = {"centre": None, "subscribers": set(), "started_at": None}
 
+# ── who may record an action ───────────────────────────────────────────────
+# Reads are open: the board's figures are aggregates, and /api/roster already
+# withholds officer names and duty state. Writes are not, because every one of
+# them is a police record. Before this gate, GET /api/incidents published real
+# incident ids and POST /api/incidents/{id}/{action} reached application logic
+# unauthenticated, so anyone who found the URL could stand down or close a live
+# incident — and the Firestore store made it stick.
+#
+# Fail closed. With no WRITE_TOKEN configured the endpoint refuses rather than
+# falling back to accepting anonymous writes; refusing to record is a safe
+# failure, accepting an anonymous record is not. AUTH_MODE=open exists for
+# local development and is never set in the deployed service.
+WRITE_TOKEN = os.environ.get("WRITE_TOKEN", "").strip()
+AUTH_MODE = os.environ.get("AUTH_MODE", "token").strip().lower()
+
+
+def writes_are_gated() -> bool:
+    return AUTH_MODE != "open"
+
+
+def require_write_access(authorization: str | None) -> None:
+    """Raise unless this caller may record an action."""
+    if not writes_are_gated():
+        return
+    if not WRITE_TOKEN:
+        raise HTTPException(
+            503,
+            "recording is disabled: this deployment has no WRITE_TOKEN configured",
+        )
+    supplied = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        supplied = authorization[7:].strip()
+    # Constant time, so a wrong token cannot be narrowed by timing it.
+    if not supplied or not secrets.compare_digest(supplied, WRITE_TOKEN):
+        raise HTTPException(401, "an officer token is required to record an action")
+
 
 def centre() -> CommandCentre:
     c = STATE["centre"]
@@ -77,18 +114,31 @@ async def _drive() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    key = os.environ.get("ROUTES_API_KEY") or os.environ.get("GEO_API_KEY", "")
-    if not key:
-        raise RuntimeError("ROUTES_API_KEY is required — the board has no data without it")
-    STATE["centre"] = CommandCentre(
-        network=load_network(), probe=RoutesProbe(key), store=build_store()
-    )
-    STATE["started_at"] = now()
-    task = asyncio.create_task(_drive())
+    """Build the live centre, unless one has already been supplied.
+
+    The guard is a test seam with a real cost behind it. Startup used to
+    overwrite STATE["centre"] unconditionally, so a suite that injected a stub
+    probe had it replaced by a RoutesProbe the moment TestClient entered, and
+    then _drive() polled Google on every CI run. The Routes API is metered and
+    is roughly 88% of this system's running cost; a test suite must not be able
+    to spend it. In production STATE starts empty, so the key check and the
+    poll loop below still run exactly as before.
+    """
+    task = None
+    if STATE["centre"] is None:
+        key = os.environ.get("ROUTES_API_KEY") or os.environ.get("GEO_API_KEY", "")
+        if not key:
+            raise RuntimeError("ROUTES_API_KEY is required — the board has no data without it")
+        STATE["centre"] = CommandCentre(
+            network=load_network(), probe=RoutesProbe(key), store=build_store()
+        )
+        STATE["started_at"] = now()
+        task = asyncio.create_task(_drive())
     try:
         yield
     finally:
-        task.cancel()
+        if task is not None:
+            task.cancel()
 
 
 app = FastAPI(title="SARGVISION Traffic Command", version="2.0.0", lifespan=lifespan)
@@ -101,7 +151,12 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_ORIGINS,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    # Authorization is load-bearing, not optional. An Authorization header makes
+    # the browser preflight the request, and a preflight that does not list the
+    # header is refused with "Disallowed CORS headers" — so every write from the
+    # control room would fail while curl kept working, which is precisely how a
+    # dropped CORS_ORIGINS went unnoticed once before.
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -117,6 +172,15 @@ def health() -> dict:
         "started_at": STATE["started_at"].isoformat(timespec="seconds")
         if STATE["started_at"]
         else None,
+        # Says the posture out loud so an accidentally open deployment is
+        # visible from outside instead of having to be inferred by trying it.
+        "writes": (
+            "gated"
+            if writes_are_gated() and WRITE_TOKEN
+            else "disabled — no WRITE_TOKEN configured"
+            if writes_are_gated()
+            else "OPEN — anyone can record an action"
+        ),
     }
 
 
@@ -327,8 +391,14 @@ class Action(BaseModel):
 
 
 @app.post("/api/incidents/{incident_id}/{action}")
-def act(incident_id: str, action: str, payload: Action = Body(...)) -> dict:
+def act(
+    incident_id: str,
+    action: str,
+    payload: Action = Body(...),
+    authorization: str | None = Header(default=None),
+) -> dict:
     """The officer's verbs. Every one records who did it and when."""
+    require_write_access(authorization)
     c = centre()
     item = c.incidents.get(incident_id)
     if item is None:
