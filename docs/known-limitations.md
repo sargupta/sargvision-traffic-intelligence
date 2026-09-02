@@ -53,3 +53,40 @@ decimal.
 
 +30/+45/+60 were calibrated against Siliguri 2019 observations. They are configuration,
 not constants, and must be recalibrated for any other city or data source.
+
+## The write credential is a room token, not an identity
+
+Recording an action requires `Authorization: Bearer $WRITE_TOKEN` — one secret shared by
+the control room. It proves the person at the console belongs there. It does not prove
+*which* officer acted: `by` is whatever the console reports, so the audit trail is only
+as trustworthy as the seat.
+
+That is honest for a single duty-officer console and wrong for a shift with several
+people held to their own record. Closing it needs a user directory and per-officer
+sign-in, not a longer token. Until then, a rotated token is the only revocation
+available, and rotating it locks out every console at once.
+
+## Nothing rate-limits the API
+
+There is no throttle on any endpoint, and the service runs at `--max-instances=1`
+because each instance keeps its own corridor state and its own poll loop. Those two
+facts combine badly: a trivial request flood, or a single misbehaving script, can
+saturate the one instance and leave the duty officer looking at a board that will not
+load. Reads are cheap in themselves — they serve from memory — but `/api/board` is
+roughly 180 KB of corridor geometry per call.
+
+The exposure is bounded by obscurity rather than by design, which is not a control.
+A per-IP limit at the edge is the fix; raising `max-instances` is not, because it
+would double the metered Routes bill and split incident state across instances.
+
+## The command interface has no automated tests
+
+`apps/command-web` is about 3,600 lines of the officer-facing surface and its only
+gates are `tsc --noEmit` and a successful `next build`. There is no test runner
+configured and no linter. Every defect found in it so far — the 34% squashed
+projection, the action bar below the fold, the CORS preflight that would have refused
+every write — was found by driving a browser, not by a suite.
+
+That is the largest remaining gap in this repository. The Python side has 147 tests
+covering the state machine, the API contract, the write gate and the analytics; the
+interface has none, so a regression in it is invisible until someone looks.
