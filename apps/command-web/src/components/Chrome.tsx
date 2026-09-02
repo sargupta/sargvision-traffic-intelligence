@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { hhmm } from "@/lib/api";
 import { clearToken, getToken, onTokenChange, setToken } from "@/lib/auth";
 
@@ -138,6 +138,8 @@ function RecordingLock() {
   const [token, setTokenState] = useState("");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const box = useRef<HTMLSpanElement | null>(null);
+  const field = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const read = () => setTokenState(getToken());
@@ -145,10 +147,29 @@ function RecordingLock() {
     return onTokenChange(read);
   }, []);
 
+  // A panel sitting over the board has to be dismissible without hunting for
+  // the button that opened it, and the caret should already be in the field.
+  useEffect(() => {
+    if (!open) return;
+    field.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const onDown = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [open]);
+
   const unlocked = token.length > 0;
 
   return (
-    <span className="relative flex items-center no-print">
+    <span ref={box} className="relative flex items-center no-print">
       <button
         type="button"
         onClick={() => {
@@ -178,6 +199,7 @@ function RecordingLock() {
             room; reading the board never requires it.
           </p>
           <input
+            ref={field}
             type="password"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

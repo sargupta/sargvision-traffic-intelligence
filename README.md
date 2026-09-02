@@ -87,16 +87,77 @@ anything.
 
 ## Running it
 
+There are two front ends. **`apps/command-web`** (port 3050) is the duty
+officer board — the deployed one, and the thing this repository is mainly
+about. `apps/web` (port 3040) is the earlier narrative console kept for the
+baseline write-up; it is not what the control room uses.
+
 ```bash
 uv sync
-PYTHONPATH=. .venv/bin/python scripts/build_analytics.py   # baseline layer
-PYTHONPATH=. .venv/bin/python scripts/discover.py          # structural findings
-PYTHONPATH=. .venv/bin/uvicorn apps.api.main:app --port 8099
-npm --prefix apps/web run dev                              # console on :3040
+
+# The baseline layer, from the 2019 extract. Optional: the board runs without
+# it, and the tests that need it skip rather than fail.
+PYTHONPATH=. .venv/bin/python scripts/build_analytics.py
+PYTHONPATH=. .venv/bin/python scripts/discover.py
+
+# The API. ROUTES_API_KEY is required — there is no data without it.
+ROUTES_API_KEY=... \
+CORS_ORIGINS=http://localhost:3050 \
+AUTH_MODE=open \
+  PYTHONPATH=. .venv/bin/uvicorn apps.api.main:app --port 8099
+
+# The board. apps/command-web/.env.local should point at the API above;
+# pointing it at the deployed API fails, because production CORS correctly
+# allows only the deployed origin.
+npm --prefix apps/command-web run dev
 ```
 
 `scripts/replay_day.py [YYYYMMDD]` drives a whole day through the loop and
 prints what it found — the fastest way to see the engine work.
+
+### Environment
+
+| variable | required | what it does |
+|---|---|---|
+| `ROUTES_API_KEY` | yes | Google Routes API key. Startup refuses without it. |
+| `CORS_ORIGINS` | yes in production | Comma-separated allowed origins. Fails closed — an empty value permits nothing rather than everything. |
+| `WRITE_TOKEN` | yes in production | The credential an officer needs to record an action. |
+| `AUTH_MODE` | no | `token` (default) or `open`. See below. |
+| `INCIDENT_STORE` | no | `memory` (default) or `firestore`. Only Firestore survives a restart. |
+| `POLL_SECONDS` | no | Base cadence, 180 in production. Also drives the board's stale threshold, at 1.5 cycles. |
+| `CONFIRM_MINUTES` | no | How long a condition must hold before it becomes an incident. 8 in production. |
+| `LAPSE_MINUTES` | no | How long before an unattended incident is recorded as having cleared itself. |
+| `TZ` | yes on Cloud Run | `Asia/Kolkata`. Without it the shift clock reads UTC, which is invisible on a machine already in IST. |
+
+### Who may record an action
+
+Reads are open: the board's figures are aggregates, and `/api/roster` returns
+units without officer names or duty state. Recording is not, because every
+action is a police record — and the endpoint was reachable unauthenticated
+until the gate went in, on a public URL, with a durable store behind it.
+
+Writes require `Authorization: Bearer $WRITE_TOKEN`. The gate **fails closed**:
+with no token configured the API refuses every write with a 503 saying so,
+rather than falling back to accepting anyone. `/health` reports the posture, so
+an accidentally open deployment is visible from outside:
+
+```
+"writes": "gated" | "disabled — no WRITE_TOKEN configured" | "OPEN — anyone can record an action"
+```
+
+`AUTH_MODE=open` removes the gate and is for local development only. It is
+never set on the deployed service, and the deploy smoke test fails if the live
+API reports anything other than `gated` or accepts an anonymous write.
+
+Set the token as the `WRITE_TOKEN` repository secret; the deploy passes it into
+the service. The control room enters it once per console, from **Recording
+locked** in the command bar. To rotate, change the secret and redeploy — every
+console then needs the new value.
+
+This is a shared room token, not per-officer identity. It proves the person at
+the console belongs in the room; `by` still records which seat acted. Real
+per-officer identity is the next step, and it is a directory problem rather
+than a longer token.
 
 ## What this is not
 

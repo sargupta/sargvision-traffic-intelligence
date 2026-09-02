@@ -57,6 +57,29 @@ export default function BoardError({
           </a>
         </div>
 
+        {/* This boundary replaces the page, and the page is what renders the
+            navigation — so without these the officer is stranded on the one
+            view that is broken while the others may be working. */}
+        <div className="mt-5 border-t border-line pt-4">
+          <p className="label">Other views, which may still be working</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {[
+              ["/field", "Field", "what a sergeant at a junction needs"],
+              ["/handover", "Handover", "the shift record"],
+              ["/network", "Network", "junctions and corridors"],
+            ].map(([href, label, hint]) => (
+              <a
+                key={href}
+                href={href}
+                className="text-[length:var(--text-sm)] text-ink-2 underline decoration-line-firm underline-offset-2 hover:text-ink"
+              >
+                {label}
+                <span className="ml-1.5 text-[length:var(--text-2xs)] text-ink-3">{hint}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+
         {error.digest && (
           <p className="mt-5 border-t border-line pt-3 text-[length:var(--text-2xs)] text-ink-3">
             Reference for the log: <span className="tnum">{error.digest}</span>
