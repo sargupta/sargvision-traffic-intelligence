@@ -218,6 +218,38 @@ class TestPerOfficerAttribution:
         _, c = officers
         assert c.get("/health").json()["attribution"] == "per-officer"
 
+    def test_the_shared_token_stops_working_once_officers_have_their_own(self, monkeypatch):
+        """Otherwise it is a credential that writes without attribution, while
+        /health advertises per-officer attribution."""
+        _, client = build(
+            monkeypatch,
+            OFFICER_TOKENS=json.dumps(self.TOKENS),
+            WRITE_TOKEN="the-old-room-token",
+        )
+        with client as c:
+            r = c.post(
+                "/api/incidents/INC-TEST/acknowledge",
+                json={"by": "whoever"},
+                headers={"Authorization": "Bearer the-old-room-token"},
+            )
+            assert r.status_code == 401, "the shared token bypassed attribution"
+            assert c.get("/health").json()["attribution"] == "per-officer"
+
+    def test_per_officer_tokens_still_work_alongside_a_stale_shared_secret(self, monkeypatch):
+        _, client = build(
+            monkeypatch,
+            OFFICER_TOKENS=json.dumps(self.TOKENS),
+            WRITE_TOKEN="the-old-room-token",
+        )
+        with client as c:
+            r = c.post(
+                "/api/incidents/INC-TEST/acknowledge",
+                json={},
+                headers={"Authorization": "Bearer tok-do"},
+            )
+            assert r.status_code == 200, r.text
+            assert r.json()["history"][-1]["by"] == "DO-1"
+
 
 class TestAttributionIsStatedHonestly:
     def test_a_shared_token_admits_it_cannot_name_a_person(self, gated):

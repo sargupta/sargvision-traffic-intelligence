@@ -135,7 +135,11 @@ def require_write_access(authorization: str | None) -> str | None:
                 matched = officer_id
         if matched is not None:
             return matched
-        if WRITE_TOKEN and secrets.compare_digest(supplied, WRITE_TOKEN):
+        # The shared token is refused outright once per-officer tokens exist.
+        # Accepting both would leave a credential that authorises a write while
+        # producing no attribution — a bypass of the very guarantee /health
+        # would then be advertising as "per-officer".
+        if not OFFICER_TOKENS and WRITE_TOKEN and secrets.compare_digest(supplied, WRITE_TOKEN):
             return None  # authorised, but the record cannot name a person
     raise HTTPException(401, "an officer token is required to record an action")
 

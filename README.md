@@ -169,6 +169,12 @@ record an action in another officer's name:
 or `attribution: shared`, so the strength of the audit trail is stated rather
 than assumed. Officer ids come from `data/curated/roster.json`.
 
+Once `OFFICER_TOKENS` is set the shared `WRITE_TOKEN` **stops being accepted**,
+deliberately: a credential that authorises a write but produces no attribution
+would be a bypass of the guarantee `/health` is then advertising. Rotating to
+per-officer tokens therefore locks out any console still holding the old room
+token, which is the intended effect.
+
 ### Rate limits
 
 240 reads and 30 writes per minute per caller, and 10 rejected credentials per
