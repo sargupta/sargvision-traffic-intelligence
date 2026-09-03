@@ -71,10 +71,14 @@ export default function Board() {
 
   // Advice is recomputed whenever the board moves, so a recommendation never
   // outlives the condition that produced it.
+  // Keyed on the reading's timestamp, not the board object: a new object
+  // arrives on every poll, but the advice only needs recomputing when the
+  // reading behind it actually moved.
+  const boardAt = board?.at;
   useEffect(() => {
-    if (!board) return;
+    if (!boardAt) return;
     getAdvice().then((a) => setAdvice(a.recommendations)).catch(() => setAdvice([]));
-  }, [board?.at]);
+  }, [boardAt]);
 
   // An action returns the updated incident. Showing it immediately, rather than
   // waiting up to three minutes for the next poll, is the difference between a
@@ -105,7 +109,9 @@ export default function Board() {
     return () => ro.disconnect();
   }, [measureRail, incidents.length, advice.length]);
   const inHand = incidents.filter((i) => !i.needs_attention);
-  const bands = board?.bands ?? {};
+  // Memoised because `?? {}` builds a new object every render, which would
+  // make the empty-state memo below recompute on every one.
+  const bands = useMemo(() => board?.bands ?? {}, [board?.bands]);
 
   // An empty queue must explain itself. The previous text asserted that every
   // corridor was within its usual travel time, which the headline directly

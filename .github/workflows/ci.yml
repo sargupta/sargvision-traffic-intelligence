@@ -86,6 +86,15 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # Until this job existed the interface's only gates were tsc and a
+      # successful build, on ~3,600 lines of the officer-facing surface. Every
+      # defect found in it had to be found by driving a browser.
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
       - name: Build
         env:
           # A build must succeed without secrets. The map degrades to a stated

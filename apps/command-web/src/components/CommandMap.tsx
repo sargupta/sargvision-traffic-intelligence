@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BAND_STROKE, LIGHT_MAP, loadMaps } from "@/lib/maps";
-import type { Board, Incident, Junction, NetworkPayload } from "@/lib/api";
+import type { Board, Junction, NetworkPayload } from "@/lib/api";
 
 const KEY = process.env.NEXT_PUBLIC_MAPS_API_KEY ?? "";
 

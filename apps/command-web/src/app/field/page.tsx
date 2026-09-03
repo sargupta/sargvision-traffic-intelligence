@@ -67,7 +67,7 @@ export default function Field() {
       const d = await r.json();
       setItems(d.incidents ?? []);
       setError(null);
-    } catch (e) {
+    } catch {
       setError("Could not reach the control room. Showing what was last loaded.");
     }
   }, []);
@@ -79,7 +79,7 @@ export default function Field() {
   }, [load]);
 
   const mine = useMemo(() => items.filter((i) => i.owner === me && i.is_open), [items, me]);
-  const unassigned = useMemo(() => items.filter((i) => !i.owner && i.is_open), [items, me]);
+  const unassigned = useMemo(() => items.filter((i) => !i.owner && i.is_open), [items]);
 
   async function run(incident: Incident, action: string, body: Record<string, string | undefined> = {}) {
     setBusy(incident.incident_id + action);

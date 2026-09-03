@@ -154,10 +154,33 @@ the service. The control room enters it once per console, from **Recording
 locked** in the command bar. To rotate, change the secret and redeploy — every
 console then needs the new value.
 
-This is a shared room token, not per-officer identity. It proves the person at
-the console belongs in the room; `by` still records which seat acted. Real
-per-officer identity is the next step, and it is a directory problem rather
-than a longer token.
+**Per-officer tokens.** `WRITE_TOKEN` alone is one secret shared by the room: it
+proves the person at the console belongs there, but the server cannot tell one
+officer from another, so it has to believe the `by` the console sends and the
+record names a seat. Set `OFFICER_TOKENS` instead — a JSON object of token to
+officer id — and the actor is taken from the credential, so a console cannot
+record an action in another officer's name:
+
+```json
+{"<random-1>": "DO-1", "<random-2>": "TG-2"}
+```
+
+`/health` reports which of the two is in force as `attribution: per-officer`
+or `attribution: shared`, so the strength of the audit trail is stated rather
+than assumed. Officer ids come from `data/curated/roster.json`.
+
+### Rate limits
+
+240 reads and 30 writes per minute per caller, and 10 rejected credentials per
+minute so the token cannot be guessed at the write rate. `/api/stream` is
+exempt: one long-lived connection per console is not traffic. Override with
+`RATE_READS_PER_MIN`, `RATE_WRITES_PER_MIN` and `RATE_FAILED_AUTH_PER_MIN`.
+
+Callers are told apart by the head of `X-Forwarded-For`, because behind Cloud
+Run `request.client` is the load balancer and every caller would otherwise
+share one bucket. The counters are in-process, which is correct only while the
+service runs at `--max-instances=1` — see the comment on that flag for why it
+should stay that way.
 
 ## What this is not
 

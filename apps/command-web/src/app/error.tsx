@@ -41,6 +41,10 @@ export default function BoardError({
           Until it comes back, work the wireless. Do not treat a blank board as a quiet city.
         </p>
 
+        {/* eslint-disable @next/next/no-html-link-for-pages --
+            These are deliberately plain anchors. <Link> navigates on the
+            client, which keeps the very JavaScript state that just failed;
+            a full document load is what actually recovers the console. */}
         <div className="mt-5 flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -86,6 +90,7 @@ export default function BoardError({
           </p>
         )}
       </div>
+      {/* eslint-enable @next/next/no-html-link-for-pages */}
     </main>
   );
 }

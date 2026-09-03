@@ -15,14 +15,16 @@ import contextlib
 import json
 import os
 import secrets
+import time
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from fastapi import Body, FastAPI, Header, HTTPException, Query
+from fastapi import Body, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from packages.command.advice import recommend
@@ -68,25 +70,74 @@ WRITE_TOKEN = os.environ.get("WRITE_TOKEN", "").strip()
 AUTH_MODE = os.environ.get("AUTH_MODE", "token").strip().lower()
 
 
+def _load_officer_tokens() -> dict[str, str]:
+    """token -> officer_id, from OFFICER_TOKENS as a JSON object.
+
+    One token per officer is what makes the audit trail mean anything. With a
+    single room token the server has to believe whatever `by` the console sends,
+    so the record names a seat rather than a person and cannot be relied on
+    afterwards. With these, the actor is derived from the credential and the
+    client cannot assert an identity it does not hold.
+    """
+    raw = os.environ.get("OFFICER_TOKENS", "").strip()
+    if not raw:
+        return {}
+    try:
+        loaded = json.loads(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"OFFICER_TOKENS is not valid JSON: {exc}") from exc
+    if not isinstance(loaded, dict) or not all(
+        isinstance(k, str) and isinstance(v, str) and k and v for k, v in loaded.items()
+    ):
+        raise RuntimeError("OFFICER_TOKENS must be a JSON object of token -> officer id")
+    return loaded
+
+
+OFFICER_TOKENS = _load_officer_tokens()
+
+
 def writes_are_gated() -> bool:
     return AUTH_MODE != "open"
 
 
-def require_write_access(authorization: str | None) -> None:
-    """Raise unless this caller may record an action."""
+def attribution() -> str:
+    """How far the record can be trusted to name a person."""
     if not writes_are_gated():
-        return
-    if not WRITE_TOKEN:
+        return "none"
+    if OFFICER_TOKENS:
+        return "per-officer"
+    return "shared" if WRITE_TOKEN else "disabled"
+
+
+def require_write_access(authorization: str | None) -> str | None:
+    """Raise unless this caller may record an action.
+
+    Returns the officer id the credential belongs to when it identifies one, so
+    the handler can attribute the action to a person rather than to whatever the
+    request body claimed.
+    """
+    if not writes_are_gated():
+        return None
+    if not OFFICER_TOKENS and not WRITE_TOKEN:
         raise HTTPException(
             503,
-            "recording is disabled: this deployment has no WRITE_TOKEN configured",
+            "recording is disabled: this deployment has no officer tokens configured",
         )
     supplied = ""
     if authorization and authorization.lower().startswith("bearer "):
         supplied = authorization[7:].strip()
-    # Constant time, so a wrong token cannot be narrowed by timing it.
-    if not supplied or not secrets.compare_digest(supplied, WRITE_TOKEN):
-        raise HTTPException(401, "an officer token is required to record an action")
+    if supplied:
+        # Constant time, and over every token, so neither a wrong value nor the
+        # number of officers configured can be narrowed by timing the reply.
+        matched = None
+        for token, officer_id in OFFICER_TOKENS.items():
+            if secrets.compare_digest(supplied, token):
+                matched = officer_id
+        if matched is not None:
+            return matched
+        if WRITE_TOKEN and secrets.compare_digest(supplied, WRITE_TOKEN):
+            return None  # authorised, but the record cannot name a person
+    raise HTTPException(401, "an officer token is required to record an action")
 
 
 def centre() -> CommandCentre:
@@ -147,6 +198,77 @@ app = FastAPI(title="SARGVISION Traffic Command", version="2.0.0", lifespan=life
 # internet. An empty allowlist is a visible outage; a wildcard is an invisible
 # one.
 _ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+# ── keeping one instance available to the room ─────────────────────────────
+# The service runs at --max-instances=1, because each instance keeps its own
+# corridor state and its own poll loop. That makes availability a single point:
+# one careless script, or one bored stranger with the public URL, can saturate
+# the only instance and leave the duty officer with a board that will not load.
+# /api/board alone is ~180 KB of corridor geometry per call.
+#
+# In-process counters are the right tool precisely because there is one
+# instance. If that ever changes this has to move to a shared store, and the
+# comment on max-instances explains why it should not change.
+READ_BUDGET = int(os.environ.get("RATE_READS_PER_MIN", "240"))
+WRITE_BUDGET = int(os.environ.get("RATE_WRITES_PER_MIN", "30"))
+FAILED_AUTH_BUDGET = int(os.environ.get("RATE_FAILED_AUTH_PER_MIN", "10"))
+_WINDOW = 60.0
+_hits: dict[tuple[str, str], deque[float]] = defaultdict(deque)
+
+
+def client_ip(request: Request) -> str:
+    """The caller, as seen from in front of Cloud Run's load balancer.
+
+    request.client is the balancer, so every caller would share one bucket and
+    the first busy console would rate-limit the whole city. The left-most entry
+    of X-Forwarded-For is the original client.
+    """
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _over_budget(ip: str, bucket: str, budget: int) -> bool:
+    now_s = time.monotonic()
+    seen = _hits[(ip, bucket)]
+    while seen and now_s - seen[0] > _WINDOW:
+        seen.popleft()
+    if len(seen) >= budget:
+        return True
+    seen.append(now_s)
+    return False
+
+
+@app.middleware("http")
+async def rate_limit(request: Request, call_next):
+    # The event stream is one long-lived connection per console, not traffic.
+    # Counting it would throttle a control room that is doing nothing wrong.
+    if request.url.path == "/api/stream":
+        return await call_next(request)
+
+    ip = client_ip(request)
+    write = request.method == "POST"
+    budget = WRITE_BUDGET if write else READ_BUDGET
+    if _over_budget(ip, "write" if write else "read", budget):
+        return JSONResponse(
+            {"detail": "too many requests"},
+            status_code=429,
+            headers={"Retry-After": "60"},
+        )
+
+    response = await call_next(request)
+
+    # A rejected credential is cheap to retry, so it gets its own much smaller
+    # budget: without it the token is guessable at the write rate all day.
+    if write and response.status_code == 401 and _over_budget(ip, "auth", FAILED_AUTH_BUDGET):
+        return JSONResponse(
+            {"detail": "too many failed attempts"},
+            status_code=429,
+            headers={"Retry-After": "60"},
+        )
+    return response
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ORIGINS,
@@ -175,12 +297,16 @@ def health() -> dict:
         # Says the posture out loud so an accidentally open deployment is
         # visible from outside instead of having to be inferred by trying it.
         "writes": (
-            "gated"
-            if writes_are_gated() and WRITE_TOKEN
-            else "disabled — no WRITE_TOKEN configured"
-            if writes_are_gated()
-            else "OPEN — anyone can record an action"
+            "OPEN — anyone can record an action"
+            if not writes_are_gated()
+            else "gated"
+            if (OFFICER_TOKENS or WRITE_TOKEN)
+            else "disabled — no officer tokens configured"
         ),
+        # Whether an action in the record can be traced to a person or only to
+        # a console. Stated rather than implied, because "gated" alone would
+        # read as a stronger guarantee than a shared token can give.
+        "attribution": attribution(),
     }
 
 
@@ -383,7 +509,10 @@ def incident(incident_id: str) -> dict:
 
 
 class Action(BaseModel):
-    by: str = Field(min_length=2, max_length=80)
+    # Optional because a per-officer token already names the actor, and the
+    # server prefers its own answer to the client's. Still required, and still
+    # validated, when the credential cannot identify anyone.
+    by: str | None = Field(default=None, min_length=2, max_length=80)
     to: str | None = Field(default=None, max_length=80)
     unit: str | None = Field(default=None, max_length=40)
     text: str | None = Field(default=None, max_length=1000)
@@ -398,7 +527,12 @@ def act(
     authorization: str | None = Header(default=None),
 ) -> dict:
     """The officer's verbs. Every one records who did it and when."""
-    require_write_access(authorization)
+    identified = require_write_access(authorization)
+    # The credential wins. A console cannot record an action in another
+    # officer's name, because the name is not taken from the request.
+    actor = identified or payload.by
+    if not actor:
+        raise HTTPException(422, "who is recording this? `by` is required")
     c = centre()
     item = c.incidents.get(incident_id)
     if item is None:
@@ -407,29 +541,29 @@ def act(
     try:
         match action:
             case "acknowledge":
-                item.acknowledge(payload.by)
+                item.acknowledge(actor)
             case "assign":
                 if not payload.to:
                     raise HTTPException(400, "assign needs `to`")
-                item.assign(payload.to, by=payload.by, unit=payload.unit)
+                item.assign(payload.to, by=actor, unit=payload.unit)
             case "note":
                 if not payload.text:
                     raise HTTPException(400, "note needs `text`")
-                item.add_note(payload.by, payload.text, kind=payload.kind or "NOTE")
+                item.add_note(actor, payload.text, kind=payload.kind or "NOTE")
             case "on-scene":
-                item.move(IncidentState.ON_SCENE, payload.by)
+                item.move(IncidentState.ON_SCENE, actor)
             case "clearing":
-                item.move(IncidentState.CLEARING, payload.by, reason=payload.text)
+                item.move(IncidentState.CLEARING, actor, reason=payload.text)
             case "resolve":
-                item.move(IncidentState.RESOLVED, payload.by, reason=payload.text)
+                item.move(IncidentState.RESOLVED, actor, reason=payload.text)
             case "stand-down":
                 if not payload.text:
                     raise HTTPException(400, "standing down needs a reason in `text`")
-                item.stand_down(payload.by, payload.text)
+                item.stand_down(actor, payload.text)
             case "close":
                 if not payload.text:
                     raise HTTPException(400, "closing needs an outcome in `text`")
-                item.close(payload.by, payload.text)
+                item.close(actor, payload.text)
             case _:
                 raise HTTPException(404, f"no action {action}")
     except HTTPException:

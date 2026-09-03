@@ -14,7 +14,9 @@ anonymous record is worse than a refused genuine one, so the gate fails closed.
 from __future__ import annotations
 
 import importlib
+import json
 from datetime import datetime, timedelta
+from typing import ClassVar
 
 import pytest
 from fastapi.testclient import TestClient
@@ -25,7 +27,7 @@ TOKEN = "test-officer-token-not-a-real-one"
 
 def build(monkeypatch, **env):
     """Reimport the API with a given environment, since the gate reads it once."""
-    for k in ("WRITE_TOKEN", "AUTH_MODE"):
+    for k in ("WRITE_TOKEN", "AUTH_MODE", "OFFICER_TOKENS"):
         monkeypatch.delenv(k, raising=False)
     for k, v in env.items():
         monkeypatch.setenv(k, v)
@@ -156,7 +158,7 @@ class TestItFailsClosed:
     def test_health_declares_that_recording_is_disabled(self, monkeypatch):
         _, client = build(monkeypatch)
         with client as c:
-            assert "no WRITE_TOKEN" in c.get("/health").json()["writes"]
+            assert "no officer tokens" in c.get("/health").json()["writes"]
 
     def test_health_declares_a_gated_deployment(self, gated):
         _, c = gated
@@ -171,3 +173,69 @@ class TestItFailsClosed:
                 == 200
             )
             assert c.get("/health").json()["writes"].startswith("OPEN")
+
+
+class TestPerOfficerAttribution:
+    """With one token per officer the record names a person, not a console."""
+
+    TOKENS: ClassVar[dict] = {"tok-do": "DO-1", "tok-tg2": "TG-2"}
+
+    @pytest.fixture
+    def officers(self, monkeypatch):
+        main, client = build(monkeypatch, OFFICER_TOKENS=json.dumps(self.TOKENS))
+        with client as c:
+            yield main, c
+
+    def act(self, c, token, **body):
+        return c.post(
+            "/api/incidents/INC-TEST/acknowledge",
+            json=body,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    def test_the_actor_comes_from_the_token(self, officers):
+        _, c = officers
+        r = self.act(c, "tok-tg2")
+        assert r.status_code == 200, r.text
+        assert r.json()["history"][-1]["by"] == "TG-2"
+
+    def test_a_console_cannot_record_in_another_officers_name(self, officers):
+        """The whole point. A claimed `by` must not override the credential."""
+        _, c = officers
+        r = self.act(c, "tok-tg2", by="DO-1")
+        assert r.status_code == 200, r.text
+        assert r.json()["history"][-1]["by"] == "TG-2", "the body overrode the token"
+
+    def test_no_body_is_needed_when_the_token_identifies_the_officer(self, officers):
+        _, c = officers
+        assert self.act(c, "tok-do").status_code == 200
+
+    def test_an_unknown_token_is_still_refused(self, officers):
+        _, c = officers
+        assert self.act(c, "tok-nobody").status_code == 401
+
+    def test_health_reports_per_officer_attribution(self, officers):
+        _, c = officers
+        assert c.get("/health").json()["attribution"] == "per-officer"
+
+
+class TestAttributionIsStatedHonestly:
+    def test_a_shared_token_admits_it_cannot_name_a_person(self, gated):
+        _, c = gated
+        assert c.get("/health").json()["attribution"] == "shared"
+
+    def test_a_shared_token_still_requires_a_claimed_actor(self, gated):
+        """Degraded mode: the server cannot name the officer, so it insists the
+        console does, rather than recording an action by nobody."""
+        _, c = gated
+        r = c.post(
+            "/api/incidents/INC-TEST/acknowledge",
+            json={},
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+        assert r.status_code == 422
+
+    def test_open_mode_reports_no_attribution(self, monkeypatch):
+        _, client = build(monkeypatch, AUTH_MODE="open")
+        with client as c:
+            assert c.get("/health").json()["attribution"] == "none"

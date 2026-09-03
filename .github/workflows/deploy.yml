@@ -49,6 +49,14 @@ env:
   # corrupt the whole environment.
   WRITE_TOKEN: ${{ secrets.WRITE_TOKEN }}
 
+  # One token per officer, as a JSON object of token -> officer id, e.g.
+  # {"<random>":"DO-1","<random>":"TG-2"}. When present the server takes the
+  # actor from the credential and ignores whatever `by` the console sends, so
+  # the record names a person rather than a seat. Optional: with only
+  # WRITE_TOKEN set the gate still holds, but /health reports attribution as
+  # "shared" because the API cannot tell one officer from another.
+  OFFICER_TOKENS: ${{ secrets.OFFICER_TOKENS }}
+
 jobs:
   guard:
     name: Should we deploy
@@ -157,7 +165,7 @@ jobs:
             --image="$REGISTRY/traffic-api:${{ needs.guard.outputs.sha }}" \
             --project="$PROJECT_ID" --region="$REGION" \
             --max-instances=1 \
-            --set-env-vars="^@^${RUNTIME_ENV//,/@}@WRITE_TOKEN=${WRITE_TOKEN}" \
+            --set-env-vars="^@^${RUNTIME_ENV//,/@}@WRITE_TOKEN=${WRITE_TOKEN}@OFFICER_TOKENS=${OFFICER_TOKENS}" \
             --quiet
           # A previous rollback pins traffic to a named revision, and Cloud Run
           # then stops migrating to the latest. Without this, one bad deploy
@@ -194,6 +202,8 @@ jobs:
           # anonymous write is a failed deployment, not a warning.
           WRITES=$(curl -s -m 20 "$API_URL/health" | python3 -c "import json,sys; print(json.load(sys.stdin).get('writes','unknown'))")
           echo "writes: $WRITES"
+          ATTRIB=$(curl -s -m 20 "$API_URL/health" | python3 -c "import json,sys; print(json.load(sys.stdin).get('attribution','unknown'))")
+          echo "attribution: $ATTRIB"
           case "$WRITES" in
             gated) ;;
             *) echo "::error::Recording is not gated on this deployment ($WRITES). Set the WRITE_TOKEN repository secret."; exit 1 ;;

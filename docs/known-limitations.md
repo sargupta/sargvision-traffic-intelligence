@@ -54,39 +54,57 @@ decimal.
 +30/+45/+60 were calibrated against Siliguri 2019 observations. They are configuration,
 not constants, and must be recalibrated for any other city or data source.
 
-## The write credential is a room token, not an identity
+## Officer identity is only as good as the tokens issued
 
-Recording an action requires `Authorization: Bearer $WRITE_TOKEN` — one secret shared by
-the control room. It proves the person at the console belongs there. It does not prove
-*which* officer acted: `by` is whatever the console reports, so the audit trail is only
-as trustworthy as the seat.
+Recording an action requires a bearer token. With `OFFICER_TOKENS` set — a JSON object
+of token to officer id — the server derives the actor from the credential and ignores
+whatever `by` the console sends, so a console cannot record in another officer's name
+and the trail names a person. `/health` reports `attribution: per-officer`.
 
-That is honest for a single duty-officer console and wrong for a shift with several
-people held to their own record. Closing it needs a user directory and per-officer
-sign-in, not a longer token. Until then, a rotated token is the only revocation
-available, and rotating it locks out every console at once.
+With only `WRITE_TOKEN` set, one secret is shared by the room. The gate still holds, but
+the server cannot tell one officer from another, so it has to believe the claimed `by`
+and the record names a seat. That state is reported honestly as
+`attribution: shared` rather than left to be assumed from "gated".
 
-## Nothing rate-limits the API
+What remains: tokens are issued by hand and revoked by rotation. There is no directory,
+no expiry, and no way to revoke one officer without reissuing to everyone. That is a
+sign-in problem, not a longer-token problem.
 
-There is no throttle on any endpoint, and the service runs at `--max-instances=1`
-because each instance keeps its own corridor state and its own poll loop. Those two
-facts combine badly: a trivial request flood, or a single misbehaving script, can
-saturate the one instance and leave the duty officer looking at a board that will not
-load. Reads are cheap in themselves — they serve from memory — but `/api/board` is
-roughly 180 KB of corridor geometry per call.
+## Rate limiting is per instance, and per IP
 
-The exposure is bounded by obscurity rather than by design, which is not a control.
-A per-IP limit at the edge is the fix; raising `max-instances` is not, because it
-would double the metered Routes bill and split incident state across instances.
+Reads are capped at 240/min per caller and writes at 30/min, with a much tighter 10/min
+on rejected credentials so the token cannot be guessed at the write rate. The event
+stream is exempt: one long-lived connection per console is not traffic. A caller is
+identified by the head of `X-Forwarded-For`, because `request.client` is Cloud Run's
+load balancer and would put the whole city in one bucket.
 
-## The command interface has no automated tests
+The counters live in the process, which is correct while `--max-instances=1` holds — and
+that is a correctness constraint, not a cost one, since each instance keeps its own
+corridor state and poll loop. If the cap is ever raised these limits become per-instance
+and have to move to a shared store.
 
-`apps/command-web` is about 3,600 lines of the officer-facing surface and its only
-gates are `tsc --noEmit` and a successful `next build`. There is no test runner
-configured and no linter. Every defect found in it so far — the 34% squashed
-projection, the action bar below the fold, the CORS preflight that would have refused
-every write — was found by driving a browser, not by a suite.
+What remains: this bounds accidental and casual abuse. It is not DDoS protection, and an
+attacker with many addresses is unaffected. That needs a limit at the edge.
 
-That is the largest remaining gap in this repository. The Python side has 147 tests
-covering the state machine, the API contract, the write gate and the analytics; the
-interface has none, so a regression in it is invisible until someone looks.
+## The command interface is tested, but thinly
+
+`apps/command-web` now has a test runner (Vitest, jsdom) and a linter (ESLint,
+`next/core-web-vitals`, warnings as errors), both gating in CI alongside `tsc` and the
+build. 36 tests cover the officer verbs on a card, the typed failure paths including the
+409 that means another officer got there first, the token store and its behaviour when a
+browser refuses storage, the run-class encoding invariants — that a class is never
+distinguished by colour alone, and that all three survive a monochrome printer — and the
+map projection.
+
+The projection was extracted to `lib/project.ts` to be testable, because it caused the
+worst defect in this repository: the plan drew the city about 1.5x longer per kilometre
+east-west than north-south while a comment above it claimed to keep the city's shape
+honest. It is now asserted against the real junction bounding box, in landscape and
+portrait boxes, for one shared scale across every pair of points, north-up, east-right,
+containment within the label gutter, the longitude cosine, and degenerate input.
+
+What is still not covered: label decluttering, pan and zoom clamping, and the Google
+basemap layer. Those need a real layout engine or a GPU, and jsdom gives neither, so they
+remain browser-verified by hand. The three-second and above-the-fold properties at
+1366x768 are also unasserted — they are questions about rendered geometry, and the honest
+tool for them is a headless browser rather than jsdom.
