@@ -577,6 +577,12 @@ def act(
     except Exception as exc:  # IllegalTransition and anything else
         raise HTTPException(409, str(exc)) from exc
 
+    # Capture the live index at this transition, so "on scene" and "resolved"
+    # carry an exact reading rather than the nearest poll. Actions land between
+    # polls, so without this the verification series would miss the moments that
+    # matter most.
+    c.sample_incident(item, now())
+
     # Written before the response returns. An officer who sees "assigned" must
     # not lose it to an instance recycling a second later.
     c.remember(item)

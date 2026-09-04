@@ -109,6 +109,31 @@ class Note:
 
 
 @dataclass(frozen=True)
+class IndexSample:
+    """The worst live congestion index across an incident's corridors, at a
+    moment in its life. Captured while the incident is open so that "did the
+    deployment work" can be answered from the road, not from memory.
+
+    The index is duration / staticDuration — current travel time against
+    Google's modelled typical. 1.0 is typical; above 1.0 is slower than usual.
+    This is the same probe-travel-time signal NYC used to measure a ~10% gain
+    from Midtown-in-Motion, and it is the only thing that makes the verification
+    claim more than an assertion.
+    """
+
+    at: datetime
+    index: float
+    band: str
+
+    def as_dict(self) -> dict:
+        return {
+            "at": self.at.isoformat(timespec="seconds"),
+            "index": round(self.index, 3),
+            "band": self.band,
+        }
+
+
+@dataclass(frozen=True)
 class Assignment:
     at: datetime
     assigned_to: str
@@ -166,6 +191,7 @@ class Incident:
     assignments: list[Assignment] = field(default_factory=list)
     notes: list[Note] = field(default_factory=list)
     history: list[Transition] = field(default_factory=list)
+    samples: list[IndexSample] = field(default_factory=list)
     last_seen_at: datetime | None = None
     resolved_at: datetime | None = None
 
@@ -202,6 +228,102 @@ class Incident:
         self, author: str, text: str, kind: str = "NOTE", at: datetime | None = None
     ) -> None:
         self.notes.append(Note(at or datetime.now(), author, text, kind))
+
+    # ── measurement (the verification raw material) ───────────────────────────
+    _SAMPLE_CAP = 500  # ~25h at a 3-minute poll; FIFO beyond that
+
+    def record_sample(self, at: datetime, index: float | None, band: str) -> None:
+        """Record the live index for this incident, if there is one.
+
+        Deduplicates a run of identical readings so a stable jam does not fill
+        the series with copies, but always keeps the newest so the last-known
+        value is exact. Called by the command centre, which is the only thing
+        that holds the live corridor index.
+        """
+        if index is None:
+            return
+        if self.samples:
+            last = self.samples[-1]
+            if round(last.index, 3) == round(index, 3) and last.band == band:
+                # Same reading: replace the tail's timestamp rather than append,
+                # so "how long has it sat here" stays answerable without bloat.
+                self.samples[-1] = IndexSample(at, index, band)
+                return
+        self.samples.append(IndexSample(at, index, band))
+        if len(self.samples) > self._SAMPLE_CAP:
+            del self.samples[0 : len(self.samples) - self._SAMPLE_CAP]
+
+    def _index_near(self, when: datetime | None, tol_minutes: float = 12.0) -> float | None:
+        """The sampled index closest to a moment, within a tolerance.
+
+        Transitions happen between polls, so the index at "on scene" is the
+        nearest sample, not an exact one. The tolerance keeps a stale sample
+        from being read as the value at a much later transition.
+        """
+        if when is None or not self.samples:
+            return None
+        best = min(self.samples, key=lambda s: abs((s.at - when).total_seconds()))
+        if abs((best.at - when).total_seconds()) > tol_minutes * 60:
+            return None
+        return best.index
+
+    def _transition_time(self, to: IncidentState) -> datetime | None:
+        for h in self.history:
+            if h.to is to:
+                return h.at
+        return None
+
+    def impact(self, now: datetime | None = None) -> dict:
+        """What the record can honestly say about this incident's course.
+
+        This is a within-incident reading only: how the index moved while the
+        incident was owned, and how quickly it was cleared. It is NOT a
+        counterfactual — proving the officer *caused* the improvement needs the
+        junction's own baseline for the same weekday and hour, which accrues as
+        history is kept. Everything here is the raw material for that study;
+        nothing here claims causation on its own.
+        """
+        detected = self.evidence.get("worst_index")
+        if detected is None and self.samples:
+            detected = self.samples[0].index
+
+        on_scene_at = self._transition_time(IncidentState.ON_SCENE)
+        assigned_at = self._transition_time(IncidentState.ASSIGNED)
+        index_on_scene = self._index_near(on_scene_at)
+        index_resolved = self._index_near(self.resolved_at)
+        if index_resolved is None and self.resolved_at and self.samples:
+            index_resolved = self.samples[-1].index
+
+        def minutes_between(a: datetime | None, b: datetime | None) -> float | None:
+            if a is None or b is None:
+                return None
+            return round((b - a).total_seconds() / 60, 1)
+
+        peak = max((s.index for s in self.samples), default=detected)
+
+        # Fell while the officer owned it — the honest, un-caveated observation.
+        improved = None
+        if index_on_scene is not None and index_resolved is not None:
+            improved = round(index_on_scene - index_resolved, 3)
+
+        return {
+            "index_at_detection": round(detected, 3) if detected is not None else None,
+            "index_on_scene": round(index_on_scene, 3) if index_on_scene is not None else None,
+            "index_resolved": round(index_resolved, 3) if index_resolved is not None else None,
+            "peak_index": round(peak, 3) if peak is not None else None,
+            "minutes_to_scene": minutes_between(assigned_at, on_scene_at),
+            "minutes_to_clear": minutes_between(
+                on_scene_at or self.detected_at, self.resolved_at
+            ),
+            "index_fell_while_owned": improved,
+            "samples": len(self.samples),
+            "basis": (
+                "Within-incident reading of the corridor's own index. Not a "
+                "counterfactual: it does not prove the deployment caused the "
+                "change until compared against this junction's baseline for the "
+                "same weekday and hour."
+            ),
+        }
 
     def stand_down(self, by: str, reason: str, at: datetime | None = None) -> None:
         """No action needed. A real outcome, recorded as one."""
@@ -270,6 +392,8 @@ class Incident:
             "assignments": [a.as_dict() for a in self.assignments],
             "notes": [n.as_dict() for n in self.notes],
             "history": [h.as_dict() for h in self.history],
+            "samples": [s.as_dict() for s in self.samples],
+            "impact": self.impact(moment),
             "next_actions": [
                 s.value for s in sorted(TRANSITIONS[self.state], key=lambda x: x.value)
             ],

@@ -37,6 +37,7 @@ from packages.incidents.model import (
     Incident,
     IncidentKind,
     IncidentState,
+    IndexSample,
     Note,
     Priority,
     Transition,
@@ -81,6 +82,7 @@ def to_document(i: Incident) -> dict:
             {"at": h.at, "from": h.frm.value, "to": h.to.value, "by": h.by, "reason": h.reason}
             for h in i.history
         ],
+        "samples": [{"at": s.at, "index": s.index, "band": s.band} for s in i.samples],
     }
 
 
@@ -123,6 +125,10 @@ def from_document(d: dict) -> Incident:
                 h.get("reason"),
             )
             for h in d.get("history") or []
+        ],
+        samples=[
+            IndexSample(when(s["at"]), s["index"], s.get("band", "UNKNOWN"))
+            for s in d.get("samples") or []
         ],
         last_seen_at=when(d.get("last_seen_at")),
         resolved_at=when(d.get("resolved_at")),

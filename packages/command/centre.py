@@ -235,6 +235,34 @@ class CommandCentre:
         """Persist one incident. Called after every change an officer makes."""
         self.store.save(incident)
 
+    def worst_corridor_state(self, incident: Incident) -> tuple[float | None, str]:
+        """The worst live index across an incident's corridors, and its band.
+
+        The centre is the only thing that holds the live index, so measurement
+        capture lives here, not on the incident. Returns (None, band) when none
+        of the incident's corridors has been observed.
+        """
+        worst_index: float | None = None
+        worst_band = "UNKNOWN"
+        for cid in incident.corridors:
+            st = self.status.get(cid)
+            if st is None or st.index is None:
+                continue
+            if worst_index is None or st.index > worst_index:
+                worst_index = st.index
+                worst_band = st.band
+        return worst_index, worst_band
+
+    def sample_incident(self, incident: Incident, now: datetime) -> None:
+        """Attach the current live index to an incident's measurement series.
+
+        Called every poll for open incidents, and again the instant an officer
+        acts, so the index at a transition (on-scene, resolved) is captured
+        precisely rather than only at the next poll boundary.
+        """
+        index, band = self.worst_corridor_state(incident)
+        incident.record_sample(now, index, band)
+
     # ── the cycle ────────────────────────────────────────────────────────────
     def poll(self, now: datetime) -> dict:
         self.cycles += 1
@@ -273,6 +301,17 @@ class CommandCentre:
         raised = self._raise_incidents(clusters, now)
         lapsed = self._age_incidents(now)
         self._prune_candidates(now)
+
+        # Record the index against every open incident, so the effect of a
+        # deployment can be read off the road later. Persist only when the
+        # series actually grew, to avoid a write per poll for a stable jam.
+        for incident in self.incidents.values():
+            if not incident.is_open:
+                continue
+            before = len(incident.samples)
+            self.sample_incident(incident, now)
+            if len(incident.samples) > before:  # a genuinely new reading
+                self.remember(incident)
 
         return {
             "at": now.isoformat(timespec="seconds"),
@@ -468,6 +507,7 @@ class CommandCentre:
                 last_seen_at=now,
             )
             self.incidents[iid] = incident
+            self.sample_incident(incident, now)  # index at the moment it was raised
             self.remember(incident)
             raised.append(iid)
         return raised
