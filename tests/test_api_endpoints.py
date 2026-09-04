@@ -304,3 +304,80 @@ class TestNoFiveHundreds:
     def test_write_garbage_never_500s(self, client, body):
         r = client.post("/api/incidents/INC-FRESH/acknowledge", json=body, headers=auth())
         assert r.status_code < 500, r.text[:150]
+
+
+class TestRateLimit:
+    """The only instance runs at max-instances=1, so one script can saturate it.
+    The limiter is the guard; these pin its two budgets."""
+
+    def _reset(self):
+        from apps.api import main
+
+        main._hits.clear()
+
+    def test_failed_auth_is_throttled_faster_than_the_write_rate(self, client):
+        # A wrong token gets a much smaller budget so the token cannot be
+        # guessed at the full write rate all day.
+        self._reset()
+        from apps.api import main
+
+        seen_429 = False
+        for _ in range(main.FAILED_AUTH_BUDGET + 3):
+            r = client.post("/api/incidents/INC-FRESH/acknowledge", json={"by": "DO-1"}, headers=auth("wrong"))
+            if r.status_code == 429:
+                seen_429 = True
+                break
+        assert seen_429, "repeated wrong tokens must eventually be rate-limited"
+        self._reset()
+
+    def test_reads_are_throttled_past_the_budget(self, client):
+        self._reset()
+        from apps.api import main
+
+        codes = [client.get("/health").status_code for _ in range(main.READ_BUDGET + 5)]
+        assert 429 in codes, "a flood of reads must hit the budget"
+        self._reset()
+
+
+class TestClientIpAndStreamCap:
+    """The two hardening fixes for the single-instance availability surface."""
+
+    def _req(self, xff: str | None, peer: str = "10.0.0.1"):
+        from types import SimpleNamespace
+
+        headers = {"x-forwarded-for": xff} if xff is not None else {}
+        return SimpleNamespace(headers=headers, client=SimpleNamespace(host=peer))
+
+    def test_client_ip_trusts_the_right_side_not_the_spoofable_left(self):
+        from apps.api import main
+
+        # A remote caller prepends a fake IP; our trusted proxy appends the real
+        # one. The left-most is attacker-controlled; the right side is not.
+        r = self._req("1.2.3.4, 203.0.113.9")
+        assert main.client_ip(r) == "203.0.113.9"
+
+    def test_client_ip_falls_back_to_peer_without_a_header(self):
+        from apps.api import main
+
+        assert main.client_ip(self._req(None, peer="10.9.9.9")) == "10.9.9.9"
+
+    def test_a_spoofed_left_entry_does_not_mint_a_fresh_bucket(self):
+        from apps.api import main
+
+        # Same trusted right-side IP behind different spoofed left entries → one
+        # bucket, so the failed-auth budget cannot be defeated by rotating XFF.
+        a = main.client_ip(self._req("9.9.9.9, 203.0.113.9"))
+        b = main.client_ip(self._req("8.8.8.8, 203.0.113.9"))
+        assert a == b
+
+    def test_stream_refuses_beyond_the_subscriber_cap(self, client):
+        from apps.api import main
+
+        # Fill to the cap with placeholder subscribers; the handler must refuse a
+        # new stream with 503 *before* it opens one (so this does not hang).
+        original = main.STATE["subscribers"]
+        main.STATE["subscribers"] = set(range(main.MAX_SUBSCRIBERS))
+        try:
+            assert client.get("/api/stream").status_code == 503
+        finally:
+            main.STATE["subscribers"] = original

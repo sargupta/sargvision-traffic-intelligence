@@ -18,6 +18,7 @@ freely; at the cap, a new condition must outrank something already there.
 from __future__ import annotations
 
 import os
+import threading
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -111,6 +112,11 @@ CONFIRM_AFTER = timedelta(minutes=float(os.environ.get("CONFIRM_MINUTES", "8")))
 
 # An incident nobody acted on, whose condition has cleared, lapses after this.
 LAPSE_AFTER = timedelta(minutes=float(os.environ.get("LAPSE_MINUTES", "20")))
+
+# A terminal incident is dropped from memory this long after it closed. Set
+# just beyond the longest handover window (24h) so a printed shift record still
+# finds it, while the process no longer accretes a day's dead incidents forever.
+EVICT_TERMINAL_AFTER = timedelta(hours=float(os.environ.get("EVICT_TERMINAL_HOURS", "25")))
 
 # A new choke cluster within this distance of an open incident is that
 # incident, not a new one. Slightly wider than the clustering radius because a
@@ -221,6 +227,16 @@ class CommandCentre:
     # rounded coordinate — see _confirm_candidate.
     _candidates: list[_Candidate] = field(default_factory=list)
 
+    # The poll runs on a worker thread while officer actions run on the anyio
+    # threadpool, both mutating the same Incident objects. Without this lock,
+    # _age_incidents lapsing a DETECTED incident could interleave with an
+    # officer acknowledging it — two appends to one history, a fork that never
+    # happened. "An audit trail cannot contain a sequence that never happened"
+    # is the module's guarantee (incidents/model.py); this lock is what keeps
+    # it true under concurrency. A plain threading.Lock (not asyncio) because
+    # both sides are real OS threads.
+    lock: threading.Lock = field(default_factory=threading.Lock)
+
     def __post_init__(self) -> None:
         for cid, c in self.network.corridors.items():
             self.status[cid] = CorridorStatus(corridor_id=cid, name=c.name)
@@ -253,15 +269,42 @@ class CommandCentre:
                 worst_band = st.band
         return worst_index, worst_band
 
-    def sample_incident(self, incident: Incident, now: datetime) -> None:
+    def sample_incident(self, incident: Incident, now: datetime, *, anchor: bool = False) -> None:
         """Attach the current live index to an incident's measurement series.
 
-        Called every poll for open incidents, and again the instant an officer
-        acts, so the index at a transition (on-scene, resolved) is captured
-        precisely rather than only at the next poll boundary.
+        Called every poll for open incidents (anchor=False), and again the
+        instant an officer acts (anchor=True), so the index at a transition
+        (on-scene, resolved) is captured precisely and is never coalesced away.
         """
         index, band = self.worst_corridor_state(incident)
-        incident.record_sample(now, index, band)
+        incident.record_sample(now, index, band, anchor=anchor)
+
+    def _fresh_episode_id(self, base: str) -> str:
+        """A distinct id for a new incident at a place whose same-day id already
+        belongs to a closed one, so the closed record is never overwritten."""
+        n = 2
+        while f"{base}-{n}" in self.incidents:
+            n += 1
+        return f"{base}-{n}"
+
+    def _evict_terminal(self, now: datetime) -> int:
+        """Drop terminal incidents from memory once they are older than any
+        handover could reach. They are safe in the store and excluded from
+        load_open, so this bounds the process to about a day of history instead
+        of letting a fresh id per place per day accumulate forever — the slow
+        path to an out-of-memory on the single instance the whole city depends
+        on."""
+        cutoff = now - EVICT_TERMINAL_AFTER
+        drop = [
+            iid
+            for iid, i in self.incidents.items()
+            if not i.is_open
+            and i.history
+            and i.history[-1].at < cutoff
+        ]
+        for iid in drop:
+            del self.incidents[iid]
+        return len(drop)
 
     # ── the cycle ────────────────────────────────────────────────────────────
     def poll(self, now: datetime) -> dict:
@@ -298,20 +341,26 @@ class CommandCentre:
                 chokes[cid] = list(reading.choke_points)
 
         clusters = cluster_chokes(chokes)
-        raised = self._raise_incidents(clusters, now)
-        lapsed = self._age_incidents(now)
-        self._prune_candidates(now)
+        # Everything past here mutates incidents, which an officer action may be
+        # mutating on another thread at the same instant. Hold the lock across
+        # the whole mutation phase so the two cannot interleave. The probe reads
+        # above are outside it, so a slow network cycle never blocks a write.
+        with self.lock:
+            raised = self._raise_incidents(clusters, now)
+            lapsed = self._age_incidents(now)
+            self._prune_candidates(now)
+            self._evict_terminal(now)
 
-        # Record the index against every open incident, so the effect of a
-        # deployment can be read off the road later. Persist only when the
-        # series actually grew, to avoid a write per poll for a stable jam.
-        for incident in self.incidents.values():
-            if not incident.is_open:
-                continue
-            before = len(incident.samples)
-            self.sample_incident(incident, now)
-            if len(incident.samples) > before:  # a genuinely new reading
-                self.remember(incident)
+            # Record the index against every open incident, so the effect of a
+            # deployment can be read off the road later. Persist only when the
+            # series actually grew, to avoid a write per poll for a stable jam.
+            for incident in self.incidents.values():
+                if not incident.is_open:
+                    continue
+                before = len(incident.samples)
+                self.sample_incident(incident, now)
+                if len(incident.samples) > before:  # a genuinely new reading
+                    self.remember(incident)
 
         return {
             "at": now.isoformat(timespec="seconds"),
@@ -408,13 +457,25 @@ class CommandCentre:
                 existing.last_seen_at = now
                 continue  # last_seen is refreshed every cycle; not worth a write
 
-            iid = incident_id(IncidentKind.CHOKE_POINT, lat, lon, now)
-            revived = self.incidents.get(iid)
-            if revived is not None:
-                revived.last_seen_at = now
-                if revived.state is IncidentState.LAPSED:
-                    revived.move(IncidentState.ACKNOWLEDGED, "system", "condition returned", at=now)
-                continue
+            base = incident_id(IncidentKind.CHOKE_POINT, lat, lon, now)
+            prior = self.incidents.get(base)
+            iid = base
+            if prior is not None:
+                prior.last_seen_at = now
+                if prior.state in (IncidentState.LAPSED, IncidentState.STOOD_DOWN):
+                    # The model allows reopening both, and it must: a condition
+                    # that returns after it lapsed or was stood down is the same
+                    # place demanding attention again, not a swallowed non-event.
+                    prior.move(IncidentState.ACKNOWLEDGED, "system", "condition returned", at=now)
+                    self.remember(prior)
+                    continue
+                if prior.is_open:
+                    continue  # already an active incident here
+                # CLOSED: the earlier episode is finished and its record must not
+                # be overwritten, so a genuinely new jam at the same place on the
+                # same day becomes a NEW incident under a distinct id — not
+                # silently dropped, which is what a bare `continue` used to do.
+                iid = self._fresh_episode_id(base)
 
             # A condition must hold before it becomes an officer's problem —
             # and holding is measured on the condition, not on a coordinate.
@@ -507,7 +568,7 @@ class CommandCentre:
                 last_seen_at=now,
             )
             self.incidents[iid] = incident
-            self.sample_incident(incident, now)  # index at the moment it was raised
+            self.sample_incident(incident, now, anchor=True)  # anchor at detection
             self.remember(incident)
             raised.append(iid)
         return raised

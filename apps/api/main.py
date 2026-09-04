@@ -215,21 +215,53 @@ _ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if 
 READ_BUDGET = int(os.environ.get("RATE_READS_PER_MIN", "240"))
 WRITE_BUDGET = int(os.environ.get("RATE_WRITES_PER_MIN", "30"))
 FAILED_AUTH_BUDGET = int(os.environ.get("RATE_FAILED_AUTH_PER_MIN", "10"))
+# Concurrent SSE connections allowed at once. A control room runs a handful of
+# consoles; this is the flood ceiling, not the expected count.
+MAX_SUBSCRIBERS = int(os.environ.get("MAX_STREAM_SUBSCRIBERS", "200"))
 _WINDOW = 60.0
 _hits: dict[tuple[str, str], deque[float]] = defaultdict(deque)
 
 
+# How many proxy hops we trust append to X-Forwarded-For. On Cloud Run there is
+# one: Google's load balancer, which appends the client IP it observed. So the
+# trusted client is that many entries in from the right — NOT the left-most,
+# which a remote caller controls entirely (they prepend anything, Google appends
+# the real source after it). Reading the left-most let one attacker mint a fresh
+# rate-limit bucket per request and defeat every budget, including the failed-auth
+# budget that stops token brute-force.
+_TRUSTED_HOPS = int(os.environ.get("TRUSTED_PROXY_HOPS", "1"))
+
+
 def client_ip(request: Request) -> str:
-    """The caller, as seen from in front of Cloud Run's load balancer.
+    """The caller, as the trusted proxy in front of us reported it.
 
     request.client is the balancer, so every caller would share one bucket and
-    the first busy console would rate-limit the whole city. The left-most entry
-    of X-Forwarded-For is the original client.
+    the first busy console would rate-limit the whole city.
     """
     forwarded = request.headers.get("x-forwarded-for", "")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        if parts:
+            # The entry the trusted hop appended, counted from the right. A
+            # remote client cannot forge what our own proxy writes.
+            idx = min(_TRUSTED_HOPS, len(parts)) - 1
+            return parts[len(parts) - 1 - idx] if idx < len(parts) else parts[-1]
     return request.client.host if request.client else "unknown"
+
+
+_last_sweep = [0.0]
+
+
+def _sweep_hits(now_s: float) -> None:
+    """Drop rate-limit buckets whose window has fully expired, so a flood of
+    distinct clients (or spoofed source IPs) cannot grow `_hits` without bound —
+    a slow memory-DoS on the single instance. Runs at most once a minute."""
+    if now_s - _last_sweep[0] < 60:
+        return
+    _last_sweep[0] = now_s
+    dead = [k for k, seen in _hits.items() if not seen or now_s - seen[-1] > _WINDOW]
+    for k in dead:
+        del _hits[k]
 
 
 def _over_budget(ip: str, bucket: str, budget: int) -> bool:
@@ -245,8 +277,11 @@ def _over_budget(ip: str, bucket: str, budget: int) -> bool:
 
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
+    _sweep_hits(time.monotonic())
+
     # The event stream is one long-lived connection per console, not traffic.
     # Counting it would throttle a control room that is doing nothing wrong.
+    # (It has its own connection cap inside the handler.)
     if request.url.path == "/api/stream":
         return await call_next(request)
 
@@ -542,6 +577,14 @@ def act(
     if item is None:
         raise HTTPException(404, f"no incident {incident_id}")
 
+    # Serialise with the poll thread: an officer action and _age_incidents must
+    # not mutate the same incident's history at once. The lock covers the whole
+    # transition-through-persist block.
+    with c.lock:
+        return _perform(c, item, action, payload, actor)
+
+
+def _perform(c, item, action: str, payload: Action, actor: str) -> dict:
     try:
         match action:
             case "acknowledge":
@@ -578,10 +621,10 @@ def act(
         raise HTTPException(409, str(exc)) from exc
 
     # Capture the live index at this transition, so "on scene" and "resolved"
-    # carry an exact reading rather than the nearest poll. Actions land between
-    # polls, so without this the verification series would miss the moments that
-    # matter most.
-    c.sample_incident(item, now())
+    # carry an exact reading rather than the nearest poll. anchor=True forces the
+    # sample even if the index is momentarily steady, so the transition is never
+    # coalesced away.
+    c.sample_incident(item, now(), anchor=True)
 
     # Written before the response returns. An officer who sees "assigned" must
     # not lose it to an instance recycling a second later.
@@ -646,7 +689,15 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
 
 
 @app.get("/api/stream")
-async def stream() -> StreamingResponse:
+async def stream(request: Request) -> StreamingResponse:
+    # The stream is exempt from the request rate limiter (a long-lived connection
+    # is not traffic), so it needs its own cap or a stranger could open thousands
+    # of them and exhaust the single instance's memory and file descriptors. A
+    # control room has a handful of consoles; this ceiling is far above that and
+    # far below dangerous.
+    if len(STATE["subscribers"]) >= MAX_SUBSCRIBERS:
+        raise HTTPException(503, "too many open streams")
+
     queue: asyncio.Queue[str] = asyncio.Queue(maxsize=32)
     STATE["subscribers"].add(queue)
 

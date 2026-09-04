@@ -425,3 +425,137 @@ class TestHeadlineCountsTheWholeQueue:
     def test_an_empty_queue_falls_through_to_the_corridor_bands(self):
         c = self.centre_with([])
         assert "waiting for an officer" not in c.board(NOW)["headline"]
+
+
+class TestSameDayRecurrence:
+    """A condition that returns at a place whose same-day incident is already
+    terminal must not be swallowed — the whole point is not to miss the second
+    jam. Reuses the continuity harness."""
+
+    def _centre(self):
+        from packages.command.centre import CommandCentre
+        from packages.network.model import load_network
+
+        class Stub:
+            name, is_live, retains_durations = "stub", False, False
+
+            def read(self, *a, **k):
+                return None
+
+            def provenance(self):
+                return {}
+
+        c = CommandCentre(network=load_network(), probe=Stub())
+        c.confirm_after = timedelta(0)
+        for s in c.status.values():
+            s.band = "HIGH"
+        return c
+
+    def _cluster(self, lat, lon):
+        from packages.incidents.cluster import ChokeCluster
+
+        return ChokeCluster(
+            centre=(lat, lon),
+            severity="TRAFFIC_JAM",
+            members=[
+                (
+                    "C_X",
+                    ChokePoint("TRAFFIC_JAM", (lat, lon), (lat, lon), (lat, lon), 400.0, 0.4),
+                )
+            ],
+        )
+
+    def test_a_returning_jam_after_stand_down_reopens_the_incident(self):
+        c = self._centre()
+        lat, lon = 26.7245, 88.4156
+        c._raise_incidents([self._cluster(lat, lon)], NOW)
+        inc = next(iter(c.incidents.values()))
+        inc.stand_down("DO Ghosh", "looked, nothing to send", at=NOW + timedelta(minutes=5))
+        assert inc.state is IncidentState.STOOD_DOWN
+
+        # jam returns the same day → the stood-down incident reopens
+        again = c._raise_incidents([self._cluster(lat, lon)], NOW + timedelta(hours=6))
+        assert again == [], "a reopen is not a new raise"
+        assert inc.state is IncidentState.ACKNOWLEDGED
+        assert inc.is_open
+
+    def test_a_returning_jam_after_close_raises_a_new_incident(self):
+        c = self._centre()
+        lat, lon = 26.7245, 88.4156
+        c._raise_incidents([self._cluster(lat, lon)], NOW)
+        inc = next(iter(c.incidents.values()))
+        inc.assign("SI Barman", by="DO Ghosh", at=NOW + timedelta(minutes=2))
+        inc.move(IncidentState.ON_SCENE, "SI Barman", at=NOW + timedelta(minutes=6))
+        inc.move(IncidentState.RESOLVED, "SI Barman", at=NOW + timedelta(minutes=20))
+        inc.close("DO Ghosh", "flow restored", at=NOW + timedelta(minutes=22))
+        assert inc.state is IncidentState.CLOSED
+        closed_id = inc.incident_id
+
+        # a genuinely new jam at the same place later the same day (daytime, so
+        # quiet-hours suppression is not what we are testing here)
+        again = c._raise_incidents([self._cluster(lat, lon)], NOW + timedelta(hours=2))
+        assert len(again) == 1, "the second jam must be raised, not swallowed"
+        assert again[0] != closed_id, "and under a distinct id so the closed record survives"
+        assert c.incidents[closed_id].state is IncidentState.CLOSED  # untouched
+
+
+class TestTerminalEviction:
+    """Terminal incidents leave memory once no handover can reach them, so a
+    fresh id per place per day does not accumulate forever on the one instance."""
+
+    def _centre(self):
+        from packages.command.centre import CommandCentre
+        from packages.network.model import load_network
+
+        class Stub:
+            name, is_live, retains_durations = "stub", False, False
+
+            def read(self, *a, **k):
+                return None
+
+            def provenance(self):
+                return {}
+
+        return CommandCentre(network=load_network(), probe=Stub())
+
+    def _incident(self, iid, terminal_at):
+        i = Incident(
+            incident_id=iid,
+            kind=IncidentKind.CHOKE_POINT,
+            priority=Priority.P3,
+            title="t",
+            detail="d",
+            location_name="NH10",
+            lat=26.72,
+            lon=88.41,
+            corridors=["C_A__B"],
+            junctions=["J_A"],
+            detected_at=terminal_at - timedelta(minutes=30),
+            evidence={},
+            limitation="x",
+        )
+        i.acknowledge("DO", at=terminal_at - timedelta(minutes=20))
+        i.stand_down("DO", "no action", at=terminal_at)
+        return i
+
+    def test_old_terminal_incidents_are_evicted_recent_ones_kept(self):
+        from packages.command.centre import EVICT_TERMINAL_AFTER
+
+        c = self._centre()
+        old = self._incident("INC-OLD", NOW - EVICT_TERMINAL_AFTER - timedelta(hours=1))
+        recent = self._incident("INC-RECENT", NOW - timedelta(hours=1))
+        c.incidents["INC-OLD"] = old
+        c.incidents["INC-RECENT"] = recent
+
+        dropped = c._evict_terminal(NOW)
+        assert dropped == 1
+        assert "INC-OLD" not in c.incidents
+        assert "INC-RECENT" in c.incidents
+
+    def test_open_incidents_are_never_evicted(self):
+        c = self._centre()
+        i = self._incident("INC-OPEN", NOW - timedelta(days=5))
+        i.move(IncidentState.ACKNOWLEDGED, "DO")  # reopen → now open
+        c.incidents["INC-OPEN"] = i
+        assert c._evict_terminal(NOW) == 0
+        assert "INC-OPEN" in c.incidents

@@ -232,23 +232,30 @@ class Incident:
     # ── measurement (the verification raw material) ───────────────────────────
     _SAMPLE_CAP = 500  # ~25h at a 3-minute poll; FIFO beyond that
 
-    def record_sample(self, at: datetime, index: float | None, band: str) -> None:
+    def record_sample(
+        self, at: datetime, index: float | None, band: str, *, anchor: bool = False
+    ) -> None:
         """Record the live index for this incident, if there is one.
 
-        Deduplicates a run of identical readings so a stable jam does not fill
-        the series with copies, but always keeps the newest so the last-known
-        value is exact. Called by the command centre, which is the only thing
-        that holds the live corridor index.
+        A run of identical readings collapses to a single sample keeping its
+        ONSET time — not the newest, which is what a previous version did and
+        which quietly destroyed the whole point of the series: a sample recorded
+        AT a transition (on-scene, resolved) would have its timestamp dragged
+        forward by the next identical poll, moving it off the moment it was
+        anchoring, so `_index_near` could no longer find it and the verification
+        output vanished. Keeping the onset leaves "how long has it sat" answerable
+        as (last_poll − onset), and leaves the anchor where it belongs.
+
+        `anchor=True` forces an append even when the value repeats. It is used at
+        every transition, so on-scene and resolved always carry an exact reading
+        regardless of whether the index happened to be steady.
         """
         if index is None:
             return
-        if self.samples:
+        if not anchor and self.samples:
             last = self.samples[-1]
             if round(last.index, 3) == round(index, 3) and last.band == band:
-                # Same reading: replace the tail's timestamp rather than append,
-                # so "how long has it sat here" stays answerable without bloat.
-                self.samples[-1] = IndexSample(at, index, band)
-                return
+                return  # a stable reading is one sample, timed at its onset
         self.samples.append(IndexSample(at, index, band))
         if len(self.samples) > self._SAMPLE_CAP:
             del self.samples[0 : len(self.samples) - self._SAMPLE_CAP]

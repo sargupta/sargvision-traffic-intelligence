@@ -47,13 +47,22 @@ class TestSampling:
         i.record_sample(NOW, None, "UNKNOWN")
         assert i.samples == []
 
-    def test_a_stable_reading_does_not_pile_up_copies(self):
+    def test_a_stable_reading_coalesces_and_keeps_its_onset(self):
         i = make()
         for m in range(0, 30, 3):
             i.record_sample(NOW + timedelta(minutes=m), 1.60, "HIGH")
         assert len(i.samples) == 1, "identical readings should coalesce"
-        # but the newest timestamp is kept, so 'how long has it sat' is answerable
-        assert i.samples[0].at == NOW + timedelta(minutes=27)
+        # The ONSET is kept, not the newest — otherwise a transition-anchored
+        # sample would be dragged forward off the moment it anchors.
+        assert i.samples[0].at == NOW
+
+    def test_an_anchored_sample_appends_even_when_the_value_repeats(self):
+        i = make()
+        i.record_sample(NOW, 1.60, "HIGH")
+        # a transition anchor at a later time with the same value must still land
+        i.record_sample(NOW + timedelta(minutes=10), 1.60, "HIGH", anchor=True)
+        assert len(i.samples) == 2
+        assert i.samples[-1].at == NOW + timedelta(minutes=10)
 
     def test_a_changed_reading_appends(self):
         i = make()
