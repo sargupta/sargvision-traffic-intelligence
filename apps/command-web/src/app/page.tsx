@@ -6,6 +6,7 @@ import { FlowMap } from "@/components/FlowMap";
 import { NetworkPlan } from "@/components/NetworkPlan";
 import { CorridorTable } from "@/components/CorridorTable";
 import { Advice } from "@/components/Advice";
+import { CommandBar } from "@/components/CommandBar";
 import { Empty } from "@/components/Bits";
 import { IncidentCard } from "@/components/IncidentCard";
 import {
@@ -245,6 +246,16 @@ export default function Board() {
             </div>
           </dl>
         </section>
+
+        {/* Work by voice, chat or click — the officer's choice. This bar is a
+            skin over the same action the cards fire; the cards keep working if
+            it is ignored or the parser is offline. */}
+        {/* Work by voice, chat or click — the officer's choice. This bar is a
+            skin over the same action the cards fire; the cards keep working if
+            it is ignored or the parser is offline. */}
+        <div className="shrink-0">
+          <CommandBar incidents={incidents} roster={roster} officer={OFFICER} onChanged={onChanged} />
+        </div>
 
         {/* Map first and large: the officer is looking at geography, and the
             incident list is the queue beside it. A narrow map column made the
