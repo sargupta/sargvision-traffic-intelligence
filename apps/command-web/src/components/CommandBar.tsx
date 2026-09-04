@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActionError, act, type Incident, type Officer } from "@/lib/api";
 import {
   completeWithIncident,
+  completeWithOfficer,
+  completeWithText,
+  matchIncidents,
   matchOfficers,
   parseCommand,
   startsWithVerb,
@@ -76,8 +79,16 @@ export function CommandBar({
   const inputRef = useRef<HTMLInputElement>(null);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
 
+  const mounted = useRef(true);
   useEffect(() => {
     setVoiceAvailable(speechCtor() !== null);
+    return () => {
+      // Stop any recognition in flight so a late onresult cannot submit a
+      // phantom command against a screen that has navigated away.
+      mounted.current = false;
+      recognition.current?.stop();
+      recognition.current = null;
+    };
   }, []);
 
   const ctx = useCallback(
@@ -153,44 +164,51 @@ export function CommandBar({
 
     // A pending confirm: "yes"/"confirm" commits, anything else cancels.
     if (pending?.kind === "confirm") {
-      if (/^(y|yes|confirm|do it|go|ok)\b/i.test(utter)) return commit(pending.intent);
+      // Whole-string affirmatives only, so "ok, cancel" cannot commit and a
+      // trailing word cannot ride a bare "yes". Anything else cancels — the
+      // safe side for an irreversible act.
+      if (/^(yes|y|confirm|do it)\s*$/i.test(utter)) return commit(pending.intent);
       setPending(null);
       setFeedback({ tone: "warn", msg: "Cancelled." });
       setText("");
       return;
     }
 
-    // A pending slot: resolve the reply against the missing field — unless the
-    // officer has simply started a new command, in which case abandon the old
-    // one rather than trapping their words as an answer to a stale question.
-    if (pending?.kind === "slot" && !startsWithVerb(utter)) {
+    // A pending slot: resolve the reply against the missing field.
+    if (pending?.kind === "slot") {
       const o = pending.outcome;
       const partial = o.partial;
-      if (o.field === "officer") {
-        const matches = matchOfficers(utter, roster);
-        if (matches.length === 1) {
-          return commit({
-            ...(partial as Intent),
-            to: matches[0].name,
-            unit: matches[0].unit,
-            confidence: 0.8,
-          });
+
+      // For an officer or incident slot, a reply that opens with a verb is a
+      // fresh command, not an answer — let it through to re-parse. NOT for a
+      // free-text slot: a stand-down reason like "area cleared by field officer"
+      // contains "cleared" and would otherwise hijack into a resolve.
+      const escapeToFresh = o.field !== "text" && startsWithVerb(utter);
+
+      if (!escapeToFresh) {
+        if (o.field === "officer") {
+          const matches = matchOfficers(utter, roster);
+          if (matches.length === 1) {
+            return handleOutcome(completeWithOfficer(partial, matches[0], incidents, source));
+          }
+          setFeedback({ tone: "ask", msg: matches.length ? "Which officer?" : "No such officer on the roster. Name the guard or unit." });
+          setText("");
+          return;
         }
-        setFeedback({ tone: "ask", msg: matches.length ? "Which officer?" : "No such officer on the roster. Name the guard or unit." });
-        setText("");
-        return;
-      }
-      if (o.field === "incident") {
-        const found = incidents.filter(
-          (i) => i.is_open && `${i.location_name} ${i.title}`.toLowerCase().includes(utter.toLowerCase()),
-        );
-        if (found.length === 1) return handleOutcome(completeWithIncident(partial, found[0], ctx(source)));
-        setFeedback({ tone: "ask", msg: found.length ? "More than one match — be specific." : "No open incident there." });
-        setText("");
-        return;
-      }
-      if (o.field === "text") {
-        return commit({ ...(partial as Intent), text: utter, kind: partial.action === "note" ? "NOTE" : undefined });
+        if (o.field === "incident") {
+          // Reuse the parser's own matcher so the reply resolves the same way a
+          // fresh command would — not a looser substring that binds differently.
+          const found = matchIncidents(utter, incidents);
+          if (found.length === 1) return handleOutcome(completeWithIncident(partial, found[0], ctx(source)));
+          setFeedback({ tone: "ask", msg: found.length ? "More than one match — be specific." : "No open incident there." });
+          setText("");
+          return;
+        }
+        if (o.field === "text") {
+          // Route through completeWithText so a destructive reason still gets
+          // the readback+confirm gate instead of committing directly.
+          return handleOutcome(completeWithText(partial, utter, incidents, source));
+        }
       }
     }
 
@@ -205,11 +223,14 @@ export function CommandBar({
     const o = pending.outcome;
     if (o.field === "officer") {
       const off = roster.find((r) => r.officer_id === id);
-      if (off) commit({ ...(o.partial as Intent), to: off.name, unit: off.unit, confidence: 0.9 });
+      if (off) return handleOutcome(completeWithOfficer(o.partial, off, incidents, "click"));
     } else if (o.field === "incident") {
       const inc = incidents.find((i) => i.incident_id === id);
-      if (inc) handleOutcome(completeWithIncident(o.partial, inc, ctx("click")));
+      if (inc) return handleOutcome(completeWithIncident(o.partial, inc, ctx("click")));
     }
+    // The chosen entity is gone — a poll refreshed it out from under the click.
+    setPending(null);
+    setFeedback({ tone: "warn", msg: "That just changed — refreshed. Try again." });
   }
 
   // ── voice: push-to-talk ────────────────────────────────────────────────────
@@ -221,7 +242,9 @@ export function CommandBar({
     rec.continuous = false;
     rec.interimResults = false;
     rec.onresult = (e) => {
+      if (!mounted.current) return;
       const said = e.results[0]?.[0]?.transcript ?? "";
+      if (!said.trim()) return; // a released-early or empty result submits nothing
       setText(said);
       submit(said, "voice");
     };

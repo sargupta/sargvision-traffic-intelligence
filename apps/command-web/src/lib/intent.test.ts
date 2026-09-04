@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Incident, Officer } from "./api";
 import {
+  completeWithText,
   isDestructive,
   matchIncidents,
   startsWithVerb,
@@ -186,5 +187,55 @@ describe("isDestructive", () => {
     expect(isDestructive("acknowledge")).toBe(false);
     expect(isDestructive("assign")).toBe(false);
     expect(isDestructive("on-scene")).toBe(false);
+  });
+});
+
+// ── the slot-completion paths (where the CommandBar bugs lived) ──────────────
+describe("completeWithText — destructive reason still confirms (bug #1)", () => {
+  const onScene = incident({ state: "ON_SCENE", next_actions: ["RESOLVED", "CLEARING"] });
+  it("stand-down given as a follow-up reply still requires confirm", () => {
+    const partial = { action: "stand-down" as const, incidentId: "INC-VENUS" };
+    const r = completeWithText(partial, "local officer says clear", [incident()], "chat");
+    expect(r.kind).toBe("ready");
+    if (r.kind === "ready") expect(r.confirm).toBe(true);
+  });
+  it("close given as a follow-up reply still requires confirm", () => {
+    const partial = { action: "close" as const, incidentId: "INC-VENUS" };
+    const r = completeWithText(partial, "flow restored", [onScene], "voice");
+    if (r.kind === "ready") expect(r.confirm).toBe(true);
+  });
+  it("a note given as a follow-up reply does not require confirm", () => {
+    const partial = { action: "note" as const, incidentId: "INC-VENUS" };
+    const r = completeWithText(partial, "truck being towed", [incident()], "chat");
+    if (r.kind === "ready") {
+      expect(r.confirm).toBe(false);
+      expect(r.intent.kind).toBe("NOTE");
+    }
+  });
+  it("refuses if the incident vanished under the reply", () => {
+    const partial = { action: "stand-down" as const, incidentId: "INC-GONE" };
+    expect(completeWithText(partial, "x reason", [incident()], "chat").kind).toBe("unknown");
+  });
+});
+
+describe("wrong-entity binding is closed", () => {
+  it("an officer name is not bound as a substring of a place (bug #3)", () => {
+    const roster2: Officer[] = [
+      { officer_id: "TG-9", name: "Roy", rank: "ASI", role: "FIELD", unit: "Traffic Guard 9", on_duty: true },
+    ];
+    // "royal more" must not select officer "Roy"
+    expect(matchOfficers("assign royal more", roster2)).toEqual([]);
+  });
+
+  it("a mis-heard place does not act on the only open incident (bug #4)", () => {
+    const only = incident({ location_name: "NH10, near Venus More" });
+    const r = parseCommand("acknowledge airprot road", ctx([only]));
+    expect(r.kind).toBe("need"); // asks which, does NOT acknowledge Venus More
+  });
+
+  it("a genuinely bare verb still acts on the sole open incident", () => {
+    const only = incident({ state: "ON_SCENE", next_actions: ["RESOLVED", "CLEARING"] });
+    const r = parseCommand("resolve it", ctx([only]));
+    expect(r.kind).toBe("ready");
   });
 });

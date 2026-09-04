@@ -90,6 +90,39 @@ export const CAUSES = [
   "Heavy volume only",
 ] as const;
 
+/** Every word that is part of a verb phrase or a connective — so what remains
+ *  after removing them, the officers, and the stop words, is genuinely a place
+ *  the officer named. */
+const VERB_WORDS = new Set([
+  "stand", "down", "action", "leave", "needed", "scene", "arrived", "site",
+  "there", "reached", "mark", "clearing", "resolve", "resolved", "cleared",
+  "clear", "moving", "again", "all", "sorted", "done", "close", "closed",
+  "assign", "send", "dispatch", "deploy", "give", "put", "ack", "acknowledge",
+  "take", "got", "seen", "noted", "pick", "note", "log", "record", "remark",
+  "comment", "not", "now",
+]);
+
+/** Content tokens that look like a place the officer named — used to tell a
+ *  bare verb from an utterance whose place matched nothing. */
+function contentPlaceTokens(t: string, roster: Officer[]): string[] {
+  const officerWords = new Set<string>(["mobile"]);
+  for (const o of matchOfficers(t, roster)) {
+    o.name.toLowerCase().split(/\s+/).forEach((w) => officerWords.add(w));
+    o.unit.toLowerCase().split(/\s+/).forEach((w) => officerWords.add(w));
+  }
+  return norm(t)
+    .split(" ")
+    .filter(
+      (w) =>
+        w.length > 2 &&
+        !STOP.has(w) &&
+        !VERB_WORDS.has(w) &&
+        !GENERIC_OFFICER_WORD.has(w) &&
+        !officerWords.has(w) &&
+        !/^\d+$/.test(w),
+    );
+}
+
 export interface ParseContext {
   incidents: Incident[];
   roster: Officer[];
@@ -148,8 +181,24 @@ function dispatchable(roster: Officer[]): Officer[] {
   return roster.filter((o) => o.role !== "DUTY_OFFICER");
 }
 
+/** Rank and role words that appear in many officers' names/units and must not,
+ *  on their own, select an officer. The distinctive token ("Barman", "Roy") is
+ *  what identifies; "traffic"/"guard"/"si" do not. */
+const GENERIC_OFFICER_WORD = new Set([
+  "si", "asi", "sub", "inspector", "constable", "head", "unit", "mobile",
+  "patrol", "traffic", "guard", "pcr", "duty", "officer", "sr",
+]);
+
+/** A whole-word test — never a loose substring. "roy" must not match inside
+ *  "royal", which is exactly the mis-bind a substring test produced. */
+function wholeWord(needle: string, hay: string): boolean {
+  const esc = needle.replace(/[^a-z0-9]/g, "\\$&");
+  return new RegExp(`\\b${esc}\\b`).test(hay);
+}
+
 /** Resolve a phrase to at most a few real officers. Enum-constrained: only ever
- *  returns officers from the roster it was given. */
+ *  returns officers from the roster it was given, and matches on whole words so
+ *  a name token cannot bind because it is a substring of a place word. */
 export function matchOfficers(text: string, roster: Officer[]): Officer[] {
   const t = norm(text);
   const pool = dispatchable(roster);
@@ -162,13 +211,13 @@ export function matchOfficers(text: string, roster: Officer[]): Officer[] {
   if (patrolN) pool.filter((o) => o.officer_id === `PCR-${patrolN[1]}`).forEach((o) => hits.add(o));
 
   for (const o of pool) {
-    const id = o.officer_id.toLowerCase();
-    const name = o.name.toLowerCase();
-    const unit = o.unit.toLowerCase();
-    if (t.includes(id) || t.includes(unit)) hits.add(o);
-    // name: match on any distinctive token of the officer's name (>2 chars)
-    const nameTokens = name.split(/\s+/).filter((w) => w.length > 2);
-    if (nameTokens.some((w) => t.includes(w))) hits.add(o);
+    if (wholeWord(o.officer_id.toLowerCase(), t) || wholeWord(o.unit.toLowerCase(), t)) hits.add(o);
+    // name: only distinctive tokens, matched as whole words
+    const nameTokens = o.name
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !GENERIC_OFFICER_WORD.has(w));
+    if (nameTokens.some((w) => wholeWord(w, t))) hits.add(o);
   }
   return [...hits];
 }
@@ -277,9 +326,14 @@ export function parseCommand(utterance: string, ctx: ParseContext): ParseOutcome
   const openCount = ctx.incidents.filter((i) => i.is_open).length;
 
   if (incidentMatches.length === 0) {
-    // If exactly one incident is open, a bare verb ("resolve it") is unambiguous.
     const open = ctx.incidents.filter((i) => i.is_open);
-    if (open.length === 1) {
+    // A bare verb ("resolve it") on a single open incident is unambiguous. But
+    // an utterance that NAMED a place which matched nothing ("acknowledge
+    // airprot road", a mis-hearing) must not silently act on that one incident
+    // — the officer's stated place would be ignored and the record made on a
+    // wrong basis. Only the genuinely place-less verb takes the shortcut.
+    const namedAPlace = contentPlaceTokens(t, ctx.roster).length > 0;
+    if (open.length === 1 && !namedAPlace) {
       return finish(action, open[0], t, ctx);
     }
     return {
@@ -289,7 +343,9 @@ export function parseCommand(utterance: string, ctx: ParseContext): ParseOutcome
       prompt:
         openCount === 0
           ? "There are no open incidents to act on."
-          : "Which incident? Name the junction or location.",
+          : namedAPlace
+            ? "No open incident matches that place — which one?"
+            : "Which incident? Name the junction or location.",
     };
   }
   if (incidentMatches.length > 1) {
@@ -407,4 +463,55 @@ export function completeWithIncident(
   ctx: ParseContext,
 ): ParseOutcome {
   return finish(partial.action, incident, partial.rawUtterance ?? "", ctx);
+}
+
+/** Complete an assign once the officer is chosen (from a pick-list or a reply).
+ *  Assign is not destructive, so it commits without a readback — but it still
+ *  goes through here so the readback is shown and the incident is re-checked. */
+export function completeWithOfficer(
+  partial: Partial<Intent> & { action: ActionPath },
+  officer: Officer,
+  incidents: Incident[],
+  source: IntentSource,
+): ParseOutcome {
+  const incident = incidents.find((i) => i.incident_id === partial.incidentId);
+  if (!incident) return { kind: "unknown", reason: "That incident is no longer open." };
+  const intent: Intent = {
+    ...(partial as Intent),
+    to: officer.name,
+    unit: officer.unit,
+    source,
+    confidence: source === "click" ? 1 : 0.85,
+  };
+  return { kind: "ready", intent, confirm: false, readback: readbackFor(intent, incident, officer) };
+}
+
+/** Complete a note / stand-down / close once the free text is given.
+ *
+ *  This is the fix for the one hole through which a destructive act reached the
+ *  server unconfirmed: when the reason was supplied as a follow-up reply rather
+ *  than inline, the old slot handler committed it directly. Routing it here
+ *  re-derives `confirm` from `isDestructive`, so stand-down and close read back
+ *  and wait exactly as they do on the inline path. */
+export function completeWithText(
+  partial: Partial<Intent> & { action: ActionPath },
+  text: string,
+  incidents: Incident[],
+  source: IntentSource,
+): ParseOutcome {
+  const incident = incidents.find((i) => i.incident_id === partial.incidentId);
+  if (!incident) return { kind: "unknown", reason: "That incident is no longer open." };
+  const intent: Intent = {
+    ...(partial as Intent),
+    text,
+    kind: partial.action === "note" ? "NOTE" : partial.kind,
+    source,
+    confidence: source === "click" ? 1 : 0.85,
+  };
+  return {
+    kind: "ready",
+    intent,
+    confirm: isDestructive(partial.action),
+    readback: readbackFor(intent, incident),
+  };
 }
