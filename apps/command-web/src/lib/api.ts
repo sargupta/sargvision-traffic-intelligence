@@ -110,7 +110,22 @@ export interface Incident {
   assignments: { at: string; assigned_to: string; assigned_by: string; unit: string | null }[];
   notes: Note[];
   history: { at: string; from: string; to: string; by: string; reason: string | null }[];
+  samples?: { at: string; index: number; band: string }[];
+  impact?: IncidentImpact;
   next_actions: string[];
+}
+
+/** The within-incident verification reading. Not a counterfactual — see `basis`. */
+export interface IncidentImpact {
+  index_at_detection: number | null;
+  index_on_scene: number | null;
+  index_resolved: number | null;
+  peak_index: number | null;
+  minutes_to_scene: number | null;
+  minutes_to_clear: number | null;
+  index_fell_while_owned: number | null;
+  samples: number;
+  basis: string;
 }
 
 export interface Board {
