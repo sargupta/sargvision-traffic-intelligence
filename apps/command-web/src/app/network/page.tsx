@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Chrome } from "@/components/Chrome";
 import { Approximate, BandTag } from "@/components/Bits";
-import { getNetwork, useBoard, type Junction, type NetworkPayload } from "@/lib/api";
+import { getNetwork, useBoard, type Band, type Junction, type NetworkPayload } from "@/lib/api";
 
 const PRESSURE: Record<string, { label: string; fg: string; tint: string; mark: string }> = {
   OVER_CAPACITY:   { label: "Over capacity",  fg: "var(--color-sev)",  tint: "var(--color-sev-tint)",  mark: "■" },
@@ -40,6 +40,58 @@ export default function NetworkPage() {
     () => new Map((board?.corridors ?? []).map((c) => [c.corridor_id, c.band])),
     [board],
   );
+
+  const corridorsOf = useMemo(() => network?.corridors ?? [], [network]);
+  /** The live band at a junction, taken as the worst of its corridors. */
+  const liveBandFor = (j: Junction): Band | null => {
+    const bands = corridorsOf
+      .filter((c) => c.from_junction === j.junction_id || c.to_junction === j.junction_id)
+      .map((c) => bandOf.get(c.corridor_id))
+      .filter((b): b is Band => !!b && b !== "NORMAL" && b !== "UNKNOWN");
+    const order: Band[] = ["SEVERE", "HIGH", "ELEVATED"];
+    return order.find((o) => bands.includes(o)) ?? null;
+  };
+
+  /** The reference data, turned into a standing decision per junction. Chronic
+   *  congestion and the accident record point at different places, so the action
+   *  differs: the dangerous-but-free-flowing junction (Venus More) wants a safety
+   *  posting; the over-capacity one with no accident signal (Jalpai More) wants an
+   *  engineering review; a junction that is both is the top priority for each. */
+  const priorities = useMemo(() => {
+    const out: {
+      junction: Junction;
+      tag: string;
+      action: string;
+      why: string;
+      colour: string;
+      tint: string;
+      score: number;
+    }[] = [];
+    for (const j of network?.junctions ?? []) {
+      const safety = SAFETY[j.junction_id];
+      const chronic = j.congestion_pressure === "OVER_CAPACITY" || (j.vc_ratio ?? 0) >= 0.85;
+      const near = j.congestion_pressure === "NEAR_CAPACITY";
+      const dangerous = safety?.severity === "HIGH";
+      if (dangerous && chronic) {
+        out.push({ junction: j, tag: "Danger + delay", score: 5, colour: "var(--color-sev)", tint: "var(--color-sev-tint)",
+          action: "Post a standing officer at peak, and flag for engineering review.",
+          why: `${safety.note} Chronic capacity pressure as well — the one junction that is both, so it leads both lists.` });
+      } else if (dangerous) {
+        out.push({ junction: j, tag: "Danger, not delay", score: 4, colour: "var(--color-sev)", tint: "var(--color-sev-tint)",
+          action: "A posting here is about safety, not congestion — enforcement and lane discipline at peak.",
+          why: `${safety.note} It is not over capacity, so a congestion score would rank it low and miss the risk.` });
+      } else if (chronic) {
+        out.push({ junction: j, tag: "Chronic delay", score: 3, colour: "var(--color-high)", tint: "var(--color-high-tint)",
+          action: "Candidate for signal or geometry review; pre-position at the known peak.",
+          why: `Over capacity in the 2011 survey${j.vc_ratio ? ` (V/C ${j.vc_ratio.toFixed(2)})` : ""}, with no accident signal in the study — an engineering problem more than an enforcement one.` });
+      } else if (near || safety?.severity === "WATCH") {
+        out.push({ junction: j, tag: "Watch", score: 1, colour: "var(--color-elev)", tint: "var(--color-elev-tint)",
+          action: "Keep on the watch list; no standing posting warranted yet.",
+          why: safety ? safety.note : "Approaching capacity in the survey; watch for it becoming chronic." });
+      }
+    }
+    return out.sort((a, b) => b.score - a.score);
+  }, [network]);
 
   const junctions = useMemo(() => {
     const list = [...(network?.junctions ?? [])];
@@ -83,6 +135,43 @@ export default function NetworkPage() {
             live; the safety column below is study evidence and is not something we observe.
           </p>
         </section>
+
+        {/* The reference, turned into standing decisions. A table of numbers is
+            not an instruction; this says what each junction is FOR. */}
+        {priorities.length > 0 && (
+          <section className="mb-5">
+            <h2 className="mb-1 text-[length:var(--text-md)] font-semibold">Standing priorities</h2>
+            <p className="mb-2.5 max-w-[86ch] text-[length:var(--text-sm)] text-ink-2">
+              Where a posting or a review is warranted between incidents — derived from chronic
+              capacity pressure and the accident record, which point at different places and call
+              for different actions.
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {priorities.map((p) => (
+                <div
+                  key={p.junction.junction_id}
+                  className="card border-l-[3px] p-3.5"
+                  style={{ borderLeftColor: p.colour }}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{p.junction.name}</span>
+                    <span
+                      className="rounded px-1.5 py-0.5 text-[length:var(--text-2xs)] font-semibold"
+                      style={{ color: p.colour, backgroundColor: p.tint }}
+                    >
+                      {p.tag}
+                    </span>
+                    {liveBandFor(p.junction) && (
+                      <span className="ml-auto"><BandTag band={liveBandFor(p.junction)!} /></span>
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-[length:var(--text-sm)] font-medium">{p.action}</p>
+                  <p className="mt-1 text-[length:var(--text-2xs)] leading-relaxed text-ink-3">{p.why}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="label">Sort by</span>

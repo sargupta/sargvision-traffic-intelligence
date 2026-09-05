@@ -29,7 +29,7 @@ from pydantic import BaseModel, Field
 
 from packages.command.advice import recommend
 from packages.command.centre import CommandCentre
-from packages.incidents.model import IncidentState
+from packages.incidents.model import TRANSITIONS, IncidentState, Priority
 from packages.incidents.store import build_store
 from packages.network.model import load_network
 from packages.network.probe import RoutesProbe
@@ -215,21 +215,53 @@ _ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if 
 READ_BUDGET = int(os.environ.get("RATE_READS_PER_MIN", "240"))
 WRITE_BUDGET = int(os.environ.get("RATE_WRITES_PER_MIN", "30"))
 FAILED_AUTH_BUDGET = int(os.environ.get("RATE_FAILED_AUTH_PER_MIN", "10"))
+# Concurrent SSE connections allowed at once. A control room runs a handful of
+# consoles; this is the flood ceiling, not the expected count.
+MAX_SUBSCRIBERS = int(os.environ.get("MAX_STREAM_SUBSCRIBERS", "200"))
 _WINDOW = 60.0
 _hits: dict[tuple[str, str], deque[float]] = defaultdict(deque)
 
 
+# How many proxy hops we trust append to X-Forwarded-For. On Cloud Run there is
+# one: Google's load balancer, which appends the client IP it observed. So the
+# trusted client is that many entries in from the right — NOT the left-most,
+# which a remote caller controls entirely (they prepend anything, Google appends
+# the real source after it). Reading the left-most let one attacker mint a fresh
+# rate-limit bucket per request and defeat every budget, including the failed-auth
+# budget that stops token brute-force.
+_TRUSTED_HOPS = int(os.environ.get("TRUSTED_PROXY_HOPS", "1"))
+
+
 def client_ip(request: Request) -> str:
-    """The caller, as seen from in front of Cloud Run's load balancer.
+    """The caller, as the trusted proxy in front of us reported it.
 
     request.client is the balancer, so every caller would share one bucket and
-    the first busy console would rate-limit the whole city. The left-most entry
-    of X-Forwarded-For is the original client.
+    the first busy console would rate-limit the whole city.
     """
     forwarded = request.headers.get("x-forwarded-for", "")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        if parts:
+            # The entry the trusted hop appended, counted from the right. A
+            # remote client cannot forge what our own proxy writes.
+            idx = min(_TRUSTED_HOPS, len(parts)) - 1
+            return parts[len(parts) - 1 - idx] if idx < len(parts) else parts[-1]
     return request.client.host if request.client else "unknown"
+
+
+_last_sweep = [0.0]
+
+
+def _sweep_hits(now_s: float) -> None:
+    """Drop rate-limit buckets whose window has fully expired, so a flood of
+    distinct clients (or spoofed source IPs) cannot grow `_hits` without bound —
+    a slow memory-DoS on the single instance. Runs at most once a minute."""
+    if now_s - _last_sweep[0] < 60:
+        return
+    _last_sweep[0] = now_s
+    dead = [k for k, seen in _hits.items() if not seen or now_s - seen[-1] > _WINDOW]
+    for k in dead:
+        del _hits[k]
 
 
 def _over_budget(ip: str, bucket: str, budget: int) -> bool:
@@ -245,8 +277,11 @@ def _over_budget(ip: str, bucket: str, budget: int) -> bool:
 
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
+    _sweep_hits(time.monotonic())
+
     # The event stream is one long-lived connection per console, not traffic.
     # Counting it would throttle a control room that is doing nothing wrong.
+    # (It has its own connection cap inside the handler.)
     if request.url.path == "/api/stream":
         return await call_next(request)
 
@@ -485,6 +520,56 @@ def roster() -> dict:
     }
 
 
+class FieldReport(BaseModel):
+    by: str | None = Field(default=None, min_length=2, max_length=80)
+    junction_id: str | None = Field(default=None, max_length=80)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    cause: str = Field(min_length=2, max_length=120)
+    note: str | None = Field(default=None, max_length=1000)
+    priority: str = Field(default="P2")
+
+
+@app.post("/api/incidents")
+def create_incident(
+    payload: FieldReport = Body(...),
+    authorization: str | None = Header(default=None),
+) -> dict:
+    """A field officer raises an incident the algorithm cannot see.
+
+    Same write gate as any action — a field report is a police record. The actor
+    comes from the credential when it identifies one, so a console cannot file in
+    another officer's name.
+    """
+    identified = require_write_access(authorization)
+    reporter = identified or payload.by
+    if not reporter:
+        raise HTTPException(422, "who is reporting this? `by` is required")
+    try:
+        priority = Priority(payload.priority.upper())
+    except ValueError:
+        raise HTTPException(422, f"unknown priority {payload.priority!r}") from None
+
+    c = centre()
+    try:
+        with c.lock:
+            inc = c.raise_field_report(
+                reporter=reporter,
+                cause=payload.cause,
+                junction_id=payload.junction_id,
+                lat=payload.lat,
+                lon=payload.lon,
+                note=payload.note,
+                priority=priority,
+                now=now(),
+            )
+    except KeyError as exc:
+        raise HTTPException(404, f"no junction {exc}") from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return inc.as_dict(c.last_poll or now())
+
+
 @app.get("/api/incidents")
 def incidents(state: str | None = Query(None), include_closed: bool = Query(False)) -> dict:
     c = centre()
@@ -542,6 +627,14 @@ def act(
     if item is None:
         raise HTTPException(404, f"no incident {incident_id}")
 
+    # Serialise with the poll thread: an officer action and _age_incidents must
+    # not mutate the same incident's history at once. The lock covers the whole
+    # transition-through-persist block.
+    with c.lock:
+        return _perform(c, item, action, payload, actor)
+
+
+def _perform(c, item, action: str, payload: Action, actor: str) -> dict:
     try:
         match action:
             case "acknowledge":
@@ -577,6 +670,12 @@ def act(
     except Exception as exc:  # IllegalTransition and anything else
         raise HTTPException(409, str(exc)) from exc
 
+    # Capture the live index at this transition, so "on scene" and "resolved"
+    # carry an exact reading rather than the nearest poll. anchor=True forces the
+    # sample even if the index is momentarily steady, so the transition is never
+    # coalesced away.
+    c.sample_incident(item, now(), anchor=True)
+
     # Written before the response returns. An officer who sees "assigned" must
     # not lose it to an instance recycling a second later.
     c.remember(item)
@@ -596,6 +695,9 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
     touched = [i for i in c.incidents.values() if i.detected_at >= since or i.is_open]
 
     def summarise(item) -> dict:
+        # Each item carries the SBAR spine the interface lays out: what and where
+        # (situation), how it got here (the notes/history are background), the
+        # escalation state (assessment), and what to do (its legal next steps).
         return {
             "incident_id": item.incident_id,
             "priority": item.priority.value,
@@ -604,7 +706,11 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
             "location_name": item.location_name,
             "owner": item.owner,
             "age_minutes": round(item.age_minutes(moment), 1),
+            "escalation": item.escalation(moment),
             "notes": [n.as_dict() for n in item.notes],
+            "next_actions": [
+                s.value for s in sorted(TRANSITIONS[item.state], key=lambda x: x.value)
+            ],
         }
 
     open_unowned = [i for i in touched if i.needs_attention]
@@ -613,12 +719,54 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
     stood_down = [i for i in touched if i.state is IncidentState.STOOD_DOWN]
     lapsed = [i for i in touched if i.state is IncidentState.LAPSED]
 
-    raised = len(touched)
+    # Denominator is what was actually RAISED in the window, not everything the
+    # board is touching — an incident open from a previous shift is not something
+    # this shift's alerting raised, and counting it understates the lapse rate.
+    raised_in_window = [i for i in c.incidents.values() if i.detected_at >= since]
+    lapsed_in_window = [i for i in raised_in_window if i.state is IncidentState.LAPSED]
+
+    open_all = [i for i in c.incidents.values() if i.is_open]
+    overdue = [i for i in open_all if i.escalation(moment)["overdue"]]
+    by_priority = {p: sum(1 for i in open_all if i.priority.value == p) for p in ("P1", "P2", "P3", "P4")}
+
+    # What is live on the road right now — the assets/abnormal-conditions line of
+    # a control-room turnover. Worst first.
+    elevated = sorted(
+        (s for s in c.status.values() if s.band in ("SEVERE", "HIGH", "ELEVATED")),
+        key=lambda s: -(s.index or 0),
+    )
+    watch = [
+        {"name": s.name, "band": s.band, "index": round(s.index, 2) if s.index is not None else None}
+        for s in elevated[:8]
+    ]
+
+    # The situation line: the thirty-second read the incoming officer needs before
+    # anything else.
+    if not open_all:
+        assessment = "Nothing open at handover. The board is clear."
+    else:
+        bits = [f"{len(open_all)} open"]
+        if open_unowned:
+            bits.append(f"{len(open_unowned)} without an owner")
+        if overdue:
+            bits.append(f"{len(overdue)} past deadline")
+        assessment = ", ".join(bits) + f". {len(elevated)} corridor(s) above typical now."
+
     return {
         "window_hours": hours,
         "from": since.isoformat(timespec="seconds"),
         "to": moment.isoformat(timespec="seconds"),
-        "raised": raised,
+        "raised": len(touched),
+        "situation": {
+            "open": len(open_all),
+            "unowned": len(open_unowned),
+            "overdue": len(overdue),
+            "by_priority": by_priority,
+            "raised_in_window": len(raised_in_window),
+            "elevated_now": len(elevated),
+            "assessment": assessment,
+        },
+        "watch": watch,
         "handing_over": {
             "needs_an_owner": [summarise(i) for i in open_unowned],
             "in_hand": [summarise(i) for i in open_owned],
@@ -629,18 +777,29 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
             "lapsed": [summarise(i) for i in lapsed],
         },
         "alerting_quality": {
-            "lapse_rate": round(len(lapsed) / raised, 3) if raised else 0.0,
+            "lapse_rate": round(len(lapsed_in_window) / len(raised_in_window), 3)
+            if raised_in_window
+            else 0.0,
             "note": (
-                "Lapsed means the condition cleared before anyone acted. A high rate "
-                "means the system is raising things that do not need an officer, and "
-                "the thresholds should be reviewed."
+                "Lapsed means the condition cleared before anyone acted, counted "
+                "against what was raised in this window. A high rate means the system "
+                "is raising things that do not need an officer, and the thresholds "
+                "should be reviewed."
             ),
         },
     }
 
 
 @app.get("/api/stream")
-async def stream() -> StreamingResponse:
+async def stream(request: Request) -> StreamingResponse:
+    # The stream is exempt from the request rate limiter (a long-lived connection
+    # is not traffic), so it needs its own cap or a stranger could open thousands
+    # of them and exhaust the single instance's memory and file descriptors. A
+    # control room has a handful of consoles; this ceiling is far above that and
+    # far below dangerous.
+    if len(STATE["subscribers"]) >= MAX_SUBSCRIBERS:
+        raise HTTPException(503, "too many open streams")
+
     queue: asyncio.Queue[str] = asyncio.Queue(maxsize=32)
     STATE["subscribers"].add(queue)
 

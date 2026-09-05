@@ -5,7 +5,7 @@ import {
   ACTION_LABEL, ACTION_PATH, STATE_LABEL, ActionError, act, getIncident, minutes,
   type Incident, type Officer,
 } from "@/lib/api";
-import { Approximate, PriorityTag } from "./Bits";
+import { Approximate, EscalationChip, PriorityTag } from "./Bits";
 
 /** One incident, with everything needed to act on it without leaving the board.
  *
@@ -112,6 +112,7 @@ export function IncidentCard({
               with <strong className="font-semibold text-ink">{incident.owner}</strong>
             </span>
           )}
+          <EscalationChip escalation={incident.escalation} />
           <span className="tnum ml-auto text-[length:var(--text-2xs)] text-ink-3">
             {minutes(incident.age_minutes)} old
           </span>
@@ -158,6 +159,10 @@ export function IncidentCard({
             ))}
           </dl>
         )}
+
+        {/* Shown even on compact cards: for an incident an officer is already
+            working, the measured effect is the most useful thing on it. */}
+        <ImpactReadout incident={incident} />
 
         {incident.notes.length > 0 && (
           <ul className="mt-3 space-y-1.5 border-l-2 border-line pl-3">
@@ -275,5 +280,100 @@ export function IncidentCard({
         </div>
       </div>
     </article>
+  );
+}
+
+/** The measured effect, read off the road.
+ *
+ *  Shows the congestion index as it moved through the incident, and how quickly
+ *  it was cleared. It is deliberately modest about what it proves — the index
+ *  falling while an officer is on scene is not the same as the officer causing
+ *  it, and the label says so — but it is the raw material of the "we verify"
+ *  claim, and it is captured live because it cannot be reconstructed later.
+ */
+function ImpactReadout({ incident }: { incident: Incident }) {
+  const imp = incident.impact;
+  if (!imp) return null;
+
+  const current = incident.samples?.length ? incident.samples[incident.samples.length - 1].index : null;
+  const started = ["ON_SCENE", "CLEARING", "RESOLVED", "CLOSED"].includes(incident.state);
+  const resolved = ["RESOLVED", "CLOSED"].includes(incident.state);
+
+  // Nothing to say until an officer is on scene: before that there is a
+  // reading, but no intervention to measure against.
+  if (!started && imp.index_at_detection == null) return null;
+  if (!started && !resolved) {
+    // Detected/assigned: show only the standing reading, not a claimed effect.
+    if (imp.index_at_detection == null || current == null) return null;
+    return (
+      <div className="mt-3 flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 text-[length:var(--text-sm)]">
+        <span className="label">Now</span>
+        <IndexPill value={current} />
+        <span className="text-ink-3">·</span>
+        <span className="text-ink-2">
+          was <span className="tnum font-medium">{imp.index_at_detection.toFixed(2)}×</span> at detection
+        </span>
+      </div>
+    );
+  }
+
+  const from = imp.index_at_detection;
+  const to = resolved ? imp.index_resolved : current;
+  const fell = from != null && to != null ? from - to : null;
+
+  return (
+    <div className="mt-3 rounded-md border border-line bg-surface px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[length:var(--text-sm)]">
+        <span className="label">{resolved ? "Measured effect" : "So far"}</span>
+        {from != null && <IndexPill value={from} muted />}
+        <span aria-hidden className="text-ink-3">→</span>
+        {to != null ? <IndexPill value={to} /> : <span className="text-ink-3">—</span>}
+        {fell != null && Math.abs(fell) >= 0.03 && (
+          <span
+            className="tnum text-[length:var(--text-2xs)] font-semibold"
+            style={{ color: fell > 0 ? "var(--color-ok)" : "var(--color-high)" }}
+          >
+            {fell > 0 ? "↓" : "↑"} {Math.abs(fell).toFixed(2)}
+          </span>
+        )}
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[length:var(--text-2xs)] text-ink-3">
+        {imp.minutes_to_scene != null && (
+          <span>on scene in <span className="tnum text-ink-2">{imp.minutes_to_scene} min</span></span>
+        )}
+        {resolved && imp.minutes_to_clear != null && (
+          <span>cleared in <span className="tnum text-ink-2">{imp.minutes_to_clear} min</span></span>
+        )}
+        {imp.peak_index != null && (
+          <span>peaked at <span className="tnum text-ink-2">{imp.peak_index.toFixed(2)}×</span></span>
+        )}
+      </div>
+      {resolved && (
+        <p className="mt-1.5 text-[length:var(--text-2xs)] leading-snug text-ink-3">
+          Within-incident reading, not proof of cause — needs this junction&rsquo;s baseline
+          for the same weekday and hour.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function IndexPill({ value, muted = false }: { value: number; muted?: boolean }) {
+  const colour =
+    value >= 1.75 ? "var(--color-sev)"
+    : value >= 1.45 ? "var(--color-high)"
+    : value >= 1.25 ? "var(--color-elev)"
+    : "var(--color-ok)";
+  return (
+    <span
+      className="tnum rounded px-1.5 py-0.5 text-[length:var(--text-2xs)] font-semibold"
+      style={{
+        color: muted ? "var(--color-ink-3)" : colour,
+        backgroundColor: muted ? "var(--color-sunken)" : "transparent",
+        border: muted ? "none" : `1px solid ${colour}`,
+      }}
+    >
+      {value.toFixed(2)}×
+    </span>
   );
 }

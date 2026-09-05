@@ -425,3 +425,250 @@ class TestHeadlineCountsTheWholeQueue:
     def test_an_empty_queue_falls_through_to_the_corridor_bands(self):
         c = self.centre_with([])
         assert "waiting for an officer" not in c.board(NOW)["headline"]
+
+
+class TestSameDayRecurrence:
+    """A condition that returns at a place whose same-day incident is already
+    terminal must not be swallowed — the whole point is not to miss the second
+    jam. Reuses the continuity harness."""
+
+    def _centre(self):
+        from packages.command.centre import CommandCentre
+        from packages.network.model import load_network
+
+        class Stub:
+            name, is_live, retains_durations = "stub", False, False
+
+            def read(self, *a, **k):
+                return None
+
+            def provenance(self):
+                return {}
+
+        c = CommandCentre(network=load_network(), probe=Stub())
+        c.confirm_after = timedelta(0)
+        for s in c.status.values():
+            s.band = "HIGH"
+        return c
+
+    def _cluster(self, lat, lon):
+        from packages.incidents.cluster import ChokeCluster
+
+        return ChokeCluster(
+            centre=(lat, lon),
+            severity="TRAFFIC_JAM",
+            members=[
+                (
+                    "C_X",
+                    ChokePoint("TRAFFIC_JAM", (lat, lon), (lat, lon), (lat, lon), 400.0, 0.4),
+                )
+            ],
+        )
+
+    def test_a_returning_jam_after_stand_down_reopens_the_incident(self):
+        c = self._centre()
+        lat, lon = 26.7245, 88.4156
+        c._raise_incidents([self._cluster(lat, lon)], NOW)
+        inc = next(iter(c.incidents.values()))
+        inc.stand_down("DO Ghosh", "looked, nothing to send", at=NOW + timedelta(minutes=5))
+        assert inc.state is IncidentState.STOOD_DOWN
+
+        # jam returns the same day → the stood-down incident reopens
+        again = c._raise_incidents([self._cluster(lat, lon)], NOW + timedelta(hours=6))
+        assert again == [], "a reopen is not a new raise"
+        assert inc.state is IncidentState.ACKNOWLEDGED
+        assert inc.is_open
+
+    def test_a_returning_jam_after_close_raises_a_new_incident(self):
+        c = self._centre()
+        lat, lon = 26.7245, 88.4156
+        c._raise_incidents([self._cluster(lat, lon)], NOW)
+        inc = next(iter(c.incidents.values()))
+        inc.assign("SI Barman", by="DO Ghosh", at=NOW + timedelta(minutes=2))
+        inc.move(IncidentState.ON_SCENE, "SI Barman", at=NOW + timedelta(minutes=6))
+        inc.move(IncidentState.RESOLVED, "SI Barman", at=NOW + timedelta(minutes=20))
+        inc.close("DO Ghosh", "flow restored", at=NOW + timedelta(minutes=22))
+        assert inc.state is IncidentState.CLOSED
+        closed_id = inc.incident_id
+
+        # a genuinely new jam at the same place later the same day (daytime, so
+        # quiet-hours suppression is not what we are testing here)
+        again = c._raise_incidents([self._cluster(lat, lon)], NOW + timedelta(hours=2))
+        assert len(again) == 1, "the second jam must be raised, not swallowed"
+        assert again[0] != closed_id, "and under a distinct id so the closed record survives"
+        assert c.incidents[closed_id].state is IncidentState.CLOSED  # untouched
+
+
+class TestTerminalEviction:
+    """Terminal incidents leave memory once no handover can reach them, so a
+    fresh id per place per day does not accumulate forever on the one instance."""
+
+    def _centre(self):
+        from packages.command.centre import CommandCentre
+        from packages.network.model import load_network
+
+        class Stub:
+            name, is_live, retains_durations = "stub", False, False
+
+            def read(self, *a, **k):
+                return None
+
+            def provenance(self):
+                return {}
+
+        return CommandCentre(network=load_network(), probe=Stub())
+
+    def _incident(self, iid, terminal_at):
+        i = Incident(
+            incident_id=iid,
+            kind=IncidentKind.CHOKE_POINT,
+            priority=Priority.P3,
+            title="t",
+            detail="d",
+            location_name="NH10",
+            lat=26.72,
+            lon=88.41,
+            corridors=["C_A__B"],
+            junctions=["J_A"],
+            detected_at=terminal_at - timedelta(minutes=30),
+            evidence={},
+            limitation="x",
+        )
+        i.acknowledge("DO", at=terminal_at - timedelta(minutes=20))
+        i.stand_down("DO", "no action", at=terminal_at)
+        return i
+
+    def test_old_terminal_incidents_are_evicted_recent_ones_kept(self):
+        from packages.command.centre import EVICT_TERMINAL_AFTER
+
+        c = self._centre()
+        old = self._incident("INC-OLD", NOW - EVICT_TERMINAL_AFTER - timedelta(hours=1))
+        recent = self._incident("INC-RECENT", NOW - timedelta(hours=1))
+        c.incidents["INC-OLD"] = old
+        c.incidents["INC-RECENT"] = recent
+
+        dropped = c._evict_terminal(NOW)
+        assert dropped == 1
+        assert "INC-OLD" not in c.incidents
+        assert "INC-RECENT" in c.incidents
+
+    def test_open_incidents_are_never_evicted(self):
+        c = self._centre()
+        i = self._incident("INC-OPEN", NOW - timedelta(days=5))
+        i.move(IncidentState.ACKNOWLEDGED, "DO")  # reopen → now open
+        c.incidents["INC-OPEN"] = i
+        assert c._evict_terminal(NOW) == 0
+        assert "INC-OPEN" in c.incidents
+
+
+class TestEscalationTimers:
+    """The CAD timed-alert: an incident waiting too long for its next human step
+    is pushed, and the clock resets when the incident advances."""
+
+    def test_a_fresh_p1_is_ok_then_due_soon_then_overdue(self):
+        i = make(priority=Priority.P1)  # SLA_TO_OWNER P1 = 5 min
+        assert i.escalation(NOW + timedelta(minutes=2))["level"] == "ok"
+        assert i.escalation(NOW + timedelta(minutes=4))["level"] == "due_soon"
+        e = i.escalation(NOW + timedelta(minutes=9))
+        assert e["level"] == "overdue" and e["overdue"] is True
+        assert e["minutes_over"] == 4.0
+        assert e["clock"] == "owner"
+
+    def test_priority_sets_the_window(self):
+        assert make(priority=Priority.P1).escalation(NOW + timedelta(minutes=6))["overdue"]
+        assert not make(priority=Priority.P3).escalation(NOW + timedelta(minutes=6))["overdue"]
+
+    def test_assigning_resets_the_clock_to_the_scene_deadline(self):
+        i = make(priority=Priority.P1)
+        # overdue for an owner at +9
+        assert i.escalation(NOW + timedelta(minutes=9))["overdue"]
+        i.assign("SI Barman", by="DO", at=NOW + timedelta(minutes=9))
+        # now the clock is on reaching the scene, measured from the assignment
+        e = i.escalation(NOW + timedelta(minutes=11))
+        assert e["clock"] == "on_scene"
+        assert e["overdue"] is False  # only 2 min into the 10-min scene window
+
+    def test_on_scene_has_no_deadline(self):
+        i = make(priority=Priority.P1)
+        i.assign("SI", by="DO", at=NOW)
+        i.move(IncidentState.ON_SCENE, "SI", at=NOW + timedelta(minutes=3))
+        e = i.escalation(NOW + timedelta(hours=2))
+        assert e["clock"] is None and e["overdue"] is False
+
+    def test_terminal_incidents_have_no_clock(self):
+        i = make()
+        i.stand_down("DO", "nothing to send")
+        assert i.escalation(NOW + timedelta(hours=5))["clock"] is None
+
+    def test_escalation_appears_in_the_api_view(self):
+        d = make(priority=Priority.P1).as_dict(NOW + timedelta(minutes=8))
+        assert d["escalation"]["overdue"] is True
+
+
+class TestFieldReport:
+    """The field officer as a source, not only a sink: raising an incident the
+    algorithm cannot see."""
+
+    def _centre(self):
+        from packages.command.centre import CommandCentre
+        from packages.network.model import load_network
+
+        class Stub:
+            name, is_live, retains_durations = "stub", False, False
+
+            def read(self, *a, **k):
+                return None
+
+            def provenance(self):
+                return {}
+
+        return CommandCentre(network=load_network(), probe=Stub())
+
+    def _a_junction(self, c):
+        return next(iter(c.network.junctions.values()))
+
+    def test_a_field_report_is_on_scene_owned_by_the_reporter(self):
+        c = self._centre()
+        j = self._a_junction(c)
+        inc = c.raise_field_report(
+            reporter="SI Barman", cause="Vehicle breakdown", junction_id=j.junction_id, now=NOW
+        )
+        assert inc.kind is IncidentKind.FIELD_REPORT
+        assert inc.state is IncidentState.ON_SCENE
+        assert inc.owner == "SI Barman"
+        assert inc.evidence["source"] == "field"
+        assert any(n.kind == "CAUSE" and n.text == "Vehicle breakdown" for n in inc.notes)
+        assert inc.incident_id in c.incidents
+
+    def test_a_field_report_never_collides_with_an_auto_detected_one(self):
+        c = self._centre()
+        j = self._a_junction(c)
+        # a field report and an auto-detected choke at the same spot are different
+        # records because kind is part of the id seed.
+        field_id = c.raise_field_report(
+            reporter="SI", cause="Accident", junction_id=j.junction_id, now=NOW
+        ).incident_id
+        auto_id = incident_id(IncidentKind.CHOKE_POINT, j.lat, j.lon, NOW)
+        assert field_id != auto_id
+
+    def test_a_reason_is_required(self):
+        c = self._centre()
+        j = self._a_junction(c)
+        with pytest.raises(ValueError):
+            c.raise_field_report(reporter="SI", cause="   ", junction_id=j.junction_id, now=NOW)
+
+    def test_an_unknown_junction_raises(self):
+        c = self._centre()
+        with pytest.raises(KeyError):
+            c.raise_field_report(reporter="SI", cause="x", junction_id="J_NOWHERE", now=NOW)
+
+    def test_a_second_report_at_the_same_place_appends_not_duplicates(self):
+        c = self._centre()
+        j = self._a_junction(c)
+        first = c.raise_field_report(reporter="SI", cause="Breakdown", junction_id=j.junction_id, now=NOW)
+        again = c.raise_field_report(
+            reporter="SI", cause="Breakdown", note="towed now", junction_id=j.junction_id,
+            now=NOW + timedelta(minutes=5),
+        )
+        assert again.incident_id == first.incident_id
+        assert len([i for i in c.incidents.values() if i.kind is IncidentKind.FIELD_REPORT]) == 1

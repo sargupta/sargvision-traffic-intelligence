@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 
@@ -83,6 +83,7 @@ class IncidentKind(str, Enum):
     SPREADING = "SPREADING"  # several corridors degrading together
     SAFETY = "SAFETY"  # structural accident risk, not congestion
     DATA_GAP = "DATA_GAP"  # we cannot see here
+    FIELD_REPORT = "FIELD_REPORT"  # an officer on the ground raised it, not the algorithm
 
 
 class Priority(str, Enum):
@@ -90,6 +91,19 @@ class Priority(str, Enum):
     P2 = "P2"  # act this shift
     P3 = "P3"  # watch
     P4 = "P4"  # record only
+
+
+# How long a condition may wait for the next human step before the board should
+# push it — first as a nudge, then up to a supervisor. Minutes, keyed on what is
+# being waited for and the priority. This is the CAD "timed alert" that turns a
+# status list into a queue that pressures action: the deadline is derived from
+# the timestamp of the transition into the current state, so any action that
+# advances the incident resets the clock for free.
+SLA_TO_OWNER = {Priority.P1: 5, Priority.P2: 15, Priority.P3: 30, Priority.P4: 60}
+SLA_TO_SCENE = {Priority.P1: 10, Priority.P2: 25, Priority.P3: 45, Priority.P4: 120}
+# Within the last quarter of the window an item reads "due soon" rather than
+# "ok", so an officer sees it coming instead of only after it breaches.
+_DUE_SOON_FRACTION = 0.75
 
 
 @dataclass(frozen=True)
@@ -105,6 +119,31 @@ class Note:
             "author": self.author,
             "text": self.text,
             "kind": self.kind,
+        }
+
+
+@dataclass(frozen=True)
+class IndexSample:
+    """The worst live congestion index across an incident's corridors, at a
+    moment in its life. Captured while the incident is open so that "did the
+    deployment work" can be answered from the road, not from memory.
+
+    The index is duration / staticDuration — current travel time against
+    Google's modelled typical. 1.0 is typical; above 1.0 is slower than usual.
+    This is the same probe-travel-time signal NYC used to measure a ~10% gain
+    from Midtown-in-Motion, and it is the only thing that makes the verification
+    claim more than an assertion.
+    """
+
+    at: datetime
+    index: float
+    band: str
+
+    def as_dict(self) -> dict:
+        return {
+            "at": self.at.isoformat(timespec="seconds"),
+            "index": round(self.index, 3),
+            "band": self.band,
         }
 
 
@@ -166,6 +205,7 @@ class Incident:
     assignments: list[Assignment] = field(default_factory=list)
     notes: list[Note] = field(default_factory=list)
     history: list[Transition] = field(default_factory=list)
+    samples: list[IndexSample] = field(default_factory=list)
     last_seen_at: datetime | None = None
     resolved_at: datetime | None = None
 
@@ -203,6 +243,109 @@ class Incident:
     ) -> None:
         self.notes.append(Note(at or datetime.now(), author, text, kind))
 
+    # ── measurement (the verification raw material) ───────────────────────────
+    _SAMPLE_CAP = 500  # ~25h at a 3-minute poll; FIFO beyond that
+
+    def record_sample(
+        self, at: datetime, index: float | None, band: str, *, anchor: bool = False
+    ) -> None:
+        """Record the live index for this incident, if there is one.
+
+        A run of identical readings collapses to a single sample keeping its
+        ONSET time — not the newest, which is what a previous version did and
+        which quietly destroyed the whole point of the series: a sample recorded
+        AT a transition (on-scene, resolved) would have its timestamp dragged
+        forward by the next identical poll, moving it off the moment it was
+        anchoring, so `_index_near` could no longer find it and the verification
+        output vanished. Keeping the onset leaves "how long has it sat" answerable
+        as (last_poll − onset), and leaves the anchor where it belongs.
+
+        `anchor=True` forces an append even when the value repeats. It is used at
+        every transition, so on-scene and resolved always carry an exact reading
+        regardless of whether the index happened to be steady.
+        """
+        if index is None:
+            return
+        if not anchor and self.samples:
+            last = self.samples[-1]
+            if round(last.index, 3) == round(index, 3) and last.band == band:
+                return  # a stable reading is one sample, timed at its onset
+        self.samples.append(IndexSample(at, index, band))
+        if len(self.samples) > self._SAMPLE_CAP:
+            del self.samples[0 : len(self.samples) - self._SAMPLE_CAP]
+
+    def _index_near(self, when: datetime | None, tol_minutes: float = 12.0) -> float | None:
+        """The sampled index closest to a moment, within a tolerance.
+
+        Transitions happen between polls, so the index at "on scene" is the
+        nearest sample, not an exact one. The tolerance keeps a stale sample
+        from being read as the value at a much later transition.
+        """
+        if when is None or not self.samples:
+            return None
+        best = min(self.samples, key=lambda s: abs((s.at - when).total_seconds()))
+        if abs((best.at - when).total_seconds()) > tol_minutes * 60:
+            return None
+        return best.index
+
+    def _transition_time(self, to: IncidentState) -> datetime | None:
+        for h in self.history:
+            if h.to is to:
+                return h.at
+        return None
+
+    def impact(self, now: datetime | None = None) -> dict:
+        """What the record can honestly say about this incident's course.
+
+        This is a within-incident reading only: how the index moved while the
+        incident was owned, and how quickly it was cleared. It is NOT a
+        counterfactual — proving the officer *caused* the improvement needs the
+        junction's own baseline for the same weekday and hour, which accrues as
+        history is kept. Everything here is the raw material for that study;
+        nothing here claims causation on its own.
+        """
+        detected = self.evidence.get("worst_index")
+        if detected is None and self.samples:
+            detected = self.samples[0].index
+
+        on_scene_at = self._transition_time(IncidentState.ON_SCENE)
+        assigned_at = self._transition_time(IncidentState.ASSIGNED)
+        index_on_scene = self._index_near(on_scene_at)
+        index_resolved = self._index_near(self.resolved_at)
+        if index_resolved is None and self.resolved_at and self.samples:
+            index_resolved = self.samples[-1].index
+
+        def minutes_between(a: datetime | None, b: datetime | None) -> float | None:
+            if a is None or b is None:
+                return None
+            return round((b - a).total_seconds() / 60, 1)
+
+        peak = max((s.index for s in self.samples), default=detected)
+
+        # Fell while the officer owned it — the honest, un-caveated observation.
+        improved = None
+        if index_on_scene is not None and index_resolved is not None:
+            improved = round(index_on_scene - index_resolved, 3)
+
+        return {
+            "index_at_detection": round(detected, 3) if detected is not None else None,
+            "index_on_scene": round(index_on_scene, 3) if index_on_scene is not None else None,
+            "index_resolved": round(index_resolved, 3) if index_resolved is not None else None,
+            "peak_index": round(peak, 3) if peak is not None else None,
+            "minutes_to_scene": minutes_between(assigned_at, on_scene_at),
+            "minutes_to_clear": minutes_between(
+                on_scene_at or self.detected_at, self.resolved_at
+            ),
+            "index_fell_while_owned": improved,
+            "samples": len(self.samples),
+            "basis": (
+                "Within-incident reading of the corridor's own index. Not a "
+                "counterfactual: it does not prove the deployment caused the "
+                "change until compared against this junction's baseline for the "
+                "same weekday and hour."
+            ),
+        }
+
     def stand_down(self, by: str, reason: str, at: datetime | None = None) -> None:
         """No action needed. A real outcome, recorded as one."""
         if not reason.strip():
@@ -234,6 +377,49 @@ class Incident:
 
     def age_minutes(self, now: datetime) -> float:
         return (now - self.detected_at).total_seconds() / 60
+
+    def escalation(self, now: datetime) -> dict:
+        """Whether this incident is waiting too long for its next human step.
+
+        The clock is on what the incident needs now — an owner while it is
+        unowned, an officer on scene once it is assigned — measured from when it
+        entered that state. Once an officer is on scene and working it, there is
+        no deadline: the point of the timer is to make sure something is *being
+        done*, and at that point it is. Terminal incidents have no clock.
+        """
+        if self.state in (IncidentState.DETECTED, IncidentState.ACKNOWLEDGED):
+            clock = "owner"
+            started = self.detected_at
+            limit = SLA_TO_OWNER[self.priority]
+        elif self.state is IncidentState.ASSIGNED:
+            clock = "on_scene"
+            started = self.assignments[-1].at if self.assignments else self.detected_at
+            limit = SLA_TO_SCENE[self.priority]
+        else:
+            return {
+                "clock": None,
+                "level": "none",
+                "overdue": False,
+                "waiting_minutes": 0.0,
+                "limit_minutes": None,
+                "minutes_over": 0.0,
+                "due_by": None,
+            }
+
+        waited = (now - started).total_seconds() / 60
+        over = waited - limit
+        level = "overdue" if over > 0 else ("due_soon" if waited >= limit * _DUE_SOON_FRACTION else "ok")
+        return {
+            "clock": clock,
+            "level": level,
+            "overdue": over > 0,
+            "waiting_minutes": round(waited, 1),
+            "limit_minutes": limit,
+            "minutes_over": round(over, 1) if over > 0 else 0.0,
+            "due_by": (started + timedelta(minutes=limit)).isoformat(
+                timespec="seconds"
+            ),
+        }
 
     def unowned_minutes(self, now: datetime) -> float:
         if self.owner:
@@ -270,6 +456,9 @@ class Incident:
             "assignments": [a.as_dict() for a in self.assignments],
             "notes": [n.as_dict() for n in self.notes],
             "history": [h.as_dict() for h in self.history],
+            "samples": [s.as_dict() for s in self.samples],
+            "impact": self.impact(moment),
+            "escalation": self.escalation(moment),
             "next_actions": [
                 s.value for s in sorted(TRANSITIONS[self.state], key=lambda x: x.value)
             ],

@@ -1,6 +1,6 @@
 "use client";
 
-import { BAND, PRIORITY, type Band, type Priority } from "@/lib/api";
+import { BAND, PRIORITY, type Band, type Escalation, type Priority } from "@/lib/api";
 
 /** A band, shown three ways at once — colour, word and mark — so it survives a
  *  monochrome print and colour vision deficiency. */
@@ -99,5 +99,40 @@ export function Empty({ title, detail }: { title: string; detail: string }) {
         {detail}
       </p>
     </div>
+  );
+}
+
+/** How long an incident has been waiting for its next human step, and whether
+ *  that is now too long. The colour and word both carry it, and an overdue item
+ *  reads the same in a monochrome briefing pack. Renders nothing while there is
+ *  no clock (on scene, or terminal) or while it is comfortably on time. */
+export function EscalationChip({ escalation }: { escalation?: Escalation }) {
+  if (!escalation || escalation.clock === null || escalation.level === "ok") return null;
+
+  const need = escalation.clock === "owner" ? "for an officer" : "to reach scene";
+  if (escalation.level === "overdue") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[length:var(--text-2xs)] font-semibold"
+        style={{ color: "var(--color-sev)", backgroundColor: "var(--color-sev-tint)" }}
+        title={`Waiting ${escalation.waiting_minutes} min ${need}; limit ${escalation.limit_minutes} min`}
+      >
+        <span aria-hidden>▲</span>
+        {escalation.minutes_over < 1
+          ? "Overdue"
+          : `Overdue ${Math.round(escalation.minutes_over)}m`}
+      </span>
+    );
+  }
+  // due soon
+  const left = Math.max(0, (escalation.limit_minutes ?? 0) - escalation.waiting_minutes);
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[length:var(--text-2xs)] font-medium"
+      style={{ color: "var(--color-high)", backgroundColor: "var(--color-high-tint)" }}
+      title={`${need}`}
+    >
+      Due {left < 1 ? "now" : `${Math.round(left)}m`}
+    </span>
   );
 }

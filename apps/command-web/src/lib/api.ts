@@ -110,7 +110,32 @@ export interface Incident {
   assignments: { at: string; assigned_to: string; assigned_by: string; unit: string | null }[];
   notes: Note[];
   history: { at: string; from: string; to: string; by: string; reason: string | null }[];
+  samples?: { at: string; index: number; band: string }[];
+  impact?: IncidentImpact;
+  escalation?: Escalation;
   next_actions: string[];
+}
+export interface Escalation {
+  clock: "owner" | "on_scene" | null;
+  level: "ok" | "due_soon" | "overdue" | "none";
+  overdue: boolean;
+  waiting_minutes: number;
+  limit_minutes: number | null;
+  minutes_over: number;
+  due_by: string | null;
+}
+
+/** The within-incident verification reading. Not a counterfactual — see `basis`. */
+export interface IncidentImpact {
+  index_at_detection: number | null;
+  index_on_scene: number | null;
+  index_resolved: number | null;
+  peak_index: number | null;
+  minutes_to_scene: number | null;
+  minutes_to_clear: number | null;
+  index_fell_while_owned: number | null;
+  samples: number;
+  basis: string;
 }
 
 export interface Board {
@@ -224,6 +249,33 @@ export async function act(
   return payload as Incident;
 }
 
+/** A field officer raises an incident the system cannot see. Same write gate as
+ *  any action — a report is a police record. */
+export async function raiseFieldReport(body: {
+  by: string;
+  junction_id?: string;
+  lat?: number;
+  lon?: number;
+  cause: string;
+  note?: string;
+  priority?: Priority;
+}): Promise<Incident> {
+  const token = getToken();
+  const r = await fetch(`${API}/api/incidents`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    throw new ActionError(r.status, payload?.detail ?? `report failed (${r.status})`);
+  }
+  return payload as Incident;
+}
+
 export interface Recommendation {
   kind: "POST" | "DIVERT" | "ESCALATE" | "WATCH" | "STAND_DOWN";
   urgency: "NOW" | "THIS_SHIFT" | "ADVISORY";
@@ -267,10 +319,17 @@ export interface HandoverSummary {
   incident_id: string; priority: Priority; state: IncidentState;
   title: string; location_name: string; owner: string | null;
   age_minutes: number; notes: Note[];
+  escalation?: Escalation; next_actions?: string[];
 }
 
 export interface HandoverPayload {
   window_hours: number; from: string; to: string; raised: number;
+  situation: {
+    open: number; unowned: number; overdue: number;
+    by_priority: Record<string, number>;
+    raised_in_window: number; elevated_now: number; assessment: string;
+  };
+  watch: { name: string; band: Band; index: number | null }[];
   handing_over: { needs_an_owner: HandoverSummary[]; in_hand: HandoverSummary[] };
   this_shift: { closed: HandoverSummary[]; stood_down: HandoverSummary[]; lapsed: HandoverSummary[] };
   alerting_quality: { lapse_rate: number; note: string };
