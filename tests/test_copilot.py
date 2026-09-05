@@ -117,3 +117,33 @@ class TestDeterministicFallback:
         # every number in the observation comes from the tool json, not the model
         a = self._forced_fallback().ask("show me the open incidents").as_dict()
         assert "list_incidents returned" in a["observation"]
+
+
+class TestPastAndPresentTools:
+    def test_historical_day_shape_returns_hours_and_worst(self):
+        h = _box().historical_day_shape("WEEKDAY")
+        # curated parquet is present in the repo; if not, an error dict is fine
+        if "error" not in h:
+            assert len(h["hours"]) == 24
+            assert h["worst_hours"] and "caveat" in h
+            assert "2019" in h["vintage"]
+
+    def test_data_confidence_reports_coverage(self):
+        d = _box().data_confidence()
+        assert "coverage_pct" in d and "poll_age_minutes" in d and "caveat" in d
+
+
+class TestAnswerCarriesData:
+    def _forced_fallback(self):
+        cop = LiveCopilot(_box())
+        cop._ask_model = lambda q: (_ for _ in ()).throw(RuntimeError("no model"))
+        return cop
+
+    def test_answer_includes_the_tool_data_for_the_ui(self):
+        a = self._forced_fallback().ask("show me the open incidents").as_dict()
+        assert a["data"] and a["data"][0]["tool"] == "list_incidents"
+        assert "result" in a["data"][0]
+
+    def test_a_typical_question_routes_to_history(self):
+        cop = self._forced_fallback()
+        assert cop.ask("when is it usually worst?").tool_trace[0]["tool"] == "historical_day_shape"

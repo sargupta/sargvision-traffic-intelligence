@@ -21,11 +21,13 @@ import os
 import statistics
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from packages.command.centre import CommandCentre
 from packages.contracts.response import AnswerContract
 
+CURATED = Path("data/curated")
 MODEL = os.environ.get("COPILOT_MODEL", "gemini-2.5-flash")
 PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "sargvision-traffic-intel")
 LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
@@ -167,6 +169,59 @@ class LiveToolbox:
         rows.sort(key=lambda r: r["at"], reverse=True)
         return {"window_minutes": minutes, "count": len(rows), "changes": rows[:20]}
 
+    def historical_day_shape(self, day_type: str = "WEEKDAY") -> dict:
+        """The typical shape of the day from the 2019 city study — the PAST layer.
+
+        City-wide structure, seven years old, not corridor-specific. It is how to
+        read whether today is normal for the hour, and nothing more; the copilot
+        must present it as context, never as a live or per-junction figure.
+        """
+        import polars as pl
+
+        path = CURATED / "patterns_hourly.parquet"
+        if not path.exists():
+            return {"error": "the historical city profile has not been built"}
+        dt = day_type.upper()
+        if dt not in ("WEEKDAY", "WEEKEND", "ALL"):
+            dt = "WEEKDAY"
+        frame = pl.read_parquet(path).filter(pl.col("day_type") == dt).sort("hour")
+        hours = [
+            {
+                "hour": int(r["hour"]),
+                "index": round(r["median_tti"], 3),
+                "speed_kmh": round(r["median_speed_kmh"], 1),
+                "sample_size": int(r["sample_size"]),
+                "congested": bool(r["congested"]),
+            }
+            for r in frame.iter_rows(named=True)
+        ]
+        peak = sorted(hours, key=lambda h: -h["index"])[:3]
+        return {
+            "day_type": dt,
+            "hours": hours,
+            "worst_hours": [{"hour": h["hour"], "index": h["index"]} for h in peak],
+            "vintage": "2019 study, city-wide",
+            "caveat": (
+                "City-wide structure only — 7 years old and not specific to any junction. "
+                "Read it as 'is today normal for this hour', not as a live baseline."
+            ),
+        }
+
+    def data_confidence(self) -> dict:
+        """How much to trust the live picture: coverage and freshness now."""
+        c = self.centre
+        observed = sum(1 for s in c.status.values() if s.latest is not None)
+        total = len(c.status)
+        moment = self._moment()
+        return {
+            "corridors_total": total,
+            "corridors_observed": observed,
+            "coverage_pct": round(100 * observed / total, 1) if total else 0.0,
+            "cycles_run": c.cycles,
+            "poll_age_minutes": round((self._now() - moment).total_seconds() / 60, 1),
+            "caveat": "A corridor not yet observed has no reading; unobserved corridors are not 'clear'.",
+        }
+
     def verification_summary(self, hours: int = 24) -> dict:
         """Did our deployments move the road? The "we verify" question, over the
         incidents resolved in the window."""
@@ -246,6 +301,16 @@ LIVE_SCHEMAS: list[dict] = [
         "description": "Whether deployments moved the road: over incidents resolved in the window, how many showed the index falling while owned, and how long they took to clear.",
         "parameters": {"type": "object", "properties": {"hours": {"type": "integer"}}},
     },
+    {
+        "name": "historical_day_shape",
+        "description": "The TYPICAL shape of the day from the 2019 city study — how travel time normally varies by hour, and the usual worst hours. Use for 'when is it usually worst', 'what does a normal weekday evening look like', or to judge whether now is normal for the hour. City-wide and 7 years old, not per-junction.",
+        "parameters": {"type": "object", "properties": {"day_type": {"type": "string"}}},
+    },
+    {
+        "name": "data_confidence",
+        "description": "How much to trust the live picture: how many corridors have been observed this cycle, coverage percent, and how fresh the data is.",
+        "parameters": {"type": "object", "properties": {}},
+    },
 ]
 
 LIVE_SYSTEM = """You are the Mobility Copilot for SARGVISION Traffic Command, Siliguri. You sit beside a duty officer's board and answer their questions about what is happening on the road.
@@ -256,6 +321,7 @@ Your role is narrow and you must not exceed it:
 - Congestion and danger are different things and live in different places. The live index measures delay; the accident record (junction_reference) measures danger. Venus More is the most dangerous junction and one of the least congested — never conflate them.
 - The verification figures are WITHIN-INCIDENT readings, not proof the officer caused the change. Say so when you use them.
 - Data freshness matters: if get_current_state shows the poll is old, the figures are the last ones that arrived, not this instant.
+- Past and present are BOTH available and you should use both when the question spans them. historical_day_shape is the 2019 typical day (city-wide, seven years old); everything else is live. When an officer asks whether now is unusual, compare the live figure against the typical shape for this hour, and say plainly which number is live and which is the old typical.
 
 Call the tools you need, then answer in five parts:
   observation     what the data shows, as fact
@@ -283,12 +349,28 @@ ANSWER_SCHEMA = {
 }
 
 
+def _trim(result: Any, cap: int = 24) -> Any:
+    """Cap list fields so the data returned to the interface stays a summary, not
+    a firehose. The frontend renders these as small widgets, and the model has
+    already read the full result — this is only what travels back for display."""
+    if isinstance(result, dict):
+        out = {}
+        for k, v in result.items():
+            if isinstance(v, list) and len(v) > cap:
+                out[k] = [*v[:cap], {"…": f"{len(v) - cap} more"}]
+            else:
+                out[k] = v
+        return out
+    return result
+
+
 @dataclass
 class CopilotAnswer:
     answer: AnswerContract
     focus_incident: str | None
     focus_junction: str | None
     tool_trace: list[dict]
+    data: list[dict]  # {tool, result} — the figures behind the prose, for the UI
     model: str
     degraded: bool = False
 
@@ -298,6 +380,7 @@ class CopilotAnswer:
             "focus_incident": self.focus_incident,
             "focus_junction": self.focus_junction,
             "tool_trace": self.tool_trace,
+            "data": self.data,
             "model": self.model,
             "degraded": self.degraded,
         }
@@ -363,7 +446,7 @@ class LiveCopilot:
             for call in calls:
                 args = dict(call.args or {})
                 result = self._call(call.name, args)
-                trace.append({"tool": call.name, "args": args})
+                trace.append({"tool": call.name, "args": args, "result": _trim(result)})
                 parts.append(
                     types.Part.from_function_response(name=call.name, response={"result": result})
                 )
@@ -401,7 +484,8 @@ class LiveCopilot:
             ),
             focus_incident=payload.get("focus_incident") or None,
             focus_junction=payload.get("focus_junction") or None,
-            tool_trace=trace,
+            tool_trace=[{"tool": t["tool"], "args": t["args"]} for t in trace],
+            data=[{"tool": t["tool"], "result": t["result"]} for t in trace],
             model=MODEL,
         )
 
@@ -411,13 +495,41 @@ class LiveCopilot:
         wrong and never invented — the property that must survive the model being
         down."""
         q = question.lower()
-        if any(w in q for w in ("verif", "work", "effect", "did it", "resolve", "clear")):
+        if any(
+            w in q
+            for w in (
+                "usually",
+                "normally",
+                "typical",
+                "typically",
+                "history",
+                "historical",
+                "past",
+                "shape of the day",
+                "which hour",
+                "what hour",
+            )
+        ):
+            result, tool = self.tools.historical_day_shape(), "historical_day_shape"
+        elif any(
+            w in q
+            for w in (
+                "confiden",
+                "coverage",
+                "trust",
+                "how good",
+                "how many corridors",
+                "how fresh",
+            )
+        ):
+            result, tool = self.tools.data_confidence(), "data_confidence"
+        elif any(w in q for w in ("verif", "work", "effect", "did it", "resolve", "clear")):
             result, tool = self.tools.verification_summary(), "verification_summary"
         elif any(w in q for w in ("chang", "happen", "last hour", "recent")):
             result, tool = self.tools.recent_changes(), "recent_changes"
         elif any(w in q for w in ("danger", "accident", "safety", "risk", "junction", "venus")):
             result, tool = self.tools.junction_reference(), "junction_reference"
-        elif any(w in q for w in ("corridor", "slow", "congest", "typical", "delay", "worst")):
+        elif any(w in q for w in ("corridor", "slow", "congest", "delay", "worst")):
             result, tool = self.tools.corridors_above_typical(), "corridors_above_typical"
         elif any(w in q for w in ("incident", "open", "owner", "overdue", "queue", "waiting")):
             result, tool = self.tools.list_incidents(), "list_incidents"
@@ -443,6 +555,7 @@ class LiveCopilot:
             focus_incident=None,
             focus_junction=None,
             tool_trace=[{"tool": tool, "args": {}}],
+            data=[{"tool": tool, "result": _trim(result)}],
             model="deterministic-fallback",
             degraded=True,
         )

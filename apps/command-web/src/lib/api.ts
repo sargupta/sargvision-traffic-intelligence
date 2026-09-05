@@ -287,6 +287,9 @@ export interface CopilotAnswer {
   focus_incident: string | null;
   focus_junction: string | null;
   tools_called: string[];
+  /** The figures behind the prose — one entry per tool the copilot ran, for the
+   *  interface to render as widgets rather than leave the answer as text only. */
+  data: { tool: string; result: Record<string, unknown> }[];
   model: string;
   degraded: boolean;
 }

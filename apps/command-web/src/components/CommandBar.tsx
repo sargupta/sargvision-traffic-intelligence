@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActionError, act, askCopilot, type CopilotAnswer, type Incident, type Officer } from "@/lib/api";
+import { CopilotResult, SUGGESTIONS } from "./Copilot";
 import {
   completeWithIncident,
   completeWithOfficer,
@@ -73,6 +74,7 @@ export function CommandBar({
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<CopilotAnswer | null>(null);
+  const [showSuggest, setShowSuggest] = useState(false);
   const [listening, setListening] = useState(false);
   // Whether voice is available is a client-only fact. Deciding it during render
   // makes the server and the first client render disagree (the server has no
@@ -327,6 +329,8 @@ export function CommandBar({
                 : "Command or question — “assign Venus More to guard 2”, “what changed in the last hour?”"
           }
           aria-label="Command input"
+          onFocus={() => setShowSuggest(true)}
+          onBlur={() => setShowSuggest(false)}
           className="flex-1 bg-transparent text-[length:var(--text-md)] outline-none placeholder:text-ink-3"
         />
         {/* Enables Enter-to-send: a form with only type=button controls does not
@@ -409,57 +413,43 @@ export function CommandBar({
         </p>
       )}
 
+      {/* Suggested questions — shown while the bar is focused and idle, so the
+          officer discovers the range of what they can ask, past and present. */}
+      {showSuggest && !pending && !answer && !asking && !text.trim() && (
+        <div className="mt-2 flex flex-col gap-1.5">
+          {SUGGESTIONS.map((g) => (
+            <div key={g.group} className="flex flex-wrap items-center gap-1.5">
+              <span className="label mr-1 w-[5.5rem] shrink-0">{g.group}</span>
+              {g.questions.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  // onMouseDown so the click lands before the input's blur hides this
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setText("");
+                    ask(q);
+                  }}
+                  className="rounded-full border border-line-firm bg-surface px-2.5 py-1 text-[length:var(--text-sm)] text-ink-2 hover:bg-sunken"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
       {asking && (
         <p className="mt-2 text-[length:var(--text-sm)] text-ink-2">Asking the copilot…</p>
       )}
 
       {answer && (
-        <div className="mt-2.5 rounded-lg border border-line bg-raised p-3.5">
-          <div className="flex items-center justify-between">
-            <span className="label">Copilot</span>
-            <button
-              type="button"
-              onClick={() => setAnswer(null)}
-              className="text-[length:var(--text-2xs)] text-ink-3 underline"
-            >
-              Dismiss
-            </button>
-          </div>
-          <dl className="mt-2 space-y-2">
-            {(
-              [
-                ["Observation", answer.observation],
-                ["Comparison", answer.comparison],
-                ["Interpretation", answer.interpretation],
-                ["Limitation", answer.limitation],
-                ["Next step", answer.next_step],
-              ] as const
-            ).map(([k, v]) => (
-              <div key={k}>
-                <dt
-                  className="label"
-                  style={k === "Limitation" ? { color: "var(--color-copper)" } : undefined}
-                >
-                  {k}
-                </dt>
-                <dd className="text-[length:var(--text-sm)] leading-relaxed text-ink-2">{v}</dd>
-              </div>
-            ))}
-          </dl>
-          {answer.focus_incident && onFocusIncident && (
-            <button
-              type="button"
-              onClick={() => onFocusIncident(answer.focus_incident!)}
-              className="mt-2.5 rounded border border-line-firm bg-surface px-2.5 py-1.5 text-[length:var(--text-sm)] font-medium text-ink-2 hover:bg-sunken"
-            >
-              Show the incident
-            </button>
-          )}
-          <p className="mt-2.5 border-t border-line pt-2 text-[length:var(--text-2xs)] text-ink-3">
-            {answer.degraded ? "Answered from the board — the model is offline. " : ""}
-            From: {answer.tools_called.join(", ")}
-          </p>
-        </div>
+        <CopilotResult
+          answer={answer}
+          onDismiss={() => setAnswer(null)}
+          onFocusIncident={onFocusIncident}
+        />
       )}
     </section>
   );
