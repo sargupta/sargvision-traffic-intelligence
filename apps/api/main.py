@@ -29,7 +29,7 @@ from pydantic import BaseModel, Field
 
 from packages.command.advice import recommend
 from packages.command.centre import CommandCentre
-from packages.incidents.model import IncidentState, Priority
+from packages.incidents.model import TRANSITIONS, IncidentState, Priority
 from packages.incidents.store import build_store
 from packages.network.model import load_network
 from packages.network.probe import RoutesProbe
@@ -695,6 +695,9 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
     touched = [i for i in c.incidents.values() if i.detected_at >= since or i.is_open]
 
     def summarise(item) -> dict:
+        # Each item carries the SBAR spine the interface lays out: what and where
+        # (situation), how it got here (the notes/history are background), the
+        # escalation state (assessment), and what to do (its legal next steps).
         return {
             "incident_id": item.incident_id,
             "priority": item.priority.value,
@@ -703,7 +706,11 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
             "location_name": item.location_name,
             "owner": item.owner,
             "age_minutes": round(item.age_minutes(moment), 1),
+            "escalation": item.escalation(moment),
             "notes": [n.as_dict() for n in item.notes],
+            "next_actions": [
+                s.value for s in sorted(TRANSITIONS[item.state], key=lambda x: x.value)
+            ],
         }
 
     open_unowned = [i for i in touched if i.needs_attention]
@@ -712,12 +719,54 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
     stood_down = [i for i in touched if i.state is IncidentState.STOOD_DOWN]
     lapsed = [i for i in touched if i.state is IncidentState.LAPSED]
 
-    raised = len(touched)
+    # Denominator is what was actually RAISED in the window, not everything the
+    # board is touching — an incident open from a previous shift is not something
+    # this shift's alerting raised, and counting it understates the lapse rate.
+    raised_in_window = [i for i in c.incidents.values() if i.detected_at >= since]
+    lapsed_in_window = [i for i in raised_in_window if i.state is IncidentState.LAPSED]
+
+    open_all = [i for i in c.incidents.values() if i.is_open]
+    overdue = [i for i in open_all if i.escalation(moment)["overdue"]]
+    by_priority = {p: sum(1 for i in open_all if i.priority.value == p) for p in ("P1", "P2", "P3", "P4")}
+
+    # What is live on the road right now — the assets/abnormal-conditions line of
+    # a control-room turnover. Worst first.
+    elevated = sorted(
+        (s for s in c.status.values() if s.band in ("SEVERE", "HIGH", "ELEVATED")),
+        key=lambda s: -(s.index or 0),
+    )
+    watch = [
+        {"name": s.name, "band": s.band, "index": round(s.index, 2) if s.index is not None else None}
+        for s in elevated[:8]
+    ]
+
+    # The situation line: the thirty-second read the incoming officer needs before
+    # anything else.
+    if not open_all:
+        assessment = "Nothing open at handover. The board is clear."
+    else:
+        bits = [f"{len(open_all)} open"]
+        if open_unowned:
+            bits.append(f"{len(open_unowned)} without an owner")
+        if overdue:
+            bits.append(f"{len(overdue)} past deadline")
+        assessment = ", ".join(bits) + f". {len(elevated)} corridor(s) above typical now."
+
     return {
         "window_hours": hours,
         "from": since.isoformat(timespec="seconds"),
         "to": moment.isoformat(timespec="seconds"),
-        "raised": raised,
+        "raised": len(touched),
+        "situation": {
+            "open": len(open_all),
+            "unowned": len(open_unowned),
+            "overdue": len(overdue),
+            "by_priority": by_priority,
+            "raised_in_window": len(raised_in_window),
+            "elevated_now": len(elevated),
+            "assessment": assessment,
+        },
+        "watch": watch,
         "handing_over": {
             "needs_an_owner": [summarise(i) for i in open_unowned],
             "in_hand": [summarise(i) for i in open_owned],
@@ -728,11 +777,14 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
             "lapsed": [summarise(i) for i in lapsed],
         },
         "alerting_quality": {
-            "lapse_rate": round(len(lapsed) / raised, 3) if raised else 0.0,
+            "lapse_rate": round(len(lapsed_in_window) / len(raised_in_window), 3)
+            if raised_in_window
+            else 0.0,
             "note": (
-                "Lapsed means the condition cleared before anyone acted. A high rate "
-                "means the system is raising things that do not need an officer, and "
-                "the thresholds should be reviewed."
+                "Lapsed means the condition cleared before anyone acted, counted "
+                "against what was raised in this window. A high rate means the system "
+                "is raising things that do not need an officer, and the thresholds "
+                "should be reviewed."
             ),
         },
     }

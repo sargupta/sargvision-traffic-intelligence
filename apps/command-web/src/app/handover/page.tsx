@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Chrome } from "@/components/Chrome";
-import { PriorityTag } from "@/components/Bits";
+import { BandTag, EscalationChip, PriorityTag } from "@/components/Bits";
 import { getHandover, minutes, STATE_LABEL, useBoard, type HandoverPayload, type HandoverSummary } from "@/lib/api";
 
 function Group({
@@ -45,6 +45,7 @@ function Group({
                 <span className="tnum text-[length:var(--text-2xs)] text-ink-3">
                   {minutes(i.age_minutes)} old
                 </span>
+                <EscalationChip escalation={i.escalation} />
                 <span className="tnum ml-auto font-mono text-[length:var(--text-2xs)] text-ink-3">
                   {i.incident_id}
                 </span>
@@ -79,6 +80,8 @@ export default function Handover() {
   const { board, connected } = useBoard();
   const [data, setData] = useState<HandoverPayload | null>(null);
   const [hours, setHours] = useState(8);
+  const [outgoing, setOutgoing] = useState("");
+  const [incoming, setIncoming] = useState("");
 
   useEffect(() => {
     getHandover(hours).then(setData).catch(() => setData(null));
@@ -123,6 +126,56 @@ export default function Handover() {
 
         {data && (
           <>
+            {/* SITUATION — the thirty-second read the incoming officer needs
+                before anything else. */}
+            <section className="card mb-4 border-l-[3px] px-5 py-4" style={{ borderLeftColor: "var(--color-navy)" }}>
+              <p className="label">Situation at handover</p>
+              <p className="mt-1.5 text-[length:var(--text-lg)] font-semibold leading-snug">
+                {data.situation.assessment}
+              </p>
+              <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
+                {(
+                  [
+                    ["Open", data.situation.open],
+                    ["Unowned", data.situation.unowned],
+                    ["Past deadline", data.situation.overdue],
+                    ["Raised this window", data.situation.raised_in_window],
+                    ["Elevated now", data.situation.elevated_now],
+                  ] as const
+                ).map(([k, v]) => (
+                  <div key={k}>
+                    <dt className="label">{k}</dt>
+                    <dd
+                      className="tnum text-[length:var(--text-xl)] font-semibold leading-none"
+                      style={{ color: k === "Past deadline" && v > 0 ? "var(--color-sev)" : k === "Unowned" && v > 0 ? "var(--color-high)" : undefined }}
+                    >
+                      {v}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+
+            {/* WATCH — what is live on the road right now; the abnormal-conditions
+                line of a control-room turnover. */}
+            {data.watch.length > 0 && (
+              <section className="card mb-4 px-5 py-4 break-inside-avoid">
+                <h2 className="text-[length:var(--text-md)] font-semibold">Watch this shift</h2>
+                <p className="mt-0.5 text-[length:var(--text-sm)] text-ink-2">
+                  Corridors above their typical travel time at handover, worst first.
+                </p>
+                <ul className="mt-2.5 flex flex-wrap gap-2">
+                  {data.watch.map((w) => (
+                    <li key={w.name} className="flex items-center gap-2 rounded border border-line bg-surface px-2.5 py-1.5 text-[length:var(--text-sm)]">
+                      <BandTag band={w.band} />
+                      <span className="font-medium">{w.name}</span>
+                      {w.index != null && <span className="tnum text-[length:var(--text-2xs)] text-ink-3">{w.index}×</span>}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             <div className="card mb-6 px-4 py-3">
               <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
                 <p className="text-[length:var(--text-sm)] text-ink-2">
@@ -180,6 +233,38 @@ export default function Handover() {
               detail={data.alerting_quality.note}
               items={data.this_shift.lapsed}
             />
+
+            {/* SIGN-OFF — a handover transfers responsibility, so it is signed.
+                The names are for the printed record; nothing is submitted. */}
+            <section className="mt-6 break-inside-avoid rounded-lg border border-line-firm p-4">
+              <h2 className="text-[length:var(--text-md)] font-semibold">Sign-off</h2>
+              <p className="mt-0.5 text-[length:var(--text-sm)] text-ink-2">
+                Responsibility passes when both officers have read the above. Enter names for the
+                printed record.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {(
+                  [
+                    ["Handed over by", outgoing, setOutgoing],
+                    ["Received by", incoming, setIncoming],
+                  ] as const
+                ).map(([label, value, setter]) => (
+                  <label key={label} className="block">
+                    <span className="label">{label}</span>
+                    <input
+                      value={value}
+                      onChange={(e) => setter(e.target.value)}
+                      placeholder="Name and rank"
+                      className="mt-1 w-full rounded border border-line-firm bg-surface px-3 py-2 text-[length:var(--text-sm)]"
+                    />
+                  </label>
+                ))}
+              </div>
+              <p className="mt-3 text-[length:var(--text-2xs)] text-ink-3">
+                Prepared {new Date().toLocaleString("en-IN")} · covers the {data.window_hours}-hour window ending{" "}
+                {data.to.replace("T", " ")}.
+              </p>
+            </section>
 
             <footer className="mt-8 border-t border-line pt-4 text-[length:var(--text-2xs)] leading-relaxed text-ink-3">
               <p>

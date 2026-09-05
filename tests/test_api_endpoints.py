@@ -436,3 +436,29 @@ class TestFieldReportEndpoint:
     def test_report_without_location_is_400(self, client):
         r = client.post("/api/incidents", json={"by": "SI", "cause": "Accident"}, headers=auth())
         assert r.status_code == 400
+
+
+class TestHandoverBriefing:
+    """The handover is a briefing, not a flat log: a situation summary, a watch
+    list, and a lapse rate counted against what was actually raised."""
+
+    def test_situation_summarises_the_board(self, client):
+        s = client.get("/api/shift/handover?hours=8").json()["situation"]
+        assert "open" in s and "overdue" in s and "by_priority" in s
+        assert s["assessment"], "a one-line assessment must always be present"
+
+    def test_watch_lists_what_is_elevated_now(self, client):
+        # stub probe means nothing is elevated → watch is an empty list, not absent
+        assert client.get("/api/shift/handover").json()["watch"] == []
+
+    def test_each_item_carries_its_escalation_and_next_steps(self, client):
+        body = client.get("/api/shift/handover").json()
+        items = body["handing_over"]["needs_an_owner"] + body["handing_over"]["in_hand"]
+        for i in items:
+            assert "escalation" in i and "next_actions" in i
+
+    def test_lapse_rate_counts_only_what_was_raised_in_window(self, client):
+        # the fixture's incidents were all detected 20 min ago → within an 8h
+        # window; none lapsed, so the rate is 0 and does not divide by "touched"
+        aq = client.get("/api/shift/handover?hours=8").json()["alerting_quality"]
+        assert aq["lapse_rate"] == 0.0

@@ -319,10 +319,17 @@ export interface HandoverSummary {
   incident_id: string; priority: Priority; state: IncidentState;
   title: string; location_name: string; owner: string | null;
   age_minutes: number; notes: Note[];
+  escalation?: Escalation; next_actions?: string[];
 }
 
 export interface HandoverPayload {
   window_hours: number; from: string; to: string; raised: number;
+  situation: {
+    open: number; unowned: number; overdue: number;
+    by_priority: Record<string, number>;
+    raised_in_window: number; elevated_now: number; assessment: string;
+  };
+  watch: { name: string; band: Band; index: number | null }[];
   handing_over: { needs_an_owner: HandoverSummary[]; in_hand: HandoverSummary[] };
   this_shift: { closed: HandoverSummary[]; stood_down: HandoverSummary[]; lapsed: HandoverSummary[] };
   alerting_quality: { lapse_rate: number; note: string };
