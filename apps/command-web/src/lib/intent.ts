@@ -65,17 +65,22 @@ const ACTION_TARGET: Record<ActionPath, IncidentState | null> = {
   note: null, // a note is legal in any open state
 };
 
-/** Verb synonyms → action. Ordered so multi-word phrases match before the
- *  single words they contain ("no action" before "action"). */
+/** Verb synonyms → action. Ordered so multi-word phrases and the more specific
+ *  states match before the single words they contain ("no action" before
+ *  "action"; "clearing" before "clear"). Deliberately generous: an officer
+ *  types the way they speak, and the board's own button says "Take the
+ *  incident", so "take", "take it" and "take the incident" all have to work.
+ *  Every parse still passes the legality check and the confirm gate, so being
+ *  liberal here cannot commit an illegal or unconfirmed action. */
 const VERBS: [RegExp, ActionPath][] = [
-  [/\b(stand[-\s]?down|no action|leave it|not needed)\b/, "stand-down"],
-  [/\b(on[-\s]?scene|arrived|on site|i'?m there|reached)\b/, "on-scene"],
+  [/\b(stand[-\s]?down|stand it down|no action|no officer|not needed|nothing needed|leave it|false alarm)\b/, "stand-down"],
+  [/\b(on[-\s]?scene|on[-\s]?site|on location|arrived|reached|i'?m (there|here|on site)|at the (junction|scene|spot))\b/, "on-scene"],
   [/\b(mark )?clearing\b/, "clearing"],
-  [/\b(resolve[d]?|cleared|clear it|moving again|all clear|sorted|done)\b/, "resolve"],
-  [/\b(close|closed)\b/, "close"],
-  [/\b(assign|send|dispatch|deploy|give it to|put .* on)\b/, "assign"],
-  [/\b(ack(nowledge)?|take it|got it|seen|noted as seen|pick up)\b/, "acknowledge"],
-  [/\b(note|log|record|remark|comment)\b/, "note"],
+  [/\b(resolve[d]?|clear(ed)?( up| it| now)?|moving again|all clear|flowing|back to normal|open again|sorted|finished|wrapped? up|done)\b/, "resolve"],
+  [/\b(close|closed|close it( off)?)\b/, "close"],
+  [/\b(re[-\s]?assign|assign|send|dispatch|deploy|hand it to|give it to|put .* on)\b/, "assign"],
+  [/\b(ack(nowledge)?|take( it| this| the incident| this incident)?|own( it)?|got it|noted|on it|pick(ing)?( it)? up|looking at)\b/, "acknowledge"],
+  [/\b(note|log|jot|record|remark|comment|write down)\b/, "note"],
 ];
 
 /** Cause taxonomy for a captured note (shared with the field surface). */
@@ -94,12 +99,15 @@ export const CAUSES = [
  *  after removing them, the officers, and the stop words, is genuinely a place
  *  the officer named. */
 const VERB_WORDS = new Set([
-  "stand", "down", "action", "leave", "needed", "scene", "arrived", "site",
-  "there", "reached", "mark", "clearing", "resolve", "resolved", "cleared",
-  "clear", "moving", "again", "all", "sorted", "done", "close", "closed",
-  "assign", "send", "dispatch", "deploy", "give", "put", "ack", "acknowledge",
-  "take", "got", "seen", "noted", "pick", "note", "log", "record", "remark",
-  "comment", "not", "now",
+  "stand", "down", "action", "leave", "needed", "nothing", "false", "alarm",
+  "scene", "site", "location", "arrived", "reached", "there", "here", "spot",
+  "mark", "clearing", "resolve", "resolved", "cleared", "clear", "moving",
+  "again", "all", "flowing", "normal", "back", "open", "sorted", "finished",
+  "wrapped", "wrap", "done", "close", "closed", "off", "assign", "reassign",
+  "send", "dispatch", "deploy", "hand", "give", "put", "ack", "acknowledge",
+  "take", "this", "incident", "own", "got", "noted", "pick", "picking",
+  "looking", "note", "log", "jot", "record", "remark", "comment", "write",
+  "not", "now",
 ]);
 
 /** Content tokens that look like a place the officer named — used to tell a
@@ -314,9 +322,18 @@ export function parseCommand(utterance: string, ctx: ParseContext): ParseOutcome
 
   const verb = VERBS.find(([re]) => re.test(t));
   if (!verb) {
+    // If a place was named, the officer meant to do something to it — say so,
+    // rather than a bare glossary. Otherwise list the verbs.
+    const place = matchIncidents(t, ctx.incidents);
+    if (place.length === 1) {
+      return {
+        kind: "unknown",
+        reason: `Didn't catch the action for ${place[0].location_name}. Try “take”, “assign … to …”, “on scene”, “resolve”, or “stand down”.`,
+      };
+    }
     return {
       kind: "unknown",
-      reason: "No action recognised. Try: acknowledge, assign, on scene, clearing, resolve, stand down, note.",
+      reason: "Didn't catch that. Try: take, assign … to …, on scene, clearing, resolve, stand down, note.",
     };
   }
   const action = verb[1];
@@ -332,7 +349,13 @@ export function parseCommand(utterance: string, ctx: ParseContext): ParseOutcome
     // airprot road", a mis-hearing) must not silently act on that one incident
     // — the officer's stated place would be ignored and the record made on a
     // wrong basis. Only the genuinely place-less verb takes the shortcut.
-    const namedAPlace = contentPlaceTokens(t, ctx.roster).length > 0;
+    // stand-down / close / note carry a free-text reason after the verb; those
+    // words are not a place and must not be read as one, or "stand down, market
+    // day expected" would ask "which incident?" instead of standing the only
+    // open one down. The mis-heard-place guard applies only to the verbs that
+    // take no trailing text.
+    const textCarrying = action === "stand-down" || action === "close" || action === "note";
+    const namedAPlace = !textCarrying && contentPlaceTokens(t, ctx.roster).length > 0;
     if (open.length === 1 && !namedAPlace) {
       return finish(action, open[0], t, ctx);
     }

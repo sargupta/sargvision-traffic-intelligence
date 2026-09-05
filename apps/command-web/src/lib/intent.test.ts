@@ -239,3 +239,60 @@ describe("wrong-entity binding is closed", () => {
     expect(r.kind).toBe("ready");
   });
 });
+
+// ── natural phrasings an officer actually types (the command bar was too rigid) ──
+describe("natural phrasings resolve to the right action", () => {
+  const oneOpen = (state: Incident["state"], next: string[]) =>
+    ctx([incident({ state, next_actions: next })]);
+
+  const cases: [string, string][] = [
+    ["take the incident", "acknowledge"],
+    ["take it", "acknowledge"],
+    ["take this incident", "acknowledge"],
+    ["own it", "acknowledge"],
+    ["got it", "acknowledge"],
+    ["on it", "acknowledge"],
+    ["ack venus more", "acknowledge"],
+  ];
+  it.each(cases)("%s → %s", (utter, action) => {
+    const r = parseCommand(utter, oneOpen("DETECTED", ["ACKNOWLEDGED", "STOOD_DOWN"]));
+    expect(r.kind).toBe("ready");
+    if (r.kind === "ready") expect(r.intent.action).toBe(action);
+  });
+
+  it("send guard 2 to venus more → assign to TG-2", () => {
+    const c = oneOpen("ACKNOWLEDGED", ["ASSIGNED", "STOOD_DOWN"]);
+    const r = parseCommand("send guard 2 to venus more", c);
+    expect(r.kind).toBe("ready");
+    if (r.kind === "ready") {
+      expect(r.intent.action).toBe("assign");
+      expect(r.intent.to).toBe("SI Barman");
+    }
+  });
+
+  const resolveWords = ["resolve it", "clear it", "cleared up", "moving again", "flowing", "back to normal", "sorted", "done"];
+  it.each(resolveWords)("%s → resolve (on scene)", (utter) => {
+    const r = parseCommand(utter, oneOpen("ON_SCENE", ["RESOLVED", "CLEARING"]));
+    expect(r.kind).toBe("ready");
+    if (r.kind === "ready") expect(r.intent.action).toBe("resolve");
+  });
+
+  it("clearing stays distinct from clear/resolve", () => {
+    const r = parseCommand("mark clearing", oneOpen("ON_SCENE", ["CLEARING", "RESOLVED"]));
+    if (r.kind === "ready") expect(r.intent.action).toBe("clearing");
+  });
+
+  it("no officer / false alarm → stand-down", () => {
+    for (const u of ["no officer needed here", "false alarm"]) {
+      const r = parseCommand(u + " reason given", oneOpen("DETECTED", ["ACKNOWLEDGED", "STOOD_DOWN"]));
+      expect(r.kind).toBe("ready");
+      if (r.kind === "ready") expect(r.intent.action).toBe("stand-down");
+    }
+  });
+
+  it("an unrecognised action names the place if one was given", () => {
+    const r = parseCommand("do something about venus more", ctx([incident()]));
+    expect(r.kind).toBe("unknown");
+    if (r.kind === "unknown") expect(r.reason).toContain("Venus More");
+  });
+});
