@@ -381,3 +381,58 @@ class TestClientIpAndStreamCap:
             assert client.get("/api/stream").status_code == 503
         finally:
             main.STATE["subscribers"] = original
+
+
+class TestFieldReportEndpoint:
+    """POST /api/incidents — a field officer raising a report."""
+
+    def _a_junction_id(self):
+        import json
+        from pathlib import Path
+
+        js = json.loads(Path("data/curated/junctions.json").read_text())
+        return js[0]["junction_id"]
+
+    def test_report_requires_a_token(self, client):
+        r = client.post("/api/incidents", json={"by": "SI", "cause": "Accident", "junction_id": self._a_junction_id()})
+        assert r.status_code == 401
+
+    def test_report_creates_an_on_scene_incident(self, client):
+        r = client.post(
+            "/api/incidents",
+            json={"by": "SI Barman", "cause": "Vehicle breakdown", "junction_id": self._a_junction_id()},
+            headers=auth(),
+        )
+        assert r.status_code == 200, r.text[:200]
+        body = r.json()
+        assert body["state"] == "ON_SCENE"
+        assert body["owner"] == "SI Barman"
+        assert body["kind"] == "FIELD_REPORT"
+
+    def test_report_with_unknown_junction_is_404(self, client):
+        r = client.post(
+            "/api/incidents",
+            json={"by": "SI", "cause": "x reason", "junction_id": "J_NOWHERE"},
+            headers=auth(),
+        )
+        assert r.status_code == 404
+
+    def test_report_with_bad_priority_is_422(self, client):
+        r = client.post(
+            "/api/incidents",
+            json={"by": "SI", "cause": "Accident", "junction_id": self._a_junction_id(), "priority": "URGENT"},
+            headers=auth(),
+        )
+        assert r.status_code == 422
+
+    def test_report_without_cause_is_422(self, client):
+        r = client.post(
+            "/api/incidents",
+            json={"by": "SI", "junction_id": self._a_junction_id()},
+            headers=auth(),
+        )
+        assert r.status_code == 422
+
+    def test_report_without_location_is_400(self, client):
+        r = client.post("/api/incidents", json={"by": "SI", "cause": "Accident"}, headers=auth())
+        assert r.status_code == 400

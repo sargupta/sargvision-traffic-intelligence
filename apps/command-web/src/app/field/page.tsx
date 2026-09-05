@@ -7,6 +7,7 @@ import {
   type Incident, type Officer,
 } from "@/lib/api";
 import { setToken } from "@/lib/auth";
+import { FieldReport } from "@/components/FieldReport";
 
 /** What a sergeant standing at a junction can use.
  *
@@ -37,6 +38,7 @@ export default function Field() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
   const [online, setOnline] = useState(true);
   const [needsToken, setNeedsToken] = useState(false);
   const [tokenDraft, setTokenDraft] = useState("");
@@ -182,6 +184,27 @@ export default function Field() {
             Unlock recording
           </button>
         </div>
+      )}
+
+      {reporting ? (
+        <div className="mb-4">
+          <FieldReport
+            me={me}
+            onClose={() => setReporting(false)}
+            onRaised={(inc) => {
+              setItems((list) => [inc, ...list.filter((i) => i.incident_id !== inc.incident_id)]);
+              setReporting(false);
+            }}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setReporting(true)}
+          className={`${BIG} mb-4 w-full border-2 border-dashed border-line-firm bg-surface text-ink-2`}
+        >
+          + Report a problem you can see
+        </button>
       )}
 
       <h2 className="label mb-2">Assigned to you · {mine.length}</h2>

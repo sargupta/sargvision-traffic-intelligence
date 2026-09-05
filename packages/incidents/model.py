@@ -83,6 +83,7 @@ class IncidentKind(str, Enum):
     SPREADING = "SPREADING"  # several corridors degrading together
     SAFETY = "SAFETY"  # structural accident risk, not congestion
     DATA_GAP = "DATA_GAP"  # we cannot see here
+    FIELD_REPORT = "FIELD_REPORT"  # an officer on the ground raised it, not the algorithm
 
 
 class Priority(str, Enum):

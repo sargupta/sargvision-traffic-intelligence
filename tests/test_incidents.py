@@ -603,3 +603,72 @@ class TestEscalationTimers:
     def test_escalation_appears_in_the_api_view(self):
         d = make(priority=Priority.P1).as_dict(NOW + timedelta(minutes=8))
         assert d["escalation"]["overdue"] is True
+
+
+class TestFieldReport:
+    """The field officer as a source, not only a sink: raising an incident the
+    algorithm cannot see."""
+
+    def _centre(self):
+        from packages.command.centre import CommandCentre
+        from packages.network.model import load_network
+
+        class Stub:
+            name, is_live, retains_durations = "stub", False, False
+
+            def read(self, *a, **k):
+                return None
+
+            def provenance(self):
+                return {}
+
+        return CommandCentre(network=load_network(), probe=Stub())
+
+    def _a_junction(self, c):
+        return next(iter(c.network.junctions.values()))
+
+    def test_a_field_report_is_on_scene_owned_by_the_reporter(self):
+        c = self._centre()
+        j = self._a_junction(c)
+        inc = c.raise_field_report(
+            reporter="SI Barman", cause="Vehicle breakdown", junction_id=j.junction_id, now=NOW
+        )
+        assert inc.kind is IncidentKind.FIELD_REPORT
+        assert inc.state is IncidentState.ON_SCENE
+        assert inc.owner == "SI Barman"
+        assert inc.evidence["source"] == "field"
+        assert any(n.kind == "CAUSE" and n.text == "Vehicle breakdown" for n in inc.notes)
+        assert inc.incident_id in c.incidents
+
+    def test_a_field_report_never_collides_with_an_auto_detected_one(self):
+        c = self._centre()
+        j = self._a_junction(c)
+        # a field report and an auto-detected choke at the same spot are different
+        # records because kind is part of the id seed.
+        field_id = c.raise_field_report(
+            reporter="SI", cause="Accident", junction_id=j.junction_id, now=NOW
+        ).incident_id
+        auto_id = incident_id(IncidentKind.CHOKE_POINT, j.lat, j.lon, NOW)
+        assert field_id != auto_id
+
+    def test_a_reason_is_required(self):
+        c = self._centre()
+        j = self._a_junction(c)
+        with pytest.raises(ValueError):
+            c.raise_field_report(reporter="SI", cause="   ", junction_id=j.junction_id, now=NOW)
+
+    def test_an_unknown_junction_raises(self):
+        c = self._centre()
+        with pytest.raises(KeyError):
+            c.raise_field_report(reporter="SI", cause="x", junction_id="J_NOWHERE", now=NOW)
+
+    def test_a_second_report_at_the_same_place_appends_not_duplicates(self):
+        c = self._centre()
+        j = self._a_junction(c)
+        first = c.raise_field_report(reporter="SI", cause="Breakdown", junction_id=j.junction_id, now=NOW)
+        again = c.raise_field_report(
+            reporter="SI", cause="Breakdown", note="towed now", junction_id=j.junction_id,
+            now=NOW + timedelta(minutes=5),
+        )
+        assert again.incident_id == first.incident_id
+        assert len([i for i in c.incidents.values() if i.kind is IncidentKind.FIELD_REPORT]) == 1

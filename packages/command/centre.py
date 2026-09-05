@@ -279,6 +279,77 @@ class CommandCentre:
         index, band = self.worst_corridor_state(incident)
         incident.record_sample(now, index, band, anchor=anchor)
 
+    def raise_field_report(
+        self,
+        *,
+        reporter: str,
+        cause: str,
+        now: datetime,
+        junction_id: str | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+        note: str | None = None,
+        priority: Priority = Priority.P2,
+        on_scene: bool = True,
+    ) -> Incident:
+        """An officer on the ground raises an incident the algorithm cannot see.
+
+        The whole field surface was one-directional: a guard could respond to a
+        machine-raised incident but never file one of their own — yet the guard
+        standing at Venus More is the best sensor in the city. A field report is
+        a first-class incident with its own kind, so it is never confused with a
+        measured congestion event, and it defaults to on-scene owned by the
+        reporter, because someone reporting what they can see is usually there.
+        """
+        if not cause.strip():
+            raise ValueError("a field report needs a cause")
+        if junction_id:
+            j = self.network.junctions.get(junction_id)
+            if j is None:
+                raise KeyError(junction_id)
+            lat, lon, jid, jname = j.lat, j.lon, j.junction_id, j.name
+        elif lat is not None and lon is not None:
+            jid, jname, _ = self._nearest_junction(lat, lon)
+        else:
+            raise ValueError("a field report needs a junction or coordinates")
+
+        iid = incident_id(IncidentKind.FIELD_REPORT, lat, lon, now)
+        existing = self.incidents.get(iid)
+        if existing is not None and existing.is_open:
+            # Same officer, same place, same day: append rather than duplicate.
+            existing.add_note(reporter, note or cause, kind="NOTE", at=now)
+            existing.last_seen_at = now
+            self.remember(existing)
+            return existing
+
+        inc = Incident(
+            incident_id=iid,
+            kind=IncidentKind.FIELD_REPORT,
+            priority=priority,
+            title=f"{cause} at {jname}",
+            detail=f"Reported from the field by {reporter}.",
+            location_name=jname,
+            lat=lat,
+            lon=lon,
+            corridors=[],
+            junctions=[jid],
+            detected_at=now,
+            evidence={"source": "field", "reported_by": reporter, "cause": cause},
+            limitation="Reported by an officer on the ground; not a system measurement.",
+            last_seen_at=now,
+        )
+        inc.add_note(reporter, cause, kind="CAUSE", at=now)
+        if note:
+            inc.add_note(reporter, note, kind="NOTE", at=now)
+        if on_scene:
+            inc.assign(reporter, by=reporter, at=now)  # acknowledges, then assigns
+            inc.move(IncidentState.ON_SCENE, reporter, at=now)
+        else:
+            inc.acknowledge(reporter, at=now)
+        self.incidents[iid] = inc
+        self.remember(inc)
+        return inc
+
     def _fresh_episode_id(self, base: str) -> str:
         """A distinct id for a new incident at a place whose same-day id already
         belongs to a closed one, so the closed record is never overwritten."""

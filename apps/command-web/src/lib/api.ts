@@ -249,6 +249,33 @@ export async function act(
   return payload as Incident;
 }
 
+/** A field officer raises an incident the system cannot see. Same write gate as
+ *  any action — a report is a police record. */
+export async function raiseFieldReport(body: {
+  by: string;
+  junction_id?: string;
+  lat?: number;
+  lon?: number;
+  cause: string;
+  note?: string;
+  priority?: Priority;
+}): Promise<Incident> {
+  const token = getToken();
+  const r = await fetch(`${API}/api/incidents`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    throw new ActionError(r.status, payload?.detail ?? `report failed (${r.status})`);
+  }
+  return payload as Incident;
+}
+
 export interface Recommendation {
   kind: "POST" | "DIVERT" | "ESCALATE" | "WATCH" | "STAND_DOWN";
   urgency: "NOW" | "THIS_SHIFT" | "ADVISORY";

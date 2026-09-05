@@ -29,7 +29,7 @@ from pydantic import BaseModel, Field
 
 from packages.command.advice import recommend
 from packages.command.centre import CommandCentre
-from packages.incidents.model import IncidentState
+from packages.incidents.model import IncidentState, Priority
 from packages.incidents.store import build_store
 from packages.network.model import load_network
 from packages.network.probe import RoutesProbe
@@ -518,6 +518,56 @@ def roster() -> dict:
             "served here. Assignment is to a unit."
         ),
     }
+
+
+class FieldReport(BaseModel):
+    by: str | None = Field(default=None, min_length=2, max_length=80)
+    junction_id: str | None = Field(default=None, max_length=80)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    cause: str = Field(min_length=2, max_length=120)
+    note: str | None = Field(default=None, max_length=1000)
+    priority: str = Field(default="P2")
+
+
+@app.post("/api/incidents")
+def create_incident(
+    payload: FieldReport = Body(...),
+    authorization: str | None = Header(default=None),
+) -> dict:
+    """A field officer raises an incident the algorithm cannot see.
+
+    Same write gate as any action — a field report is a police record. The actor
+    comes from the credential when it identifies one, so a console cannot file in
+    another officer's name.
+    """
+    identified = require_write_access(authorization)
+    reporter = identified or payload.by
+    if not reporter:
+        raise HTTPException(422, "who is reporting this? `by` is required")
+    try:
+        priority = Priority(payload.priority.upper())
+    except ValueError:
+        raise HTTPException(422, f"unknown priority {payload.priority!r}") from None
+
+    c = centre()
+    try:
+        with c.lock:
+            inc = c.raise_field_report(
+                reporter=reporter,
+                cause=payload.cause,
+                junction_id=payload.junction_id,
+                lat=payload.lat,
+                lon=payload.lon,
+                note=payload.note,
+                priority=priority,
+                now=now(),
+            )
+    except KeyError as exc:
+        raise HTTPException(404, f"no junction {exc}") from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return inc.as_dict(c.last_poll or now())
 
 
 @app.get("/api/incidents")
