@@ -727,7 +727,9 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
 
     open_all = [i for i in c.incidents.values() if i.is_open]
     overdue = [i for i in open_all if i.escalation(moment)["overdue"]]
-    by_priority = {p: sum(1 for i in open_all if i.priority.value == p) for p in ("P1", "P2", "P3", "P4")}
+    by_priority = {
+        p: sum(1 for i in open_all if i.priority.value == p) for p in ("P1", "P2", "P3", "P4")
+    }
 
     # What is live on the road right now — the assets/abnormal-conditions line of
     # a control-room turnover. Worst first.
@@ -736,7 +738,11 @@ def handover(hours: float = Query(8.0, ge=1, le=24)) -> dict:
         key=lambda s: -(s.index or 0),
     )
     watch = [
-        {"name": s.name, "band": s.band, "index": round(s.index, 2) if s.index is not None else None}
+        {
+            "name": s.name,
+            "band": s.band,
+            "index": round(s.index, 2) if s.index is not None else None,
+        }
         for s in elevated[:8]
     ]
 

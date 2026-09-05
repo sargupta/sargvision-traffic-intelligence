@@ -665,9 +665,14 @@ class TestFieldReport:
     def test_a_second_report_at_the_same_place_appends_not_duplicates(self):
         c = self._centre()
         j = self._a_junction(c)
-        first = c.raise_field_report(reporter="SI", cause="Breakdown", junction_id=j.junction_id, now=NOW)
+        first = c.raise_field_report(
+            reporter="SI", cause="Breakdown", junction_id=j.junction_id, now=NOW
+        )
         again = c.raise_field_report(
-            reporter="SI", cause="Breakdown", note="towed now", junction_id=j.junction_id,
+            reporter="SI",
+            cause="Breakdown",
+            note="towed now",
+            junction_id=j.junction_id,
             now=NOW + timedelta(minutes=5),
         )
         assert again.incident_id == first.incident_id

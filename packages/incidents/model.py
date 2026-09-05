@@ -333,9 +333,7 @@ class Incident:
             "index_resolved": round(index_resolved, 3) if index_resolved is not None else None,
             "peak_index": round(peak, 3) if peak is not None else None,
             "minutes_to_scene": minutes_between(assigned_at, on_scene_at),
-            "minutes_to_clear": minutes_between(
-                on_scene_at or self.detected_at, self.resolved_at
-            ),
+            "minutes_to_clear": minutes_between(on_scene_at or self.detected_at, self.resolved_at),
             "index_fell_while_owned": improved,
             "samples": len(self.samples),
             "basis": (
@@ -408,7 +406,11 @@ class Incident:
 
         waited = (now - started).total_seconds() / 60
         over = waited - limit
-        level = "overdue" if over > 0 else ("due_soon" if waited >= limit * _DUE_SOON_FRACTION else "ok")
+        level = (
+            "overdue"
+            if over > 0
+            else ("due_soon" if waited >= limit * _DUE_SOON_FRACTION else "ok")
+        )
         return {
             "clock": clock,
             "level": level,
@@ -416,9 +418,7 @@ class Incident:
             "waiting_minutes": round(waited, 1),
             "limit_minutes": limit,
             "minutes_over": round(over, 1) if over > 0 else 0.0,
-            "due_by": (started + timedelta(minutes=limit)).isoformat(
-                timespec="seconds"
-            ),
+            "due_by": (started + timedelta(minutes=limit)).isoformat(timespec="seconds"),
         }
 
     def unowned_minutes(self, now: datetime) -> float:

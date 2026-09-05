@@ -64,19 +64,25 @@ def _centre():
         return i
 
     # one fresh, one owned+on-scene, one closed — to exercise filters/transitions
-    fresh = inc("INC-FRESH", lambda i: None, priority=Priority.P1, location_name="NH10, near Venus More")
+    fresh = inc(
+        "INC-FRESH", lambda i: None, priority=Priority.P1, location_name="NH10, near Venus More"
+    )
 
     def to_scene(i):
         from packages.incidents.model import IncidentState
+
         i.assign("SI Barman", by="DO-1", at=NOW - timedelta(minutes=10))
         i.move(IncidentState.ON_SCENE, "SI Barman", at=NOW - timedelta(minutes=8))
+
     owned = inc("INC-OWNED", to_scene, location_name="Sevoke Rd, near Court More")
 
     def to_closed(i):
         from packages.incidents.model import IncidentState
+
         i.acknowledge("DO-1", at=NOW - timedelta(minutes=18))
         i.stand_down("DO-1", "cleared by local officer", at=NOW - timedelta(minutes=15))
         assert i.state is IncidentState.STOOD_DOWN
+
     closed = inc("INC-CLOSED", to_closed, location_name="Hill Cart Rd, near Air View More")
 
     for i in (fresh, owned, closed):
@@ -151,7 +157,10 @@ class TestReadEndpoints:
         assert "INC-FRESH" in ids
 
     def test_incidents_include_closed(self, client):
-        ids = [i["incident_id"] for i in client.get("/api/incidents?include_closed=true").json()["incidents"]]
+        ids = [
+            i["incident_id"]
+            for i in client.get("/api/incidents?include_closed=true").json()["incidents"]
+        ]
         assert "INC-CLOSED" in ids
 
     def test_incidents_state_filter(self, client):
@@ -206,7 +215,9 @@ class TestWriteAuth:
         assert r.status_code == 401
 
     def test_wrong_token_is_401(self, client):
-        r = client.post("/api/incidents/INC-FRESH/acknowledge", json={"by": "DO-1"}, headers=auth("nope"))
+        r = client.post(
+            "/api/incidents/INC-FRESH/acknowledge", json={"by": "DO-1"}, headers=auth("nope")
+        )
         assert r.status_code == 401
 
     def test_shared_token_authorises(self, client):
@@ -256,23 +267,56 @@ class TestWriteBehaviour:
         assert r.status_code == 400, f"{action}: {r.text[:150]}"
 
     def test_overlong_actor_is_422(self, client):
-        r = client.post("/api/incidents/INC-FRESH/acknowledge", json={"by": "A" * 200}, headers=auth())
+        r = client.post(
+            "/api/incidents/INC-FRESH/acknowledge", json={"by": "A" * 200}, headers=auth()
+        )
         assert r.status_code == 422
 
     def test_a_full_lifecycle_over_http(self, client):
         h = auth()
-        assert client.post("/api/incidents/INC-FRESH/acknowledge", json={"by": "DO-1"}, headers=h).status_code == 200
-        assert client.post("/api/incidents/INC-FRESH/assign", json={"by": "DO-1", "to": "SI Roy"}, headers=h).status_code == 200
-        assert client.post("/api/incidents/INC-FRESH/on-scene", json={"by": "SI Roy"}, headers=h).status_code == 200
-        assert client.post("/api/incidents/INC-FRESH/clearing", json={"by": "SI Roy"}, headers=h).status_code == 200
-        assert client.post("/api/incidents/INC-FRESH/resolve", json={"by": "SI Roy"}, headers=h).status_code == 200
-        final = client.post("/api/incidents/INC-FRESH/close", json={"by": "DO-1", "text": "flow restored"}, headers=h)
+        assert (
+            client.post(
+                "/api/incidents/INC-FRESH/acknowledge", json={"by": "DO-1"}, headers=h
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                "/api/incidents/INC-FRESH/assign", json={"by": "DO-1", "to": "SI Roy"}, headers=h
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                "/api/incidents/INC-FRESH/on-scene", json={"by": "SI Roy"}, headers=h
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                "/api/incidents/INC-FRESH/clearing", json={"by": "SI Roy"}, headers=h
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                "/api/incidents/INC-FRESH/resolve", json={"by": "SI Roy"}, headers=h
+            ).status_code
+            == 200
+        )
+        final = client.post(
+            "/api/incidents/INC-FRESH/close",
+            json={"by": "DO-1", "text": "flow restored"},
+            headers=h,
+        )
         assert final.status_code == 200
         assert final.json()["state"] == "CLOSED"
 
     def test_note_text_is_kept_verbatim_including_markup(self, client):
         raw = "queue <2 km> back & growing"
-        r = client.post("/api/incidents/INC-OWNED/note", json={"by": "SI", "text": raw}, headers=auth())
+        r = client.post(
+            "/api/incidents/INC-OWNED/note", json={"by": "SI", "text": raw}, headers=auth()
+        )
         assert r.json()["notes"][-1]["text"] == raw
 
 
@@ -323,7 +367,9 @@ class TestRateLimit:
 
         seen_429 = False
         for _ in range(main.FAILED_AUTH_BUDGET + 3):
-            r = client.post("/api/incidents/INC-FRESH/acknowledge", json={"by": "DO-1"}, headers=auth("wrong"))
+            r = client.post(
+                "/api/incidents/INC-FRESH/acknowledge", json={"by": "DO-1"}, headers=auth("wrong")
+            )
             if r.status_code == 429:
                 seen_429 = True
                 break
@@ -394,13 +440,20 @@ class TestFieldReportEndpoint:
         return js[0]["junction_id"]
 
     def test_report_requires_a_token(self, client):
-        r = client.post("/api/incidents", json={"by": "SI", "cause": "Accident", "junction_id": self._a_junction_id()})
+        r = client.post(
+            "/api/incidents",
+            json={"by": "SI", "cause": "Accident", "junction_id": self._a_junction_id()},
+        )
         assert r.status_code == 401
 
     def test_report_creates_an_on_scene_incident(self, client):
         r = client.post(
             "/api/incidents",
-            json={"by": "SI Barman", "cause": "Vehicle breakdown", "junction_id": self._a_junction_id()},
+            json={
+                "by": "SI Barman",
+                "cause": "Vehicle breakdown",
+                "junction_id": self._a_junction_id(),
+            },
             headers=auth(),
         )
         assert r.status_code == 200, r.text[:200]
@@ -420,7 +473,12 @@ class TestFieldReportEndpoint:
     def test_report_with_bad_priority_is_422(self, client):
         r = client.post(
             "/api/incidents",
-            json={"by": "SI", "cause": "Accident", "junction_id": self._a_junction_id(), "priority": "URGENT"},
+            json={
+                "by": "SI",
+                "cause": "Accident",
+                "junction_id": self._a_junction_id(),
+                "priority": "URGENT",
+            },
             headers=auth(),
         )
         assert r.status_code == 422

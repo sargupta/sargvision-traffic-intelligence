@@ -369,9 +369,7 @@ class CommandCentre:
         drop = [
             iid
             for iid, i in self.incidents.items()
-            if not i.is_open
-            and i.history
-            and i.history[-1].at < cutoff
+            if not i.is_open and i.history and i.history[-1].at < cutoff
         ]
         for iid in drop:
             del self.incidents[iid]
