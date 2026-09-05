@@ -218,6 +218,10 @@ FAILED_AUTH_BUDGET = int(os.environ.get("RATE_FAILED_AUTH_PER_MIN", "10"))
 # Concurrent SSE connections allowed at once. A control room runs a handful of
 # consoles; this is the flood ceiling, not the expected count.
 MAX_SUBSCRIBERS = int(os.environ.get("MAX_STREAM_SUBSCRIBERS", "200"))
+# The copilot is a POST but not a write — it only reads and asks the model. It
+# costs a Vertex call per question, so it gets its own tighter budget than reads
+# and does not go through the write-auth path.
+COPILOT_BUDGET = int(os.environ.get("RATE_COPILOT_PER_MIN", "20"))
 _WINDOW = 60.0
 _hits: dict[tuple[str, str], deque[float]] = defaultdict(deque)
 
@@ -286,6 +290,18 @@ async def rate_limit(request: Request, call_next):
         return await call_next(request)
 
     ip = client_ip(request)
+
+    # The copilot is a metered read: its own budget, and none of the write-auth
+    # machinery below.
+    if request.url.path == "/api/copilot":
+        if _over_budget(ip, "copilot", COPILOT_BUDGET):
+            return JSONResponse(
+                {"detail": "too many questions, slow down"},
+                status_code=429,
+                headers={"Retry-After": "60"},
+            )
+        return await call_next(request)
+
     write = request.method == "POST"
     budget = WRITE_BUDGET if write else READ_BUDGET
     if _over_budget(ip, "write" if write else "read", budget):
@@ -680,6 +696,28 @@ def _perform(c, item, action: str, payload: Action, actor: str) -> dict:
     # not lose it to an instance recycling a second later.
     c.remember(item)
     return item.as_dict(c.last_poll or now())
+
+
+class Question(BaseModel):
+    question: str = Field(min_length=3, max_length=500)
+
+
+@app.post("/api/copilot")
+def copilot(payload: Question) -> dict:
+    """Answer a duty officer's question about the live board.
+
+    A read, not a write — no officer token required. The model only chooses
+    which deterministic tools to run against the running centre and explains
+    what they returned; it computes no figure itself, and the answer will not
+    construct without stating its own limitation. If the model is unreachable,
+    it degrades to the raw tool result rather than failing.
+    """
+    from packages.copilot.live import LiveCopilot, LiveToolbox
+
+    c = centre()
+    box = LiveToolbox(c, now_fn=now)
+    answer = LiveCopilot(box).ask(payload.question.strip())
+    return answer.as_dict()
 
 
 @app.get("/api/shift/handover")

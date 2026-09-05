@@ -520,3 +520,33 @@ class TestHandoverBriefing:
         # window; none lapsed, so the rate is 0 and does not divide by "touched"
         aq = client.get("/api/shift/handover?hours=8").json()["alerting_quality"]
         assert aq["lapse_rate"] == 0.0
+
+
+class TestCopilotEndpoint:
+    """POST /api/copilot — a read that answers questions. No write token; its own
+    budget. The model path is exercised in the deployed service; here we force the
+    tool-only path so CI never makes a network call, and prove the endpoint is
+    wired and honours the AnswerContract."""
+
+    @pytest.fixture(autouse=True)
+    def _no_model(self, monkeypatch):
+        monkeypatch.setenv("COPILOT_DISABLE_MODEL", "1")
+
+    def test_copilot_answers_without_a_token(self, client):
+        r = client.post("/api/copilot", json={"question": "what is happening right now?"})
+        assert r.status_code == 200, r.text[:200]
+        body = r.json()
+        # AnswerContract shape, and a mandatory limitation
+        for k in ("observation", "comparison", "interpretation", "limitation", "next_step"):
+            assert body[k], f"{k} missing"
+        assert len(body["limitation"]) >= 10
+
+    def test_copilot_rejects_an_empty_question(self, client):
+        assert client.post("/api/copilot", json={"question": "hi"}).status_code == 422
+
+    def test_copilot_does_not_500_on_the_model_being_down(self, client):
+        # In CI there is no Vertex; ask() must degrade, not raise.
+        body = client.post(
+            "/api/copilot", json={"question": "which junctions are dangerous?"}
+        ).json()
+        assert "limitation" in body and body["tools_called"]

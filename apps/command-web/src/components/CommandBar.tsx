@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActionError, act, type Incident, type Officer } from "@/lib/api";
+import { ActionError, act, askCopilot, type CopilotAnswer, type Incident, type Officer } from "@/lib/api";
 import {
   completeWithIncident,
   completeWithOfficer,
@@ -59,16 +59,20 @@ export function CommandBar({
   roster,
   officer,
   onChanged,
+  onFocusIncident,
 }: {
   incidents: Incident[];
   roster: Officer[];
   officer: string;
   onChanged: (updated: Incident) => void;
+  onFocusIncident?: (id: string) => void;
 }) {
   const [text, setText] = useState("");
   const [pending, setPending] = useState<Pending>(null);
   const [feedback, setFeedback] = useState<{ tone: "ok" | "warn" | "ask"; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [answer, setAnswer] = useState<CopilotAnswer | null>(null);
   const [listening, setListening] = useState(false);
   // Whether voice is available is a client-only fact. Deciding it during render
   // makes the server and the first client render disagree (the server has no
@@ -131,6 +135,26 @@ export function CommandBar({
       else setFeedback({ tone: "warn", msg: e instanceof Error ? e.message : String(e) });
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** Not a command — a question. The copilot answers from the live board. */
+  async function ask(question: string) {
+    setAsking(true);
+    setFeedback(null);
+    setAnswer(null);
+    setPending(null);
+    try {
+      const a = await askCopilot(question);
+      setAnswer(a);
+      if (a.focus_incident) onFocusIncident?.(a.focus_incident);
+    } catch (e) {
+      setFeedback({
+        tone: "warn",
+        msg: e instanceof ActionError ? e.human : e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setAsking(false);
     }
   }
 
@@ -212,8 +236,24 @@ export function CommandBar({
       }
     }
 
-    // Fresh command.
-    handleOutcome(parseCommand(utter, ctx(source)));
+    // Fresh command — or a question for the copilot. Commands win: only when
+    // the text is not a recognised command AND reads like a question does it go
+    // to the copilot. A leading "ask" or "?" forces the copilot outright.
+    setAnswer(null);
+    const forced = /^\s*(ask\b|\?)\s*/i.test(utter);
+    const q = utter.replace(/^\s*(ask\b|\?)\s*/i, "").trim();
+    if (forced && q) {
+      ask(q);
+      setText("");
+      return;
+    }
+    const outcome = parseCommand(utter, ctx(source));
+    if (outcome.kind === "unknown" && looksLikeQuestion(utter)) {
+      ask(utter);
+      setText("");
+      return;
+    }
+    handleOutcome(outcome);
     setText("");
   }
 
@@ -278,13 +318,13 @@ export function CommandBar({
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          disabled={busy}
+          disabled={busy || asking}
           placeholder={
             pending?.kind === "slot"
               ? pending.outcome.prompt
               : pending?.kind === "confirm"
                 ? "Type yes to confirm, or anything else to cancel"
-                : "Type or say a command — “assign Venus More to guard 2”, “resolve it”"
+                : "Command or question — “assign Venus More to guard 2”, “what changed in the last hour?”"
           }
           aria-label="Command input"
           className="flex-1 bg-transparent text-[length:var(--text-md)] outline-none placeholder:text-ink-3"
@@ -368,8 +408,69 @@ export function CommandBar({
           {feedback.msg}
         </p>
       )}
+
+      {asking && (
+        <p className="mt-2 text-[length:var(--text-sm)] text-ink-2">Asking the copilot…</p>
+      )}
+
+      {answer && (
+        <div className="mt-2.5 rounded-lg border border-line bg-raised p-3.5">
+          <div className="flex items-center justify-between">
+            <span className="label">Copilot</span>
+            <button
+              type="button"
+              onClick={() => setAnswer(null)}
+              className="text-[length:var(--text-2xs)] text-ink-3 underline"
+            >
+              Dismiss
+            </button>
+          </div>
+          <dl className="mt-2 space-y-2">
+            {(
+              [
+                ["Observation", answer.observation],
+                ["Comparison", answer.comparison],
+                ["Interpretation", answer.interpretation],
+                ["Limitation", answer.limitation],
+                ["Next step", answer.next_step],
+              ] as const
+            ).map(([k, v]) => (
+              <div key={k}>
+                <dt
+                  className="label"
+                  style={k === "Limitation" ? { color: "var(--color-copper)" } : undefined}
+                >
+                  {k}
+                </dt>
+                <dd className="text-[length:var(--text-sm)] leading-relaxed text-ink-2">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          {answer.focus_incident && onFocusIncident && (
+            <button
+              type="button"
+              onClick={() => onFocusIncident(answer.focus_incident!)}
+              className="mt-2.5 rounded border border-line-firm bg-surface px-2.5 py-1.5 text-[length:var(--text-sm)] font-medium text-ink-2 hover:bg-sunken"
+            >
+              Show the incident
+            </button>
+          )}
+          <p className="mt-2.5 border-t border-line pt-2 text-[length:var(--text-2xs)] text-ink-3">
+            {answer.degraded ? "Answered from the board — the model is offline. " : ""}
+            From: {answer.tools_called.join(", ")}
+          </p>
+        </div>
+      )}
     </section>
   );
+}
+
+/** A heuristic for whether an unrecognised utterance is a question the copilot
+ *  should answer, rather than a mistyped command. */
+function looksLikeQuestion(t: string): boolean {
+  const s = t.trim().toLowerCase();
+  if (s.endsWith("?")) return true;
+  return /^(what|whats|when|where|why|how|which|who|is|are|does|do|show|tell|list|any|should|can|could|give me)\b/.test(s);
 }
 
 function verbPast(action: string): string {

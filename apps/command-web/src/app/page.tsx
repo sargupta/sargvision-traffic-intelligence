@@ -258,7 +258,18 @@ export default function Board() {
             skin over the same action the cards fire; the cards keep working if
             it is ignored or the parser is offline. */}
         <div className="shrink-0">
-          <CommandBar incidents={incidents} roster={roster} officer={OFFICER} onChanged={onChanged} />
+          <CommandBar
+            incidents={incidents}
+            roster={roster}
+            officer={OFFICER}
+            onChanged={onChanged}
+            onFocusIncident={(id) => {
+              setSelected(id);
+              document
+                .getElementById(`incident-${id}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          />
         </div>
 
         {/* Map first and large: the officer is looking at geography, and the

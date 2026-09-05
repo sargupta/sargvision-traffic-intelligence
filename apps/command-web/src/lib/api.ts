@@ -276,6 +276,33 @@ export async function raiseFieldReport(body: {
   return payload as Incident;
 }
 
+/** A copilot answer — the five-part contract that cannot omit its limitation,
+ *  plus what it wants the board to focus on and how it was produced. */
+export interface CopilotAnswer {
+  observation: string;
+  comparison: string;
+  interpretation: string;
+  limitation: string;
+  next_step: string;
+  focus_incident: string | null;
+  focus_junction: string | null;
+  tools_called: string[];
+  model: string;
+  degraded: boolean;
+}
+
+/** Ask the copilot a question about the live board. A read — no token. */
+export async function askCopilot(question: string): Promise<CopilotAnswer> {
+  const r = await fetch(`${API}/api/copilot`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+  const payload = await r.json().catch(() => ({}));
+  if (!r.ok) throw new ActionError(r.status, payload?.detail ?? `copilot failed (${r.status})`);
+  return payload as CopilotAnswer;
+}
+
 export interface Recommendation {
   kind: "POST" | "DIVERT" | "ESCALATE" | "WATCH" | "STAND_DOWN";
   urgency: "NOW" | "THIS_SHIFT" | "ADVISORY";
