@@ -97,6 +97,10 @@ export default function Board() {
   }, [board, overrides]);
 
   const needsAction = incidents.filter((i) => i.needs_attention);
+  // Overdue for their next human step — the CAD escalation lane. These have
+  // passed the deadline for their priority (an owner, or reaching the scene)
+  // and are the first thing a supervisor should see.
+  const overdue = incidents.filter((i) => i.escalation?.overdue);
 
   // Re-measure when the rail or anything inside it changes size, not only on
   // scroll: an incident arriving is exactly when the overflow appears.
@@ -341,6 +345,49 @@ export default function Board() {
             className="relative order-2 flex min-h-0 flex-col gap-4 xl:overflow-y-auto xl:pr-1"
             style={{ scrollbarGutter: "stable" }}
           >
+            {overdue.length > 0 && (
+              <section
+                aria-labelledby="escalate-heading"
+                className="rounded-lg border-l-[3px] p-3"
+                style={{ borderColor: "var(--color-sev)", background: "var(--color-sev-tint)" }}
+              >
+                <h2
+                  id="escalate-heading"
+                  className="mb-1 flex items-baseline gap-2 text-[length:var(--text-md)] font-semibold"
+                  style={{ color: "var(--color-sev)" }}
+                >
+                  Past their deadline
+                  <span className="tnum text-[length:var(--text-sm)] font-normal">{overdue.length}</span>
+                </h2>
+                <p className="mb-2.5 text-[length:var(--text-2xs)] leading-relaxed" style={{ color: "var(--color-sev)" }}>
+                  Waited longer than this priority allows for its next step. A supervisor should
+                  step in — take it, reassign it, or record why the delay is acceptable.
+                </p>
+                <ul className="flex flex-col gap-1.5">
+                  {overdue.map((i) => (
+                    <li key={i.incident_id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelected(i.incident_id);
+                          document.getElementById(`incident-${i.incident_id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        }}
+                        className="flex w-full items-center gap-2 rounded bg-surface/70 px-2.5 py-1.5 text-left text-[length:var(--text-sm)] hover:bg-surface"
+                      >
+                        <span className="font-medium text-ink">{i.location_name}</span>
+                        <span className="tnum ml-auto shrink-0 text-[length:var(--text-2xs)] font-semibold" style={{ color: "var(--color-sev)" }}>
+                          {i.escalation && i.escalation.minutes_over >= 1
+                            ? `${Math.round(i.escalation.minutes_over)}m over`
+                            : "overdue"}
+                          {i.escalation?.clock === "owner" ? " · no officer" : " · not on scene"}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             <section id="queue">
               <h2 className="mb-2.5 flex items-baseline gap-2 text-[length:var(--text-md)] font-semibold">
                 Needs an officer

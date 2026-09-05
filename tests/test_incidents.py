@@ -559,3 +559,47 @@ class TestTerminalEviction:
         c.incidents["INC-OPEN"] = i
         assert c._evict_terminal(NOW) == 0
         assert "INC-OPEN" in c.incidents
+
+
+class TestEscalationTimers:
+    """The CAD timed-alert: an incident waiting too long for its next human step
+    is pushed, and the clock resets when the incident advances."""
+
+    def test_a_fresh_p1_is_ok_then_due_soon_then_overdue(self):
+        i = make(priority=Priority.P1)  # SLA_TO_OWNER P1 = 5 min
+        assert i.escalation(NOW + timedelta(minutes=2))["level"] == "ok"
+        assert i.escalation(NOW + timedelta(minutes=4))["level"] == "due_soon"
+        e = i.escalation(NOW + timedelta(minutes=9))
+        assert e["level"] == "overdue" and e["overdue"] is True
+        assert e["minutes_over"] == 4.0
+        assert e["clock"] == "owner"
+
+    def test_priority_sets_the_window(self):
+        assert make(priority=Priority.P1).escalation(NOW + timedelta(minutes=6))["overdue"]
+        assert not make(priority=Priority.P3).escalation(NOW + timedelta(minutes=6))["overdue"]
+
+    def test_assigning_resets_the_clock_to_the_scene_deadline(self):
+        i = make(priority=Priority.P1)
+        # overdue for an owner at +9
+        assert i.escalation(NOW + timedelta(minutes=9))["overdue"]
+        i.assign("SI Barman", by="DO", at=NOW + timedelta(minutes=9))
+        # now the clock is on reaching the scene, measured from the assignment
+        e = i.escalation(NOW + timedelta(minutes=11))
+        assert e["clock"] == "on_scene"
+        assert e["overdue"] is False  # only 2 min into the 10-min scene window
+
+    def test_on_scene_has_no_deadline(self):
+        i = make(priority=Priority.P1)
+        i.assign("SI", by="DO", at=NOW)
+        i.move(IncidentState.ON_SCENE, "SI", at=NOW + timedelta(minutes=3))
+        e = i.escalation(NOW + timedelta(hours=2))
+        assert e["clock"] is None and e["overdue"] is False
+
+    def test_terminal_incidents_have_no_clock(self):
+        i = make()
+        i.stand_down("DO", "nothing to send")
+        assert i.escalation(NOW + timedelta(hours=5))["clock"] is None
+
+    def test_escalation_appears_in_the_api_view(self):
+        d = make(priority=Priority.P1).as_dict(NOW + timedelta(minutes=8))
+        assert d["escalation"]["overdue"] is True

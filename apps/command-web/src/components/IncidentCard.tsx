@@ -5,7 +5,7 @@ import {
   ACTION_LABEL, ACTION_PATH, STATE_LABEL, ActionError, act, getIncident, minutes,
   type Incident, type Officer,
 } from "@/lib/api";
-import { Approximate, PriorityTag } from "./Bits";
+import { Approximate, EscalationChip, PriorityTag } from "./Bits";
 
 /** One incident, with everything needed to act on it without leaving the board.
  *
@@ -112,6 +112,7 @@ export function IncidentCard({
               with <strong className="font-semibold text-ink">{incident.owner}</strong>
             </span>
           )}
+          <EscalationChip escalation={incident.escalation} />
           <span className="tnum ml-auto text-[length:var(--text-2xs)] text-ink-3">
             {minutes(incident.age_minutes)} old
           </span>

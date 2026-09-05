@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 
@@ -90,6 +90,19 @@ class Priority(str, Enum):
     P2 = "P2"  # act this shift
     P3 = "P3"  # watch
     P4 = "P4"  # record only
+
+
+# How long a condition may wait for the next human step before the board should
+# push it — first as a nudge, then up to a supervisor. Minutes, keyed on what is
+# being waited for and the priority. This is the CAD "timed alert" that turns a
+# status list into a queue that pressures action: the deadline is derived from
+# the timestamp of the transition into the current state, so any action that
+# advances the incident resets the clock for free.
+SLA_TO_OWNER = {Priority.P1: 5, Priority.P2: 15, Priority.P3: 30, Priority.P4: 60}
+SLA_TO_SCENE = {Priority.P1: 10, Priority.P2: 25, Priority.P3: 45, Priority.P4: 120}
+# Within the last quarter of the window an item reads "due soon" rather than
+# "ok", so an officer sees it coming instead of only after it breaches.
+_DUE_SOON_FRACTION = 0.75
 
 
 @dataclass(frozen=True)
@@ -364,6 +377,49 @@ class Incident:
     def age_minutes(self, now: datetime) -> float:
         return (now - self.detected_at).total_seconds() / 60
 
+    def escalation(self, now: datetime) -> dict:
+        """Whether this incident is waiting too long for its next human step.
+
+        The clock is on what the incident needs now — an owner while it is
+        unowned, an officer on scene once it is assigned — measured from when it
+        entered that state. Once an officer is on scene and working it, there is
+        no deadline: the point of the timer is to make sure something is *being
+        done*, and at that point it is. Terminal incidents have no clock.
+        """
+        if self.state in (IncidentState.DETECTED, IncidentState.ACKNOWLEDGED):
+            clock = "owner"
+            started = self.detected_at
+            limit = SLA_TO_OWNER[self.priority]
+        elif self.state is IncidentState.ASSIGNED:
+            clock = "on_scene"
+            started = self.assignments[-1].at if self.assignments else self.detected_at
+            limit = SLA_TO_SCENE[self.priority]
+        else:
+            return {
+                "clock": None,
+                "level": "none",
+                "overdue": False,
+                "waiting_minutes": 0.0,
+                "limit_minutes": None,
+                "minutes_over": 0.0,
+                "due_by": None,
+            }
+
+        waited = (now - started).total_seconds() / 60
+        over = waited - limit
+        level = "overdue" if over > 0 else ("due_soon" if waited >= limit * _DUE_SOON_FRACTION else "ok")
+        return {
+            "clock": clock,
+            "level": level,
+            "overdue": over > 0,
+            "waiting_minutes": round(waited, 1),
+            "limit_minutes": limit,
+            "minutes_over": round(over, 1) if over > 0 else 0.0,
+            "due_by": (started + timedelta(minutes=limit)).isoformat(
+                timespec="seconds"
+            ),
+        }
+
     def unowned_minutes(self, now: datetime) -> float:
         if self.owner:
             return 0.0
@@ -401,6 +457,7 @@ class Incident:
             "history": [h.as_dict() for h in self.history],
             "samples": [s.as_dict() for s in self.samples],
             "impact": self.impact(moment),
+            "escalation": self.escalation(moment),
             "next_actions": [
                 s.value for s in sorted(TRANSITIONS[self.state], key=lambda x: x.value)
             ],

@@ -112,7 +112,17 @@ export interface Incident {
   history: { at: string; from: string; to: string; by: string; reason: string | null }[];
   samples?: { at: string; index: number; band: string }[];
   impact?: IncidentImpact;
+  escalation?: Escalation;
   next_actions: string[];
+}
+export interface Escalation {
+  clock: "owner" | "on_scene" | null;
+  level: "ok" | "due_soon" | "overdue" | "none";
+  overdue: boolean;
+  waiting_minutes: number;
+  limit_minutes: number | null;
+  minutes_over: number;
+  due_by: string | null;
 }
 
 /** The within-incident verification reading. Not a counterfactual — see `basis`. */
