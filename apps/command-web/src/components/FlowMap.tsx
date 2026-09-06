@@ -5,7 +5,7 @@ import { GoogleMapsOverlay } from "@deck.gl/google-maps";
 import { PathLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { TripsLayer } from "@deck.gl/geo-layers";
 import { LIGHT_MAP, loadMaps } from "@/lib/maps";
-import { RUN_COLOUR, RUN_STYLE, type Board, type NetworkPayload } from "@/lib/api";
+import { CONDITION_RGB, RUN_COLOUR, RUN_STYLE, type Board, type NetworkPayload } from "@/lib/api";
 
 const KEY = process.env.NEXT_PUBLIC_MAPS_API_KEY ?? "";
 
@@ -70,6 +70,24 @@ export function FlowMap({
         label: `${c.name} · ${r.speed.replace("_", " ").toLowerCase()} · ${Math.round(r.length_m)} m`,
       })),
     );
+  }, [board]);
+
+  // ── the honest underlay: a coloured halo under any corridor that is slow in
+  //    ABSOLUTE terms, so a chronically-jammed road (Darjeeling More at 10 km/h)
+  //    reads amber even though Google classifies its stretches as "moving" and
+  //    paints the carriageway green. Clear roads get no halo. ─────────────────
+  const base = useMemo(() => {
+    if (!board) return [];
+    return board.corridors.flatMap((c) => {
+      const rgb = CONDITION_RGB[c.condition ?? "UNKNOWN"];
+      if (!rgb) return [];
+      return c.runs.map((r) => ({
+        path: r.path,
+        colour: rgb,
+        corridor: c.corridor_id,
+        label: `${c.name} · ${(c.condition ?? "").toLowerCase()} · ${c.speed_kmh?.toFixed(0) ?? "—"} km/h`,
+      }));
+    });
   }, [board]);
 
   // ── trails, moving at the speed actually measured ────────────────────────
@@ -206,6 +224,22 @@ export function FlowMap({
 
     overlay.current.setProps({
       layers: [
+        // Beneath the carriageway: the absolute-condition halo. Wide and soft, so
+        // a slow corridor glows amber/red under the road even when Google's own
+        // per-stretch classification says "moving".
+        new PathLayer({
+          id: "condition-halo",
+          data: base,
+          getPath: (d: (typeof base)[number]) => d.path,
+          getColor: (d: (typeof base)[number]) => d.colour,
+          getWidth: 9,
+          widthUnits: "pixels",
+          widthMinPixels: 7,
+          capRounded: true,
+          jointRounded: true,
+          opacity: 0.28,
+          pickable: true,
+        }),
         new PathLayer({
           id: "carriageway",
           data: paths,
@@ -259,7 +293,7 @@ export function FlowMap({
         }),
       ].filter(Boolean) as never[],
     });
-  }, [board, paths, trips, clock, selected, status, animate, loopEnd, onSelectIncident]);
+  }, [board, base, paths, trips, clock, selected, status, animate, loopEnd, onSelectIncident]);
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-lg border border-line bg-surface">

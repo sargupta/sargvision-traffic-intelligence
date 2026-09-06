@@ -30,10 +30,21 @@ export interface SpeedRun {
   length_m: number;
 }
 
+/** Absolute level of service, from measured speed — how slow the road is in real
+ *  terms, independent of whether that is unusual. */
+export type Los = "FREE" | "MODERATE" | "HEAVY" | "STANDSTILL" | "UNKNOWN";
+/** The absolute grade crossed with the deviation band: what to actually do. */
+export type Condition = "ACUTE" | "CHRONIC" | "WATCH" | "CLEAR" | "UNKNOWN";
+
 export interface CorridorRow {
   corridor_id: string;
   name: string;
   band: Band;
+  /** Absolute severity (speed-based) — a chronic jam reads HEAVY/STANDSTILL even
+   *  when its index sits near 1.0. */
+  los?: Los;
+  /** ACUTE (deploy now) / CHRONIC (structural) / WATCH / CLEAR. */
+  condition?: Condition;
   index: number | null;
   excess_minutes: number | null;
   duration_minutes: number | null;
@@ -156,6 +167,9 @@ export interface Board {
     corridors_total: number;
   };
   bands: Partial<Record<Band, number>>;
+  /** How many corridors are acutely slow (deploy), chronically slow (structural),
+   *  building, or clear — the absolute count the index-only board could not give. */
+  conditions?: Partial<Record<Condition, number>>;
   headline: string;
   alert_budget: number;
   over_budget: boolean;
@@ -480,6 +494,30 @@ export const BAND: Record<Band, { label: string; fg: string; tint: string; mark:
   ELEVATED: { label: "Elevated", fg: "var(--color-elev)", tint: "var(--color-elev-tint)", mark: "●" },
   NORMAL:   { label: "Normal",   fg: "var(--color-ok)",   tint: "var(--color-ok-tint)",   mark: "–" },
   UNKNOWN:  { label: "No data",  fg: "var(--color-none)", tint: "var(--color-none-tint)", mark: "?" },
+};
+
+/** Condition colours as RGB, for the map underlay (deck.gl cannot read CSS vars).
+ *  Consistent with the incident markers already on the map. CLEAR/UNKNOWN get no
+ *  underlay — the halo exists only to reveal slow roads, so a clear road stays
+ *  the plain carriageway. */
+export const CONDITION_RGB: Record<Condition, [number, number, number] | null> = {
+  ACUTE: [179, 35, 24], // red — deploy now
+  CHRONIC: [181, 71, 8], // amber/copper — structural
+  WATCH: [193, 146, 42], // muted gold — early warning
+  CLEAR: null,
+  UNKNOWN: null,
+};
+
+/** The absolute condition, shown as the primary state now. ACUTE pops (a fresh
+ *  jam to deploy to); CHRONIC is calmer amber (a standing problem — structural,
+ *  not a dispatch); WATCH is early-warning; CLEAR is genuinely moving. This is
+ *  what stops a 10 km/h crawl reading as green. */
+export const CONDITION: Record<Condition, { label: string; note: string; fg: string; tint: string; mark: string }> = {
+  ACUTE:    { label: "Acute",    note: "slow and worse than usual — deploy now",  fg: "var(--color-sev)",  tint: "var(--color-sev-tint)",  mark: "▲" },
+  CHRONIC:  { label: "Chronic",  note: "always slow here — structural, not a dispatch", fg: "var(--color-high)", tint: "var(--color-high-tint)", mark: "▣" },
+  WATCH:    { label: "Building",  note: "moving, but slower than usual — watch",   fg: "var(--color-elev)", tint: "var(--color-elev-tint)", mark: "●" },
+  CLEAR:    { label: "Clear",    note: "moving, and normal",                       fg: "var(--color-ok)",   tint: "var(--color-ok-tint)",   mark: "–" },
+  UNKNOWN:  { label: "No data",  note: "not observed yet",                         fg: "var(--color-none)", tint: "var(--color-none-tint)", mark: "?" },
 };
 
 export const PRIORITY: Record<Priority, { label: string; fg: string; tint: string }> = {

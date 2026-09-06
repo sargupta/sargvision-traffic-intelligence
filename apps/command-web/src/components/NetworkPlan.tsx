@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RUN_COLOUR, RUN_STYLE, type Board, type NetworkPayload } from "@/lib/api";
+import { CONDITION_RGB, RUN_COLOUR, RUN_STYLE, type Board, type NetworkPayload } from "@/lib/api";
 import { project } from "@/lib/project";
 
 /** The network drawn from its own coordinates, with no basemap and no GPU.
@@ -342,6 +342,30 @@ export function NetworkPlan({
         onPointerLeave={endDrag}
       >
         <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
+          {/* The honest underlay: a soft halo under any corridor that is slow in
+              ABSOLUTE terms (measured speed), so a chronically-jammed road reads
+              amber even where Google classifies every stretch as "moving" and the
+              road above would be green. Clear roads get no halo. */}
+          {board.corridors.flatMap((c) => {
+            const rgb = CONDITION_RGB[c.condition ?? "UNKNOWN"];
+            if (!rgb) return [];
+            return c.runs
+              .filter((r) => r.path.length > 1)
+              .map((r, i) => (
+                <polyline
+                  key={`halo-${c.corridor_id}-${i}`}
+                  points={r.path.map(([lon, lat]) => `${x(lon).toFixed(1)},${y(lat).toFixed(1)}`).join(" ")}
+                  fill="none"
+                  stroke={`rgb(${rgb.join(",")})`}
+                  strokeWidth={7 / s}
+                  strokeOpacity={0.3}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <title>{`${c.name} · ${(c.condition ?? "").toLowerCase()} · ${c.speed_kmh?.toFixed(0) ?? "—"} km/h`}</title>
+                </polyline>
+              ));
+          })}
           {/* Roads, drawn worst last so a jam is never hidden under a clear road. */}
           {(["NORMAL", "SLOW", "TRAFFIC_JAM"] as const).map((speed) =>
             board.corridors.flatMap((c) =>

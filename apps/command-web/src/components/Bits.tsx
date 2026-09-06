@@ -1,6 +1,25 @@
 "use client";
 
-import { BAND, PRIORITY, type Band, type Escalation, type Priority } from "@/lib/api";
+import { BAND, CONDITION, PRIORITY, type Band, type Condition, type Escalation, type Priority } from "@/lib/api";
+
+/** The absolute condition — what the officer acts on. ACUTE and CHRONIC both mean
+ *  "slow on the road", told apart by whether it is a fresh problem or a standing
+ *  one. Colour + word + mark, so it survives mono print and CVD like BandTag. */
+export function ConditionTag({ condition, size = "sm" }: { condition: Condition; size?: "sm" | "md" }) {
+  const c = CONDITION[condition];
+  return (
+    <span
+      title={c.note}
+      className={`inline-flex items-center gap-1.5 rounded border-l-[3px] font-semibold ${
+        size === "md" ? "px-2.5 py-1 text-[length:var(--text-sm)]" : "px-2 py-0.5 text-[length:var(--text-2xs)]"
+      }`}
+      style={{ color: c.fg, backgroundColor: c.tint, borderColor: c.fg }}
+    >
+      <span aria-hidden>{c.mark}</span>
+      {c.label}
+    </span>
+  );
+}
 
 /** A band, shown three ways at once — colour, word and mark — so it survives a
  *  monochrome print and colour vision deficiency. */

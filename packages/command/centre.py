@@ -73,6 +73,68 @@ class Thresholds:
 
 SILIGURI = Thresholds()
 
+
+@dataclass(frozen=True)
+class ServiceLevel:
+    """The ABSOLUTE question the index cannot answer: how slow is this road *right
+    now*, in real terms — not relative to its own usual.
+
+    The index (Thresholds) answers "is this worse than typical here". For a road
+    that is chronically jammed, typical is already a crawl, so the index sits near
+    1.0 and the road reads green while it moves at 10 km/h. That is the exact
+    failure the officer sees: Darjeeling More is always green because it is always
+    slow. This grades on measured speed instead, so a jam reads as a jam whether
+    or not it is unusual.
+
+    First calibration for Siliguri's mixed arterials; speeds are a blunt proxy
+    (a dense market street at 15 km/h is not a highway at 15 km/h) and want
+    per-road-class tuning, but they are far more honest than a ratio that hides
+    chronic congestion. Speeds in km/h.
+    """
+
+    free_min: float = 24.0  # at or above: moving well
+    moderate_min: float = 16.0  # 16–24: moderate
+    heavy_min: float = 10.0  # 10–16: heavy; below 10: standstill
+
+    def grade(self, speed_kmh: float | None) -> str:
+        if speed_kmh is None:
+            return "UNKNOWN"
+        if speed_kmh >= self.free_min:
+            return "FREE"
+        if speed_kmh >= self.moderate_min:
+            return "MODERATE"
+        if speed_kmh >= self.heavy_min:
+            return "HEAVY"
+        return "STANDSTILL"
+
+    @staticmethod
+    def is_slow(grade: str) -> bool:
+        """Slow in absolute terms — worth an officer's attention regardless of
+        whether it is unusual."""
+        return grade in ("HEAVY", "STANDSTILL")
+
+
+SERVICE = ServiceLevel()
+
+
+# The two axes combined into the one thing eyes-and-phones cannot give a control
+# room: whether a slow road is a NEW problem or a standing one.
+#   ACUTE   — slow AND worse than typical: a fresh jam, deploy now.
+#   CHRONIC — slow but normal for here: structural, needs a permanent posting or
+#             an engineering fix, not a one-off dispatch. (Darjeeling More.)
+#   WATCH   — not yet slow but running worse than typical: early warning.
+#   CLEAR   — moving, and normal.
+# The old board collapsed CHRONIC into green and hid it; that distinction is the
+# value the officer confirmed on Ghogomali Rd — surface the road nobody is on.
+def condition_of(grade: str, band: str) -> str:
+    unusual = band in ("SEVERE", "HIGH", "ELEVATED")
+    if grade == "UNKNOWN":
+        return "UNKNOWN"
+    if ServiceLevel.is_slow(grade):
+        return "ACUTE" if unusual else "CHRONIC"
+    return "WATCH" if unusual else "CLEAR"
+
+
 # How many unowned open incidents may exist at once. Above this, a new
 # condition has to be worse than the weakest thing already waiting.
 #
@@ -172,6 +234,21 @@ class CorridorStatus:
     @property
     def index(self) -> float | None:
         return self.latest.congestion_index if self.latest else None
+
+    @property
+    def speed_kmh(self) -> float | None:
+        return self.latest.mean_speed_kmh if self.latest else None
+
+    @property
+    def los(self) -> str:
+        """Absolute grade from measured speed — how slow, in real terms."""
+        return SERVICE.grade(self.speed_kmh)
+
+    @property
+    def condition(self) -> str:
+        """ACUTE / CHRONIC / WATCH / CLEAR — the absolute grade crossed with the
+        deviation band. The one line that tells deploy-now from structural."""
+        return condition_of(self.los, self.band)
 
     def held_for(self, now: datetime) -> timedelta:
         if self.band_since is None:
@@ -828,8 +905,10 @@ class CommandCentre:
         moment = now or self.last_poll or datetime.now()
         health = self.feed_health(moment)
         bands: dict[str, int] = {}
+        conditions: dict[str, int] = {}
         for s in self.status.values():
             bands[s.band] = bands.get(s.band, 0) + 1
+            conditions[s.condition] = conditions.get(s.condition, 0) + 1
 
         open_incidents = sorted(
             (i for i in self.incidents.values() if i.is_open),
@@ -845,6 +924,10 @@ class CommandCentre:
             "data_state": health["state"],
             "feed": health,
             "bands": bands,
+            # The absolute picture: how many corridors are acutely slow (deploy
+            # now), chronically slow (structural), building, or clear. This is the
+            # honest count the index-only board could not give.
+            "conditions": conditions,
             "headline": self._headline(
                 bands,
                 open_incidents,
@@ -864,6 +947,11 @@ class CommandCentre:
                     "corridor_id": s.corridor_id,
                     "name": s.name,
                     "band": s.band,
+                    # The absolute axis: how slow the road actually is right now,
+                    # and whether that is an acute (new) or chronic (standing)
+                    # problem. `band`/`index` above remain the deviation axis.
+                    "los": s.los,
+                    "condition": s.condition,
                     "index": round(s.index, 3) if s.index is not None else None,
                     "excess_minutes": round(s.latest.excess_minutes, 1) if s.latest else None,
                     "duration_minutes": round(s.latest.duration_s / 60, 1) if s.latest else None,

@@ -10,8 +10,8 @@ import { CommandBar } from "@/components/CommandBar";
 import { Empty } from "@/components/Bits";
 import { IncidentCard } from "@/components/IncidentCard";
 import {
-  getAdvice, getNetwork, getRoster, useBoard,
-  type Band, type Incident, type NetworkPayload, type Officer, type Recommendation,
+  CONDITION, getAdvice, getNetwork, getRoster, useBoard,
+  type Condition, type Incident, type NetworkPayload, type Officer, type Recommendation,
 } from "@/lib/api";
 
 const OFFICER = "DO-1";
@@ -31,7 +31,7 @@ export default function Board() {
   const [network, setNetwork] = useState<NetworkPayload | null>(null);
   const [roster, setRoster] = useState<Officer[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [bandFilter, setBandFilter] = useState<Band | null>(null);
+  const [conditionFilter, setConditionFilter] = useState<Condition | null>(null);
 
   // On macOS the overlay scrollbar means an internally-scrolling column looks
   // identical to one that ends. At 1366x768 that hid the action bar of the
@@ -116,33 +116,34 @@ export default function Board() {
   const inHand = incidents.filter((i) => !i.needs_attention);
   // Memoised because `?? {}` builds a new object every render, which would
   // make the empty-state memo below recompute on every one.
-  const bands = useMemo(() => board?.bands ?? {}, [board?.bands]);
+  const conditions = useMemo(() => board?.conditions ?? {}, [board?.conditions]);
 
-  // An empty queue must explain itself. The previous text asserted that every
-  // corridor was within its usual travel time, which the headline directly
-  // contradicted whenever anything was elevated — a police screen claiming the
-  // city is fine in a state it reaches most afternoons.
+  // An empty dispatch queue must explain itself HONESTLY. The old text claimed
+  // "every corridor is within its usual travel time" — index-speak that reads as
+  // all-clear even when dozens of roads crawl chronically (Darjeeling More at
+  // 10 km/h). Empty queue means nothing ACUTE to dispatch; it does not mean the
+  // city is moving. Chronic slowness is named, not hidden.
   const emptyState = useMemo(() => {
-    const above = (bands.SEVERE ?? 0) + (bands.HIGH ?? 0) + (bands.ELEVATED ?? 0);
-    const s = board?.suppressed;
-    if (above === 0) {
+    const acute = conditions.ACUTE ?? 0;
+    const chronic = conditions.CHRONIC ?? 0;
+    if (acute === 0) {
       return {
-        title: "Every corridor is within its usual travel time.",
-        detail: "Nothing is above what this network normally takes at this hour. This is a result, not an empty screen.",
+        title:
+          chronic > 0
+            ? `Nothing acute to dispatch — but ${chronic} corridor${chronic === 1 ? " is" : "s are"} chronically slow.`
+            : "Nothing acute, and the network is moving.",
+        detail:
+          chronic > 0
+            ? "No fresh jam needs an officer right now. The chronically slow corridors are standing problems — structural, not a dispatch — and are marked on the map. This is a result, not an empty screen."
+            : "No corridor is slow beyond its usual, and none is running acutely. This is a result, not an empty screen.",
       };
     }
-    const reasons: string[] = [];
-    if (s?.holding) reasons.push(`${s.holding} still being confirmed`);
-    if (s?.below_threshold) reasons.push(`${s.below_threshold} too small to act on`);
-    if (s?.quiet_hours) reasons.push(`${s.quiet_hours} held until the morning shift`);
-    if (s?.budget) reasons.push(`${s.budget} beyond the alert budget`);
     return {
-      title: `${above} corridor${above === 1 ? " is" : "s are"} above typical, none needing a decision yet.`,
-      detail: reasons.length
-        ? `Located choke points: ${reasons.join(", ")}. A condition becomes an incident once it has held long enough to be worth sending someone to.`
-        : "No located choke point has held long enough to be worth sending someone to. The corridor table below shows every reading.",
+      title: `${acute} corridor${acute === 1 ? " is" : "s are"} acutely slow, none escalated to an incident yet.`,
+      detail:
+        "Acutely slow means slower than usual AND slow in absolute terms — a fresh problem. A condition becomes an incident once it has held long enough to be worth sending someone to. The corridor table shows every reading.",
     };
-  }, [bands, board?.suppressed]);
+  }, [conditions]);
 
   return (
     <>
@@ -194,39 +195,37 @@ export default function Board() {
           </div>
 
           <dl className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            {(
-              [
-                ["Severe", bands.SEVERE ?? 0, "var(--color-sev)"],
-                ["High", bands.HIGH ?? 0, "var(--color-high)"],
-                ["Elevated", bands.ELEVATED ?? 0, "var(--color-elev)"],
-                ["Normal", bands.NORMAL ?? 0, "var(--color-ok)"],
-              ] as const
-            ).map(([label, n, colour]) => (
-              <div key={label} className="text-center">
-                <button
-                  type="button"
-                  disabled={n === 0}
-                  onClick={() => {
-                    setBandFilter(label.toUpperCase() as Band);
-                    setView("table");
-                  }}
-                  aria-label={
-                    n === 0
-                      ? `No corridors ${label.toLowerCase()}`
-                      : `Show the ${n} ${label.toLowerCase()} corridor${n === 1 ? "" : "s"}`
-                  }
-                  className="block enabled:cursor-pointer disabled:cursor-default"
-                >
-                  <span
-                    className="tnum block text-[length:var(--text-2xl)] font-semibold leading-none"
-                    style={{ color: n ? colour : "var(--color-ink-3)" }}
+            {(["ACUTE", "CHRONIC", "WATCH", "CLEAR"] as const).map((cond) => {
+              const n = conditions[cond] ?? 0;
+              const c = CONDITION[cond];
+              return (
+                <div key={cond} className="text-center">
+                  <button
+                    type="button"
+                    disabled={n === 0}
+                    onClick={() => {
+                      setConditionFilter(cond);
+                      setView("table");
+                    }}
+                    aria-label={
+                      n === 0
+                        ? `No corridors ${c.label.toLowerCase()}`
+                        : `Show the ${n} ${c.label.toLowerCase()} corridor${n === 1 ? "" : "s"} — ${c.note}`
+                    }
+                    title={c.note}
+                    className="block enabled:cursor-pointer disabled:cursor-default"
                   >
-                    {n}
-                  </span>
-                  <span className="label mt-1 block">{label}</span>
-                </button>
-              </div>
-            ))}
+                    <span
+                      className="tnum block text-[length:var(--text-2xl)] font-semibold leading-none"
+                      style={{ color: n ? c.fg : "var(--color-ink-3)" }}
+                    >
+                      {n}
+                    </span>
+                    <span className="label mt-1 block">{c.label}</span>
+                  </button>
+                </div>
+              );
+            })}
             <div className="border-l border-line pl-6">
               <button
                 type="button"
@@ -285,8 +284,8 @@ export default function Board() {
                   {board && (
                     <CorridorTable
                       corridors={board.corridors}
-                      band={bandFilter}
-                      onClearBand={() => setBandFilter(null)}
+                      condition={conditionFilter}
+                      onClearCondition={() => setConditionFilter(null)}
                     />
                   )}
                 </div>
