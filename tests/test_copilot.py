@@ -147,3 +147,34 @@ class TestAnswerCarriesData:
     def test_a_typical_question_routes_to_history(self):
         cop = self._forced_fallback()
         assert cop.ask("when is it usually worst?").tool_trace[0]["tool"] == "historical_day_shape"
+
+
+class TestSources:
+    """Every answer cites the real source of its figures — computed from which
+    tools ran, never something the model could invent."""
+
+    def _forced_fallback(self):
+        cop = LiveCopilot(_box())
+        cop._ask_model = lambda q: (_ for _ in ()).throw(RuntimeError("no model"))
+        return cop
+
+    def test_historical_question_cites_the_2019_study(self):
+        srcs = self._forced_fallback().ask("when is it usually worst?").as_dict()["sources"]
+        assert any("American Economic Review" in s and "2019" in s for s in srcs)
+
+    def test_junction_question_cites_the_survey_and_accident_record(self):
+        srcs = self._forced_fallback().ask("which junctions are dangerous?").as_dict()["sources"]
+        assert any("Comprehensive Mobility Plan 2011" in s for s in srcs)
+        assert any("Roy, Mohammadi" in s for s in srcs)
+
+    def test_live_question_cites_google_routes_not_raw_data(self):
+        srcs = (
+            self._forced_fallback().ask("which corridors are worst right now?").as_dict()["sources"]
+        )
+        joined = " ".join(srcs)
+        assert "Google Maps Routes" in joined
+        assert "not Google's raw traffic data" in joined  # the ToS boundary, stated
+
+    def test_incident_question_cites_the_incident_log(self):
+        srcs = self._forced_fallback().ask("show me the open incidents").as_dict()["sources"]
+        assert any("SARGVISION incident record" in s for s in srcs)

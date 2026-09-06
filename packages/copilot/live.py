@@ -322,6 +322,7 @@ Your role is narrow and you must not exceed it:
 - The verification figures are WITHIN-INCIDENT readings, not proof the officer caused the change. Say so when you use them.
 - Data freshness matters: if get_current_state shows the poll is old, the figures are the last ones that arrived, not this instant.
 - Past and present are BOTH available and you should use both when the question spans them. historical_day_shape is the 2019 typical day (city-wide, seven years old); everything else is live. When an officer asks whether now is unusual, compare the live figure against the typical shape for this hour, and say plainly which number is live and which is the old typical.
+- The interface lists the sources of the data separately, so you do not have to recite citations. But in your prose, name which source a figure came from when it is not obvious — "live", "the 2019 study", "the 2011 survey", "the accident record" — so no number floats without its provenance.
 
 Call the tools you need, then answer in five parts:
   observation     what the data shows, as fact
@@ -349,6 +350,48 @@ ANSWER_SCHEMA = {
 }
 
 
+# Where each tool's figures actually come from. Attached deterministically from
+# the tools the copilot ran, so the citation cannot be something the model
+# invented — it is a fact about which data was read.
+def _sources_for(tools: list[str], last_poll: datetime | None) -> list[str]:
+    live = (
+        "SARGVISION congestion index, computed from Google Maps Routes travel-time "
+        "(our own statistic — current time against Google's modelled typical, not "
+        "Google's raw traffic data)"
+        + (f", polled {last_poll.isoformat(timespec='minutes')} IST." if last_poll else ".")
+    )
+    log = "SARGVISION incident record — officer actions logged on this system."
+    study_2019 = (
+        "Akbar, Couture, Duranton & Storeygard, American Economic Review 113(4), 2023 — "
+        "101,418 travel-time observations across Siliguri, June–November 2019 (city-wide, "
+        "seven years old)."
+    )
+    junction_ref = (
+        "Volume-to-capacity: Comprehensive Mobility Plan 2011, published in the Siliguri "
+        "CDP 2041. Accident record: Roy, Mohammadi & Roy, Geographies 6(2):55, 2026 (2021–23)."
+    )
+    live_tools = {
+        "get_current_state",
+        "list_incidents",
+        "corridors_above_typical",
+        "recent_changes",
+        "data_confidence",
+        "get_incident",
+        "verification_summary",
+    }
+    log_tools = {"list_incidents", "recent_changes", "get_incident", "verification_summary"}
+    out: list[str] = []
+    for src, hit in (
+        (live, any(t in live_tools for t in tools)),
+        (log, any(t in log_tools for t in tools)),
+        (study_2019, "historical_day_shape" in tools),
+        (junction_ref, "junction_reference" in tools),
+    ):
+        if hit and src not in out:
+            out.append(src)
+    return out
+
+
 def _trim(result: Any, cap: int = 24) -> Any:
     """Cap list fields so the data returned to the interface stays a summary, not
     a firehose. The frontend renders these as small widgets, and the model has
@@ -371,6 +414,7 @@ class CopilotAnswer:
     focus_junction: str | None
     tool_trace: list[dict]
     data: list[dict]  # {tool, result} — the figures behind the prose, for the UI
+    sources: list[str]  # real citations for the data used, not the tool names
     model: str
     degraded: bool = False
 
@@ -381,6 +425,7 @@ class CopilotAnswer:
             "focus_junction": self.focus_junction,
             "tool_trace": self.tool_trace,
             "data": self.data,
+            "sources": self.sources,
             "model": self.model,
             "degraded": self.degraded,
         }
@@ -486,6 +531,7 @@ class LiveCopilot:
             focus_junction=payload.get("focus_junction") or None,
             tool_trace=[{"tool": t["tool"], "args": t["args"]} for t in trace],
             data=[{"tool": t["tool"], "result": t["result"]} for t in trace],
+            sources=_sources_for([t["tool"] for t in trace], self.tools.centre.last_poll),
             model=MODEL,
         )
 
@@ -556,6 +602,7 @@ class LiveCopilot:
             focus_junction=None,
             tool_trace=[{"tool": tool, "args": {}}],
             data=[{"tool": tool, "result": _trim(result)}],
+            sources=_sources_for([tool], self.tools.centre.last_poll),
             model="deterministic-fallback",
             degraded=True,
         )

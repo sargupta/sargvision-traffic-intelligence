@@ -290,6 +290,9 @@ export interface CopilotAnswer {
   /** The figures behind the prose — one entry per tool the copilot ran, for the
    *  interface to render as widgets rather than leave the answer as text only. */
   data: { tool: string; result: Record<string, unknown> }[];
+  /** Real citations for the data used — computed from which tools ran, so the
+   *  reference is a fact, not something the model wrote. */
+  sources: string[];
   model: string;
   degraded: boolean;
 }

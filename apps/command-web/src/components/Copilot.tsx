@@ -281,9 +281,24 @@ export function CopilotResult({
         </button>
       )}
 
-      <p className="mt-2.5 border-t border-line pt-2 text-[length:var(--text-2xs)] text-ink-3">
+      {/* Where the figures actually come from — a citation, not just the tool. */}
+      {answer.sources?.length > 0 && (
+        <div className="mt-2.5 border-t border-line pt-2">
+          <p className="label mb-1">Sources</p>
+          <ul className="flex flex-col gap-1">
+            {answer.sources.map((src, i) => (
+              <li key={i} className="flex gap-1.5 text-[length:var(--text-2xs)] leading-relaxed text-ink-3">
+                <span aria-hidden>·</span>
+                <span>{src}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <p className="mt-2 text-[length:var(--text-2xs)] text-ink-3">
         {answer.degraded ? "Answered from the board — the model is offline. " : ""}
-        From: {answer.tools_called.join(", ")}
+        Computed by: {answer.tools_called.join(", ")}
       </p>
     </div>
   );
