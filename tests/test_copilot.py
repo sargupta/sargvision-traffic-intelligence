@@ -110,7 +110,10 @@ class TestDeterministicFallback:
         assert (
             cop.ask("which junctions are dangerous?").tool_trace[0]["tool"] == "junction_reference"
         )
-        assert cop.ask("did our deployment work?").tool_trace[0]["tool"] == "verification_summary"
+        # "deployment" routes to the deployment measurement; "did it work" with no
+        # deployment word falls to the incident-level verification summary.
+        assert cop.ask("did our deployment work?").tool_trace[0]["tool"] == "deployment_effects"
+        assert cop.ask("did it work today?").tool_trace[0]["tool"] == "verification_summary"
         assert cop.ask("what changed in the last hour?").tool_trace[0]["tool"] == "recent_changes"
 
     def test_fallback_invents_no_figure(self):

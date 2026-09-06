@@ -251,6 +251,20 @@ class LiveToolbox:
             ),
         }
 
+    def deployment_effects(self, only_active: bool = False) -> dict:
+        """Did the postings work? Each deployment's measured before/after — the
+        one question a roster and a radio cannot answer. Uses the corridor's own
+        baseline as the counterfactual and never claims cause it cannot show."""
+        c = self.centre
+        moment = self._moment()
+        deps = sorted(c.deployments.values(), key=lambda d: d.started_at, reverse=True)
+        if only_active:
+            deps = [d for d in deps if d.is_active]
+        return {
+            "count": len(deps),
+            "deployments": [d.effect(c.history, moment) for d in deps[:10]],
+        }
+
     def _resolve_corridor(self, name: str) -> str | None:
         q = name.lower()
         for cid, st in self.centre.status.items():
@@ -365,6 +379,11 @@ LIVE_SCHEMAS: list[dict] = [
         "parameters": {"type": "object", "properties": {}},
     },
     {
+        "name": "deployment_effects",
+        "description": "Whether officer postings actually moved the road: each deployment's measured before/after speed, how it compares to the corridor's own typical, and an honest verdict. Use for 'did the deployment work', 'did posting an officer help', 'did what we did at X work'. Pass only_active for postings still on the ground.",
+        "parameters": {"type": "object", "properties": {"only_active": {"type": "boolean"}}},
+    },
+    {
         "name": "corridor_history",
         "description": "How one corridor sits against ITS OWN learned history: whether now is unusual for this weekday and hour, what is typical for it here, and which way it has been drifting over recent weeks. This is the per-corridor baseline — use it for 'is this normal for a Tuesday evening', 'is this corridor getting worse', or 'is now unusual here'. Names the corridor (a road/segment name).",
         "parameters": {
@@ -396,6 +415,7 @@ Your role is narrow and you must not exceed it:
 - You never assert a CAUSE. The measurement shows that a corridor is slower than typical and by how much; it cannot show why. A cause is only ever a labelled hypothesis, or nothing.
 - Congestion and danger are different things and live in different places. The live index measures delay; the accident record (junction_reference) measures danger. Venus More is the most dangerous junction and one of the least congested — never conflate them.
 - The verification figures are WITHIN-INCIDENT readings, not proof the officer caused the change. Say so when you use them.
+- deployment_effects is the product's core question — did a posting move the road. Report its measured before/after (in km/h, which officers read) and its verdict, and carry its comparison to the corridor's own typical. A single posting is evidence, not proof; say so. Never upgrade "improved while posted" into "the officer fixed it".
 - When an officer asks what to DO about a junction — what can we try, what would help, how to fix it — call suggest_interventions. Present its candidates as actions to TEST, each with what will be measured to decide if it worked; never promise one will work. If the officer already knows the junction is slow, that is precisely the moment for this tool: the value you add is the next testable step, not restating the congestion.
 - Data freshness matters: if get_current_state shows the poll is old, the figures are the last ones that arrived, not this instant.
 - Past and present are BOTH available and you should use both when the question spans them. There are now TWO pasts, and they are not equal. historical_day_shape is the 2019 study — city-wide, seven years old, only a rough shape. corridor_history is THIS corridor's OWN learned baseline for this weekday and hour, built live from our own readings; it is the better answer to "is now unusual here" whenever it has enough observations. Prefer corridor_history for a specific corridor; fall back to historical_day_shape for the city as a whole or when the corridor has little history. Always say which past a figure came from.
@@ -453,6 +473,10 @@ def _sources_for(tools: list[str], last_poll: datetime | None) -> list[str]:
         "weekday and hour from our live observations (derived statistics; no raw Google "
         "travel-time is stored)."
     )
+    deploy = (
+        "SARGVISION deployment record — officer postings logged on this system, with the "
+        "corridor's own before/after speed measured across the posting."
+    )
     live_tools = {
         "get_current_state",
         "list_incidents",
@@ -463,14 +487,16 @@ def _sources_for(tools: list[str], last_poll: datetime | None) -> list[str]:
         "verification_summary",
         "suggest_interventions",
         "corridor_history",
+        "deployment_effects",
     }
     junction_ref_tools = {"junction_reference", "suggest_interventions"}
     log_tools = {"list_incidents", "recent_changes", "get_incident", "verification_summary"}
-    learned_tools = {"corridor_history", "corridor_forecast"}
+    learned_tools = {"corridor_history", "corridor_forecast", "deployment_effects"}
     out: list[str] = []
     for src, hit in (
         (live, any(t in live_tools for t in tools)),
         (log, any(t in log_tools for t in tools)),
+        (deploy, "deployment_effects" in tools),
         (learned, any(t in learned_tools for t in tools)),
         (study_2019, "historical_day_shape" in tools),
         (junction_ref, any(t in junction_ref_tools for t in tools)),
@@ -728,6 +754,10 @@ class LiveCopilot:
             )
         ):
             result, tool = self.tools.data_confidence(), "data_confidence"
+        elif any(
+            w in q for w in ("deployment", "posting", "posted", "did the officer", "did we help")
+        ):
+            result, tool = self.tools.deployment_effects(), "deployment_effects"
         elif any(w in q for w in ("verif", "work", "effect", "did it", "resolve", "clear")):
             result, tool = self.tools.verification_summary(), "verification_summary"
         elif any(w in q for w in ("chang", "happen", "last hour", "recent")):

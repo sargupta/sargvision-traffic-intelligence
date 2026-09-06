@@ -279,6 +279,81 @@ export async function act(
   return payload as Incident;
 }
 
+/** The measured effect of one deployment — the product's core answer: did the
+ *  posting move the road, and by how much. */
+export interface DeploymentEffect {
+  deployment_id: string;
+  location: string;
+  unit: string;
+  purpose: string;
+  active: boolean;
+  minutes_posted: number;
+  before_speed_kmh: number | null;
+  during_speed_kmh: number | null;
+  delta_speed_kmh: number | null;
+  before_index: number | null;
+  during_index: number | null;
+  delta_index: number | null;
+  typical_index: number | null;
+  vs_typical: string | null;
+  verdict: string;
+  confidence: "good" | "fair" | "low";
+  samples: { before: number; during: number };
+  limitation: string;
+}
+
+export interface Deployment {
+  deployment_id: string;
+  corridor_ids: string[];
+  primary_corridor_id: string;
+  location_name: string;
+  by: string;
+  unit: string;
+  purpose: string;
+  started_at: string;
+  ended_at: string | null;
+  incident_id: string | null;
+  note: string | null;
+  effect: DeploymentEffect;
+}
+
+export const getDeployments = (active?: boolean) =>
+  get<{ count: number; deployments: Deployment[]; store: Record<string, unknown> }>(
+    `/api/deployments${active === undefined ? "" : `?active=${active}`}`,
+  );
+
+/** Log an officer posted to a road and begin measuring the effect. Write-gated. */
+export async function startDeployment(body: {
+  corridor_ids?: string[];
+  junction_id?: string;
+  unit: string;
+  purpose: string;
+  note?: string;
+  incident_id?: string;
+  by?: string;
+}): Promise<Deployment> {
+  const token = getToken();
+  const r = await fetch(`${API}/api/deployments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(body),
+  });
+  const payload = await r.json().catch(() => ({}));
+  if (!r.ok) throw new ActionError(r.status, payload?.detail ?? `posting failed (${r.status})`);
+  return payload as Deployment;
+}
+
+export async function endDeployment(deploymentId: string): Promise<Deployment> {
+  const token = getToken();
+  const r = await fetch(`${API}/api/deployments/${deploymentId}/end`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  const payload = await r.json().catch(() => ({}));
+  if (!r.ok) throw new ActionError(r.status, payload?.detail ?? `end failed (${r.status})`);
+  return payload as Deployment;
+}
+
 /** A field officer raises an incident the system cannot see. Same write gate as
  *  any action — a report is a police record. */
 export async function raiseFieldReport(body: {

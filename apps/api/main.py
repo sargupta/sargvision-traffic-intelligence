@@ -34,6 +34,7 @@ from packages.incidents.model import TRANSITIONS, IncidentState, Priority
 from packages.incidents.store import build_store
 from packages.network.model import load_network
 from packages.network.probe import RoutesProbe
+from packages.verification.store import build_deployment_store
 
 CURATED = Path("data/curated")
 ROSTER = json.loads((CURATED / "roster.json").read_text())
@@ -190,6 +191,7 @@ async def lifespan(app: FastAPI):
             probe=RoutesProbe(key),
             store=build_store(),
             history_store=build_history_store(),
+            deployment_store=build_deployment_store(),
         )
         STATE["started_at"] = now()
         task = asyncio.create_task(_drive())
@@ -522,6 +524,91 @@ def history_coverage() -> dict:
         "store": c.history_store.describe(),
         "learning_since_boot_cycles": c.cycles,
     }
+
+
+# ── deployments (verification) ─────────────────────────────────────────────────
+class DeployRequest(BaseModel):
+    corridor_ids: list[str] = Field(default_factory=list)
+    junction_id: str | None = Field(default=None, max_length=80)
+    unit: str = Field(min_length=1, max_length=80)
+    purpose: str = Field(min_length=2, max_length=200)
+    note: str | None = Field(default=None, max_length=1000)
+    incident_id: str | None = Field(default=None, max_length=80)
+    by: str | None = Field(default=None, min_length=2, max_length=80)
+
+
+@app.post("/api/deployments")
+def start_deployment(
+    payload: DeployRequest = Body(...),
+    authorization: str | None = Header(default=None),
+) -> dict:
+    """Log an officer posted to a road, and begin measuring its effect. Posting
+    is a police action, so it is write-gated and attributed like any other."""
+    identified = require_write_access(authorization)
+    by = identified or payload.by
+    if not by:
+        raise HTTPException(422, "who is posting this? `by` is required")
+
+    c = centre()
+    corridor_ids = list(payload.corridor_ids)
+    if payload.junction_id:
+        corridor_ids += [cr.corridor_id for cr in c.network.corridors_at(payload.junction_id)]
+    corridor_ids = list(dict.fromkeys(corridor_ids))  # de-dup, keep order
+    if not corridor_ids:
+        raise HTTPException(422, "give corridor_ids or a junction_id to post to")
+
+    try:
+        dep = c.start_deployment(
+            corridor_ids=corridor_ids,
+            by=by,
+            unit=payload.unit,
+            purpose=payload.purpose,
+            now=now(),
+            incident_id=payload.incident_id,
+            note=payload.note,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return dep.as_dict(c.history, c.last_poll or now())
+
+
+@app.post("/api/deployments/{deployment_id}/end")
+def end_deployment(
+    deployment_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    require_write_access(authorization)
+    c = centre()
+    dep = c.end_deployment(deployment_id, now())
+    if dep is None:
+        raise HTTPException(404, f"no deployment {deployment_id}")
+    return dep.as_dict(c.history, c.last_poll or now())
+
+
+@app.get("/api/deployments")
+def list_deployments(active: bool | None = Query(default=None)) -> dict:
+    """Every posting and its measured effect — the verification record. This is
+    the answer to 'did what we did actually work', which no roster or radio can
+    give."""
+    c = centre()
+    moment = c.last_poll or now()
+    deps = sorted(c.deployments.values(), key=lambda d: d.started_at, reverse=True)
+    if active is not None:
+        deps = [d for d in deps if d.is_active == active]
+    return {
+        "count": len(deps),
+        "deployments": [d.as_dict(c.history, moment) for d in deps],
+        "store": c.deployment_store.describe(),
+    }
+
+
+@app.get("/api/deployments/{deployment_id}")
+def get_deployment(deployment_id: str) -> dict:
+    c = centre()
+    dep = c.deployments.get(deployment_id)
+    if dep is None:
+        raise HTTPException(404, f"no deployment {deployment_id}")
+    return dep.as_dict(c.history, c.last_poll or now())
 
 
 @app.get("/api/city-profile")

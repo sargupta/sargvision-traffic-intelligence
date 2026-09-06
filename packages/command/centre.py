@@ -17,6 +17,7 @@ freely; at the cap, a new condition must outrank something already there.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import threading
 from collections import deque
@@ -36,6 +37,11 @@ from packages.incidents.model import (
 from packages.incidents.store import IncidentStore, MemoryStore
 from packages.network.model import Network
 from packages.network.probe import CorridorReading, RoutesProbe
+from packages.verification.deployment import Deployment, DeploySample, deployment_id
+from packages.verification.store import (
+    DeploymentStore,
+    MemoryDeploymentStore,
+)
 
 # The corridor memory learns on every cycle but matters over weeks; flushing the
 # touched corridors this often trades minutes of at-most-lost aggregation for a
@@ -300,8 +306,10 @@ class CommandCentre:
     confirm_after: timedelta = CONFIRM_AFTER
     store: IncidentStore = field(default_factory=MemoryStore)
     history_store: HistoryStore = field(default_factory=MemoryHistoryStore)
+    deployment_store: DeploymentStore = field(default_factory=MemoryDeploymentStore)
     status: dict[str, CorridorStatus] = field(default_factory=dict)
     incidents: dict[str, Incident] = field(default_factory=dict)
+    deployments: dict[str, Deployment] = field(default_factory=dict)
     history: ObservationHistory = field(default_factory=ObservationHistory)
     _history_dirty: set[str] = field(default_factory=set)
     cycles: int = 0
@@ -347,9 +355,96 @@ class CommandCentre:
         if loaded.corridors:
             self.history = loaded
 
+        # Resume deployments so an active posting keeps being measured across a
+        # restart, and its record is not lost.
+        for dep in self.deployment_store.load_recent():
+            self.deployments[dep.deployment_id] = dep
+
     def remember(self, incident: Incident) -> None:
         """Persist one incident. Called after every change an officer makes."""
         self.store.save(incident)
+
+    # ── deployments (verification) ─────────────────────────────────────────────
+    def _remember_deployment(self, dep: Deployment) -> None:
+        # Persistence must never break the poll loop; the record stays in memory.
+        with contextlib.suppress(Exception):
+            self.deployment_store.save(dep)
+
+    def _worst_deploy_sample(self, corridor_ids: list[str], at: datetime) -> DeploySample | None:
+        """The worst (slowest) condition across a deployment's corridors, now."""
+        worst: tuple[float, float, str] | None = None
+        for cid in corridor_ids:
+            st = self.status.get(cid)
+            if st is None or st.latest is None or st.speed_kmh is None:
+                continue
+            sp = st.speed_kmh
+            if worst is None or sp < worst[0]:
+                worst = (sp, st.index if st.index is not None else 1.0, st.band)
+        if worst is None:
+            return None
+        return DeploySample(at=at, speed_kmh=worst[0], index=worst[1], band=worst[2])
+
+    def start_deployment(
+        self,
+        corridor_ids: list[str],
+        by: str,
+        unit: str,
+        purpose: str,
+        now: datetime,
+        incident_id: str | None = None,
+        note: str | None = None,
+    ) -> Deployment:
+        """Log an officer posted to a road, and begin measuring its effect. The
+        'before' is seeded from the target's readings already taken, all of which
+        pre-date the posting."""
+        with self.lock:
+            valid = [c for c in corridor_ids if c in self.status]
+            if not valid:
+                raise ValueError("no known corridor to post to")
+
+            # Primary = the corridor that is worst (slowest) right now; the
+            # baseline and location are read from it.
+            def _speed(cid: str) -> float:
+                st = self.status[cid]
+                return st.speed_kmh if st.speed_kmh is not None else 999.0
+
+            primary = min(valid, key=_speed)
+            pst = self.status[primary]
+            dep = Deployment(
+                deployment_id=deployment_id(primary, now),
+                corridor_ids=valid,
+                primary_corridor_id=primary,
+                location_name=pst.name,
+                by=by,
+                unit=unit,
+                purpose=purpose,
+                started_at=now,
+                incident_id=incident_id,
+                note=note,
+            )
+            # Seed the before-window from the primary corridor's recent readings.
+            for r in list(pst.readings)[-3:]:
+                band = self.thresholds.band(r.congestion_index, r.excess_minutes)
+                dep.before.append(
+                    DeploySample(
+                        at=r.observed_at,
+                        speed_kmh=r.mean_speed_kmh,
+                        index=r.congestion_index,
+                        band=band,
+                    )
+                )
+            self.deployments[dep.deployment_id] = dep
+            self._remember_deployment(dep)
+            return dep
+
+    def end_deployment(self, dep_id: str, now: datetime) -> Deployment | None:
+        with self.lock:
+            dep = self.deployments.get(dep_id)
+            if dep is None:
+                return None
+            dep.ended_at = now
+            self._remember_deployment(dep)
+            return dep
 
     def _flush_history(self, force: bool = False) -> None:
         """Persist the corridors whose memory changed, on a cadence. A failed
@@ -577,6 +672,17 @@ class CommandCentre:
                 self.sample_incident(incident, now)
                 if len(incident.samples) > before:  # a genuinely new reading
                     self.remember(incident)
+
+            # Measure every active deployment: the worst condition across its
+            # corridors, now. This is the "during" series the before/after is
+            # read from — the whole point of the deployment record.
+            for dep in self.deployments.values():
+                if not dep.is_active:
+                    continue
+                sample = self._worst_deploy_sample(dep.corridor_ids, now)
+                if sample is not None:
+                    dep.record(sample)
+                    self._remember_deployment(dep)
 
         return {
             "at": now.isoformat(timespec="seconds"),

@@ -227,6 +227,44 @@ function ToolWidget({ tool, result }: { tool: string; result: Row }) {
       );
     }
 
+    case "deployment_effects": {
+      const ds = rows(result.deployments);
+      if (!ds.length) return <p className="text-[length:var(--text-sm)] text-ink-3">No postings logged yet.</p>;
+      return (
+        <ul className="flex flex-col gap-2">
+          {ds.map((d, i) => {
+            const bs = n(d.before_speed_kmh);
+            const ds2 = n(d.during_speed_kmh);
+            const verdict = s(d.verdict);
+            const good = verdict.includes("beat this road") || verdict.startsWith("improved");
+            const bad = verdict.startsWith("worse");
+            return (
+              <li key={i} className="rounded-md border border-line bg-surface p-2.5">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-[length:var(--text-sm)] font-semibold">{s(d.location)}</span>
+                  <span
+                    className="text-[length:var(--text-2xs)] font-semibold"
+                    style={{ color: good ? "var(--color-ok)" : bad ? "var(--color-sev)" : "var(--color-ink-2)" }}
+                  >
+                    {verdict}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[length:var(--text-2xs)] text-ink-3">
+                  {s(d.unit)} · {s(d.purpose)}{d.active ? " · on the ground" : ""}
+                </p>
+                {bs != null && ds2 != null && (
+                  <p className="tnum mt-1 text-[length:var(--text-sm)]">
+                    {bs.toFixed(0)} → {ds2.toFixed(0)} km/h
+                    {s(d.vs_typical) ? <span className="ml-2 text-[length:var(--text-2xs)] text-ink-3">({s(d.vs_typical)})</span> : null}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      );
+    }
+
     case "corridor_history": {
       if (result.error) return <p className="text-[length:var(--text-sm)] text-ink-3">{s(result.error)}</p>;
       const vb = (result.vs_baseline ?? {}) as Row;
@@ -344,6 +382,7 @@ const TOOL_LABEL: Record<string, string> = {
   suggest_interventions: "Interventions to test",
   corridor_history: "This corridor's own history",
   corridor_forecast: "Next few hours (baseline)",
+  deployment_effects: "Did the postings work",
 };
 
 export function CopilotResult({
