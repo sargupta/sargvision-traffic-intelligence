@@ -28,7 +28,14 @@ env:
   REGION: asia-south1
   REGISTRY: asia-south1-docker.pkg.dev/sargvision-traffic-intel/web
   API_URL: https://traffic-api-937908328857.asia-south1.run.app
-  WEB_URL: https://siliguri-command-937908328857.asia-south1.run.app
+  WEB_URL: https://siliguri-command-w7bjsvrxla-el.a.run.app
+  # Cloud Run serves the web app under BOTH its new canonical URL
+  # (siliguri-command-w7bjsvrxla-el.a.run.app) and the legacy project-number URL;
+  # officers may open either, and the browser sends whichever as the Origin. Miss
+  # one and every API call is blocked by CORS with no header. Kept OUT of
+  # RUNTIME_ENV because the value's comma would be mangled by the ^@^ delimiter
+  # substitution — it is appended to --set-env-vars separately, like the tokens.
+  CORS_ORIGINS: https://siliguri-command-w7bjsvrxla-el.a.run.app,https://siliguri-command-937908328857.asia-south1.run.app
 
   # The COMPLETE runtime environment, declared here rather than accumulated by
   # hand on the service. --set-env-vars REPLACES the environment, so a partial
@@ -40,7 +47,7 @@ env:
   # copilot's Vertex calls — which carry live incident text and officer context —
   # in the Mumbai region rather than shipping Indian police data to a US region.
   RUNTIME_ENV: >-
-    INCIDENT_STORE=firestore,HISTORY_STORE=firestore,GOOGLE_CLOUD_PROJECT=sargvision-traffic-intel,GOOGLE_CLOUD_LOCATION=asia-south1,CORS_ORIGINS=https://siliguri-command-937908328857.asia-south1.run.app,POLL_SECONDS=180,CONFIRM_MINUTES=8,LAPSE_MINUTES=20
+    INCIDENT_STORE=firestore,HISTORY_STORE=firestore,GOOGLE_CLOUD_PROJECT=sargvision-traffic-intel,GOOGLE_CLOUD_LOCATION=asia-south1,POLL_SECONDS=180,CONFIRM_MINUTES=8,LAPSE_MINUTES=20
 
   # Reads are open; recording an action is not. Without this the API refuses
   # every write with a 503 that says so, which is the safe failure — an
@@ -188,7 +195,7 @@ jobs:
             --timeout=3600 \
             --cpu=2 \
             --memory=1Gi \
-            --set-env-vars="^@^${RUNTIME_ENV//,/@}@WRITE_TOKEN=${WRITE_TOKEN}@OFFICER_TOKENS=${OFFICER_TOKENS}" \
+            --set-env-vars="^@^${RUNTIME_ENV//,/@}@CORS_ORIGINS=${CORS_ORIGINS}@WRITE_TOKEN=${WRITE_TOKEN}@OFFICER_TOKENS=${OFFICER_TOKENS}" \
             --quiet
           # A previous rollback pins traffic to a named revision, and Cloud Run
           # then stops migrating to the latest. Without this, one bad deploy
