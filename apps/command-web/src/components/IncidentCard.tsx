@@ -77,7 +77,7 @@ export function IncidentCard({
     run(ACTION_PATH[next], {});
   }
 
-  const onDuty = roster.filter((o) => o.on_duty && o.role !== "DUTY_OFFICER");
+  const onDuty = roster.filter((o) => (o.on_duty ?? true) && o.role !== "DUTY_OFFICER");
 
   // The action bar sits below the evidence, which on a 768px screen is off the
   // bottom of the card. Whatever the single most useful next step is, it also

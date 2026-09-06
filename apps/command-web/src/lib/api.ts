@@ -142,6 +142,19 @@ export interface Board {
   at: string;
   cycle: number;
   is_live: boolean;
+  /** Server-authoritative freshness: LIVE / STALE / WARMING, from when data last
+   *  arrived — not when the poll loop last ran. */
+  data_state?: "LIVE" | "STALE" | "WARMING";
+  feed?: {
+    state: string;
+    is_live: boolean;
+    last_read_ok: string | null;
+    read_age_seconds: number | null;
+    reads_last_cycle: number;
+    consecutive_read_failures: number;
+    corridors_observed: number;
+    corridors_total: number;
+  };
   bands: Partial<Record<Band, number>>;
   headline: string;
   alert_budget: number;
@@ -178,7 +191,10 @@ export interface NetworkPayload {
 
 export interface Officer {
   officer_id: string; name: string; rank: string;
-  role: string; unit: string; on_duty: boolean;
+  role: string; unit: string;
+  /** Optional: the roster endpoint omits off-duty units rather than flagging
+   *  them, so a served officer is assignable. Undefined means available. */
+  on_duty?: boolean;
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -329,8 +345,51 @@ export const getIncident = (id: string) => get<Incident>(`/api/incidents/${id}`)
 export const getHandover = (hours = 8) =>
   get<HandoverPayload>(`/api/shift/handover?hours=${hours}`);
 export const getCorridor = (id: string) => get<CorridorDetail>(`/api/corridors/${id}`);
+export const getCorridorHistory = (id: string, days = 30) =>
+  get<CorridorHistory>(`/api/corridors/${id}/history?days=${days}`);
 export const getCityProfile = (dayType = "WEEKDAY") =>
   get<CityProfile>(`/api/city-profile?day_type=${dayType}`);
+
+/** This corridor's OWN learned history — derived aggregates only, never raw
+ *  readings. The per-corridor baseline the 2019 city study could not give. */
+export interface CorridorHistory {
+  corridor_id: string;
+  name: string;
+  live_index: number | null;
+  live_band: Band;
+  vs_baseline: {
+    verdict: string;
+    z_score?: number;
+    confidence?: string;
+    caveat?: string;
+    when?: { weekday: string; hour: number };
+    baseline?: { n: number; p50: number | null; p85: number | null; mean: number | null } | null;
+  } | null;
+  typical_today: {
+    weekday: string;
+    hours: { hour: number; p50: number | null; p85: number | null; n: number }[];
+    worst_hours: { hour: number; p85: number | null }[];
+    observations: number;
+    caveat: string;
+  } | null;
+  trend: {
+    direction: string;
+    drift: number | null;
+    days_observed: number;
+    series: { date: string; mean: number | null; peak: number | null; hours_congested: number }[];
+    caveat: string;
+  } | null;
+  forecast: {
+    from_hour: number;
+    trend_nudge: number;
+    steps: { hour: number; weekday: string; expected: number | null; band?: (number | null)[]; n: number }[];
+    caveat: string;
+  } | null;
+  timeline: {
+    days: { date: string; n: number; mean: number | null; peak: number | null; hours_congested: number }[];
+  } | null;
+  source: string;
+}
 
 export interface CityProfile {
   day_type: string;

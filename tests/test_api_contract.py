@@ -105,7 +105,13 @@ class TestOperationalSecurity:
 
     def test_roster_does_not_leak_duty_state(self, client):
         body = client.get("/api/roster").json()
-        assert all(o["on_duty"] for o in body["officers"]), "duty state must not be public"
+        # Duty state is not published at all — off-duty units are OMITTED, not
+        # flagged. So no served officer carries a duty field, and none can be a
+        # unit the roster marks off-duty.
+        assert all("on_duty" not in o for o in body["officers"]), "duty state must not be public"
+        assert all(o["officer_id"] != "TG-4" for o in body["officers"]), (
+            "an off-duty unit must not be offered as assignable"
+        )
 
     def test_the_browser_preflight_permits_the_officer_token(self, client):
         """A curl-only smoke test cannot see this one.

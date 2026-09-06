@@ -22,12 +22,19 @@ export function Chrome({
   cycle,
   officer,
   pollSeconds,
+  dataState,
+  readAgeSeconds,
 }: {
   at?: string;
   connected: boolean;
   cycle?: number;
   officer: string;
   pollSeconds?: number;
+  /** The server's authoritative freshness verdict — LIVE / STALE / WARMING —
+   *  derived from when DATA last arrived, not when the loop last ran. */
+  dataState?: string;
+  /** Seconds since the last successful read, per the server. */
+  readAgeSeconds?: number | null;
 }) {
   const path = usePathname();
 
@@ -43,11 +50,28 @@ export function Chrome({
     return () => clearInterval(id);
   }, []);
 
-  const ageSeconds =
+  // Age is measured from when data last ARRIVED, not from when the loop last
+  // ran. The server sends read_age_seconds for exactly this; fall back to the
+  // board timestamp only if it is absent (older server), and even then this is a
+  // backstop, not the source of truth.
+  const clientAge =
     at && nowMs !== null ? Math.max(0, (nowMs - new Date(at).getTime()) / 1000) : null;
+  const ageSeconds = readAgeSeconds ?? clientAge;
   const staleAfter = (pollSeconds ?? 180) * 1.5;
-  const stale = ageSeconds !== null && ageSeconds > staleAfter;
-  const state = !connected ? "OFFLINE" : stale ? "STALE" : "LIVE";
+  const clientStale = ageSeconds !== null && ageSeconds > staleAfter;
+
+  // The server's verdict wins. It knows the feed failed; the client only sees a
+  // timestamp. A STALE/WARMING from the server is honoured even if the clock
+  // looks fresh, and the client staleness check remains as a backstop.
+  const state = !connected
+    ? "OFFLINE"
+    : dataState === "STALE"
+      ? "STALE"
+      : dataState === "WARMING"
+        ? "WARMING"
+        : clientStale
+          ? "STALE"
+          : "LIVE";
 
   const ageLabel =
     ageSeconds === null
@@ -93,18 +117,32 @@ export function Chrome({
               state === "OFFLINE"
                 ? "Not receiving updates — these figures are the last ones that arrived"
                 : state === "STALE"
-                  ? `The last reading is older than ${Math.round(staleAfter / 60)} minutes`
-                  : "Receiving updates"
+                  ? "The live feed has stopped delivering data — these are the last readings that arrived"
+                  : state === "WARMING"
+                    ? "Warming up — the collector has not completed a full read yet"
+                    : "Receiving live data"
             }
           >
             <span
               aria-hidden
               className={`h-2 w-2 rounded-full ${
-                state === "LIVE" ? "bg-emerald-400" : state === "STALE" ? "bg-amber-400" : "bg-red-400"
+                state === "LIVE"
+                  ? "bg-emerald-400"
+                  : state === "WARMING"
+                    ? "bg-sky-400"
+                    : state === "STALE"
+                      ? "bg-amber-400"
+                      : "bg-red-400"
               }`}
             />
             <span className="text-[length:var(--text-2xs)] font-semibold uppercase tracking-[0.08em] text-white/80">
-              {state === "LIVE" ? "Live" : state === "STALE" ? "Stale" : "Not updating"}
+              {state === "LIVE"
+                ? "Live"
+                : state === "WARMING"
+                  ? "Warming"
+                  : state === "STALE"
+                    ? "Stale"
+                    : "Not updating"}
             </span>
           </span>
 

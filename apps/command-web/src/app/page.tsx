@@ -152,6 +152,8 @@ export default function Board() {
         cycle={board?.cycle}
         officer="Duty Officer"
         pollSeconds={board?.poll_seconds}
+        dataState={board?.data_state}
+        readAgeSeconds={board?.feed?.read_age_seconds}
       />
 
       {/* The page does not scroll. Three regions scroll inside themselves, so

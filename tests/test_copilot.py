@@ -133,6 +133,61 @@ class TestPastAndPresentTools:
         assert "coverage_pct" in d and "poll_age_minutes" in d and "caveat" in d
 
 
+class TestInterventions:
+    """The recommender proposes candidates to TEST — never asserts a fix, and
+    always names what it will measure."""
+
+    def test_named_junction_is_profiled(self):
+        r = _box().suggest_interventions("Venus")
+        assert r["junction"] == "Venus More"
+        assert r["interventions"]
+
+    def test_unknown_junction_is_an_error_not_a_crash(self):
+        assert "error" in _box().suggest_interventions("Nowhere Junction ZZZ")
+
+    def test_every_candidate_names_a_measurement(self):
+        for iv in _box().suggest_interventions("Venus")["interventions"]:
+            assert iv["action"] and iv["measure"]  # what to do AND how we'll know
+
+    def test_dangerous_junction_leads_with_safety_not_congestion(self):
+        # Venus More is the accident leader and one of the LEAST congested — the
+        # recommender must not treat it as a delay problem.
+        top = _box().suggest_interventions("Venus")["interventions"][0]
+        assert "afety" in top["action"] or "nforcement" in top["action"]
+        assert "danger" in top["caveat"].lower() or "delay" in top["caveat"].lower()
+
+    def test_no_junction_named_picks_the_worst_live_one(self):
+        r = _box().suggest_interventions()
+        assert r["junction"] and r["interventions"]
+
+
+class TestInterventionRouting:
+    def _forced_fallback(self):
+        cop = LiveCopilot(_box())
+        cop._ask_model = lambda q: (_ for _ in ()).throw(RuntimeError("no model"))
+        return cop
+
+    def test_what_can_we_try_routes_to_interventions(self):
+        cop = self._forced_fallback()
+        for q in (
+            "what can we try at the worst junction?",
+            "what's the solution here?",
+            "how do we fix this junction?",
+            "recommend an intervention",
+        ):
+            assert cop.ask(q).tool_trace[0]["tool"] == "suggest_interventions", q
+
+    def test_named_junction_in_the_question_is_used(self):
+        a = self._forced_fallback().ask("what can we try to fix Venus More?").as_dict()
+        assert a["data"][0]["result"]["junction"] == "Venus More"
+
+    def test_intervention_answer_cites_live_and_the_records(self):
+        srcs = self._forced_fallback().ask("what interventions can we test?").as_dict()["sources"]
+        joined = " ".join(srcs)
+        assert "Google Maps Routes" in joined  # live index basis
+        assert "Comprehensive Mobility Plan 2011" in joined or "Roy, Mohammadi" in joined
+
+
 class TestAnswerCarriesData:
     def _forced_fallback(self):
         cop = LiveCopilot(_box())

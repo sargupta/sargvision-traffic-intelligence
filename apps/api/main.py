@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field
 
 from packages.command.advice import recommend
 from packages.command.centre import CommandCentre
+from packages.history.store import build_history_store
 from packages.incidents.model import TRANSITIONS, IncidentState, Priority
 from packages.incidents.store import build_store
 from packages.network.model import load_network
@@ -185,7 +186,10 @@ async def lifespan(app: FastAPI):
         if not key:
             raise RuntimeError("ROUTES_API_KEY is required — the board has no data without it")
         STATE["centre"] = CommandCentre(
-            network=load_network(), probe=RoutesProbe(key), store=build_store()
+            network=load_network(),
+            probe=RoutesProbe(key),
+            store=build_store(),
+            history_store=build_history_store(),
         )
         STATE["started_at"] = now()
         task = asyncio.create_task(_drive())
@@ -340,11 +344,23 @@ app.add_middleware(
 @app.get("/health")
 def health() -> dict:
     c = STATE["centre"]
+    feed = c.feed_health() if c else None
+    # A liveness signal a probe can act on: the process being up is not enough if
+    # the Google feed behind it has gone dark. ok stays true (the API is serving),
+    # but feed_ok flips so an uptime check / alert can fire on a stale feed even
+    # while the container is healthy.
     return {
         "ok": c is not None,
+        "feed_ok": feed["is_live"] if feed else False,
+        "data_state": feed["state"] if feed else "DOWN",
+        "feed": feed,
         "store": c.store.describe() if c else None,
+        "history_store": c.history_store.describe() if c else None,
         "cycles": c.cycles if c else 0,
         "last_poll": c.last_poll.isoformat(timespec="seconds") if c and c.last_poll else None,
+        "last_read_ok": c.last_read_ok.isoformat(timespec="seconds")
+        if c and c.last_read_ok
+        else None,
         "poll_seconds": POLL_SECONDS,
         "started_at": STATE["started_at"].isoformat(timespec="seconds")
         if STATE["started_at"]
@@ -461,6 +477,53 @@ def corridor(corridor_id: str) -> dict:
     }
 
 
+@app.get("/api/corridors/{corridor_id}/history")
+def corridor_history(corridor_id: str, days: int = Query(30)) -> dict:
+    """This corridor's OWN learned history — the per-corridor baseline the 2019
+    city study could never give.
+
+    Everything here is derived: a histogram of our congestion index by weekday
+    and hour, and coarse daily rollups. No raw travel-time reading is stored, so
+    it stays within the Maps terms exactly as the incident store does.
+    """
+    c = centre()
+    status = c.status.get(corridor_id)
+    if status is None:
+        raise HTTPException(404, f"no corridor {corridor_id}")
+    moment = c.last_poll or now()
+    h = c.history
+    vs_baseline = None
+    if status.index is not None:
+        vs_baseline = h.now_vs_baseline(corridor_id, moment, status.index)
+    return {
+        "corridor_id": corridor_id,
+        "name": status.name,
+        "live_index": round(status.index, 3) if status.index is not None else None,
+        "live_band": status.band,
+        "vs_baseline": vs_baseline,
+        "typical_today": h.day_profile(corridor_id, moment.weekday()),
+        "trend": h.trend(corridor_id),
+        "forecast": h.forecast(corridor_id, moment),
+        "timeline": h.timeline(corridor_id, days),
+        "source": (
+            "SARGVISION corridor baseline — this corridor's own index aggregated by weekday "
+            "and hour from our live observations. Derived statistics only; no raw Google data."
+        ),
+    }
+
+
+@app.get("/api/history")
+def history_coverage() -> dict:
+    """How much the corridor memory has learned so far, and what it does and does
+    not store — the compliance boundary, stated on the wire."""
+    c = centre()
+    return {
+        **c.history.coverage(),
+        "store": c.history_store.describe(),
+        "learning_since_boot_cycles": c.cycles,
+    }
+
+
 @app.get("/api/city-profile")
 def city_profile(day_type: str = Query("WEEKDAY")) -> dict:
     """The city's shape of the day, from the 2019 study.
@@ -516,6 +579,10 @@ def roster() -> dict:
     only what the assignment control genuinely needs: a unit to send. Restoring
     names and duty state is gated on auth, not on a flag.
     """
+    # Off-duty units are FILTERED OUT rather than shown with a status flag: an
+    # off-shift guard must not be offered for assignment (the bug), and their
+    # duty state must not be published either (the security posture). Dropping
+    # them satisfies both — the list is only who can actually be sent right now.
     return {
         "officers": [
             {
@@ -524,14 +591,13 @@ def roster() -> dict:
                 "rank": o["rank"],
                 "role": o["role"],
                 "unit": o["unit"],
-                "on_duty": True,
             }
             for o in ROSTER
-            if o["role"] != "DUTY_OFFICER"
+            if o["role"] != "DUTY_OFFICER" and o.get("on_duty", True)
         ],
         "note": (
-            "Officer names and duty status require authentication and are not "
-            "served here. Assignment is to a unit."
+            "Assignable units only — off-duty units are omitted, not marked. Officer "
+            "names and duty status require authentication and are not served here."
         ),
     }
 
