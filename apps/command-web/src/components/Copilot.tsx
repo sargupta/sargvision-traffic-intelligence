@@ -188,16 +188,24 @@ function ToolWidget({ tool, result }: { tool: string; result: Row }) {
         <div className="flex flex-col gap-2">
           <p className="text-[length:var(--text-2xs)] text-ink-3">
             {s(result.junction)}
-            {p.live_worst_band ? <> · now <span className="font-medium">{s(p.live_worst_band).toLowerCase()}</span></> : null}
-            {n(p.live_worst_index) != null ? <> (index {(p.live_worst_index as number).toFixed(2)})</> : null}
-            {p.safety ? <span className="ml-1.5" style={{ color: "var(--color-sev)" }}>· {s(p.safety)}</span> : null}
+            {n(p.vc_ratio_2011) != null ? <> · V/C {(p.vc_ratio_2011 as number).toFixed(2)} (2011)</> : null}
+            {p.live_worst_speed_kmh != null ? <> · now <span className="font-medium">{n(p.live_worst_speed_kmh)?.toFixed(0)} km/h</span></> : null}
+            {p.safety_note ? <span className="ml-1.5" style={{ color: "var(--color-sev)" }}>· {s(p.safety_note)}</span> : null}
           </p>
           <ol className="flex flex-col gap-2">
             {iv.map((r, i) => (
               <li key={i} className="rounded-md border border-line bg-surface p-2.5">
                 <div className="flex items-baseline gap-1.5">
                   <span className="tnum text-[length:var(--text-2xs)] font-semibold text-ink-3">{i + 1}</span>
-                  <p className="text-[length:var(--text-sm)] font-semibold leading-snug text-ink">{s(r.action)}</p>
+                  <p className="flex-1 text-[length:var(--text-sm)] font-semibold leading-snug text-ink">{s(r.action)}</p>
+                  {s(r.grade) && s(r.grade) !== "—" ? (
+                    <span
+                      className="shrink-0 rounded bg-sunken px-1.5 py-0.5 text-[length:var(--text-2xs)] font-semibold text-ink-2"
+                      title="Evidence grade: A peer-reviewed independent … E projection presented as a result"
+                    >
+                      {s(r.grade)}
+                    </span>
+                  ) : null}
                 </div>
                 <dl className="mt-1.5 grid gap-x-4 gap-y-1 sm:grid-cols-2">
                   {([
@@ -219,9 +227,19 @@ function ToolWidget({ tool, result }: { tool: string; result: Row }) {
                     <span className="label" style={{ color: "var(--color-copper)" }}>Risk</span> {s(r.caveat)}
                   </p>
                 ) : null}
+                {r.do_not_claim ? (
+                  <p className="mt-1 text-[length:var(--text-2xs)] leading-relaxed" style={{ color: "var(--color-sev)" }}>
+                    <span className="label" style={{ color: "var(--color-sev)" }}>Don&rsquo;t claim</span> {s(r.do_not_claim)}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ol>
+          {s(result.probe_caveat) ? (
+            <p className="text-[length:var(--text-2xs)] leading-relaxed text-ink-3">
+              <span className="label">Data caveat</span> {s(result.probe_caveat)}
+            </p>
+          ) : null}
           <p className="text-[length:var(--text-2xs)] leading-relaxed text-ink-3">{s(result.basis)}</p>
         </div>
       );

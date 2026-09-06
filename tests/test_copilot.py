@@ -148,20 +148,33 @@ class TestInterventions:
     def test_unknown_junction_is_an_error_not_a_crash(self):
         assert "error" in _box().suggest_interventions("Nowhere Junction ZZZ")
 
-    def test_every_candidate_names_a_measurement(self):
+    def test_every_candidate_is_evidence_graded_and_measurable(self):
         for iv in _box().suggest_interventions("Venus")["interventions"]:
-            assert iv["action"] and iv["measure"]  # what to do AND how we'll know
+            # what to do, its evidence grade, how we'll measure, and what NOT to claim
+            assert iv["action"] and iv["grade"] and iv["measure"] and iv["do_not_claim"]
 
     def test_dangerous_junction_leads_with_safety_not_congestion(self):
         # Venus More is the accident leader and one of the LEAST congested — the
-        # recommender must not treat it as a delay problem.
-        top = _box().suggest_interventions("Venus")["interventions"][0]
+        # recommender must never treat it as a delay problem.
+        ivs = _box().suggest_interventions("Venus")["interventions"]
+        top = ivs[0]
         assert "afety" in top["action"] or "nforcement" in top["action"]
-        assert "danger" in top["caveat"].lower() or "delay" in top["caveat"].lower()
+        # and NO congestion remedy may appear at Venus More
+        joined = " ".join(i["action"].lower() for i in ivs)
+        for banned in ("point-duty", "diversion", "kerb", "green light"):
+            assert banned not in joined, f"{banned} must not be offered at Venus More"
 
-    def test_no_junction_named_picks_the_worst_live_one(self):
+    def test_probe_blind_spot_and_protocol_are_surfaced(self):
+        r = _box().suggest_interventions("Venus")
+        assert "two-wheeler" in r["probe_caveat"].lower()
+        assert "control" in r["measurement_protocol"].lower()
+
+    def test_no_junction_named_avoids_the_safety_only_junction(self):
+        # The worst-by-slowness pick must not be Venus More (a safety, not a
+        # congestion, location).
         r = _box().suggest_interventions()
         assert r["junction"] and r["interventions"]
+        assert r["junction"] != "Venus More"
 
 
 class TestInterventionRouting:
