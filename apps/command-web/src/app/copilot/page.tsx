@@ -112,9 +112,6 @@ export default function CopilotPage() {
             }}
             className="card flex items-center gap-2 px-3 py-2.5 shadow-[var(--shadow-card)]"
           >
-            <span aria-hidden className="pl-1 text-[length:var(--text-sm)] text-ink-3">
-              ?
-            </span>
             <input
               ref={inputRef}
               value={text}
@@ -175,10 +172,7 @@ export default function CopilotPage() {
         <ul className="flex flex-col gap-5">
           {turns.map((turn) => (
             <li key={turn.id}>
-              <p className="mb-1.5 flex items-baseline gap-2 text-[length:var(--text-md)] font-semibold">
-                <span aria-hidden className="text-ink-3">
-                  ?
-                </span>
+              <p className="mb-1.5 border-l-2 border-line-firm pl-2.5 text-[length:var(--text-md)] font-semibold">
                 {turn.q}
               </p>
               {turn.pending ? (
