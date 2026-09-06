@@ -18,7 +18,15 @@ export const SUGGESTIONS: { group: string; questions: string[] }[] = [
     group: "Typically",
     questions: [
       "When is travel usually worst on a weekday?",
-      "Is now unusual for this hour?",
+      "Is Court More → Venus More unusual for this hour?",
+      "Is the Sevoke More → Air View More corridor trending worse?",
+    ],
+  },
+  {
+    group: "What can we try",
+    questions: [
+      "What interventions can we test at the worst junction?",
+      "What can we try to fix Sevoke More?",
     ],
   },
   {
@@ -172,6 +180,121 @@ function ToolWidget({ tool, result }: { tool: string; result: Row }) {
       );
     }
 
+    case "suggest_interventions": {
+      const iv = rows(result.interventions);
+      if (!iv.length) return <p className="text-[length:var(--text-sm)] text-ink-3">{s(result.error) || "No candidate interventions."}</p>;
+      const p = (result.profile ?? {}) as Row;
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="text-[length:var(--text-2xs)] text-ink-3">
+            {s(result.junction)}
+            {p.live_worst_band ? <> · now <span className="font-medium">{s(p.live_worst_band).toLowerCase()}</span></> : null}
+            {n(p.live_worst_index) != null ? <> (index {(p.live_worst_index as number).toFixed(2)})</> : null}
+            {p.safety ? <span className="ml-1.5" style={{ color: "var(--color-sev)" }}>· {s(p.safety)}</span> : null}
+          </p>
+          <ol className="flex flex-col gap-2">
+            {iv.map((r, i) => (
+              <li key={i} className="rounded-md border border-line bg-surface p-2.5">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="tnum text-[length:var(--text-2xs)] font-semibold text-ink-3">{i + 1}</span>
+                  <p className="text-[length:var(--text-sm)] font-semibold leading-snug text-ink">{s(r.action)}</p>
+                </div>
+                <dl className="mt-1.5 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                  {([
+                    ["Why", r.rationale],
+                    ["Where / when", r.where_when],
+                    ["We measure", r.measure],
+                    ["If it worked", r.expected],
+                  ] as [string, unknown][]).map(([k, v]) =>
+                    s(v) ? (
+                      <div key={k}>
+                        <dt className="label">{k}</dt>
+                        <dd className="text-[length:var(--text-2xs)] leading-relaxed text-ink-2">{s(v)}</dd>
+                      </div>
+                    ) : null,
+                  )}
+                </dl>
+                {r.caveat ? (
+                  <p className="mt-1.5 rounded bg-sunken px-2 py-1 text-[length:var(--text-2xs)] leading-relaxed text-ink-3">
+                    <span className="label" style={{ color: "var(--color-copper)" }}>Risk</span> {s(r.caveat)}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+          <p className="text-[length:var(--text-2xs)] leading-relaxed text-ink-3">{s(result.basis)}</p>
+        </div>
+      );
+    }
+
+    case "corridor_history": {
+      if (result.error) return <p className="text-[length:var(--text-sm)] text-ink-3">{s(result.error)}</p>;
+      const vb = (result.vs_baseline ?? {}) as Row;
+      const tr = (result.trend ?? {}) as Row;
+      const verdict = s(vb.verdict);
+      const worse = verdict === "worse than typical";
+      const better = verdict === "better than typical";
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-[length:var(--text-sm)] font-semibold">{s(result.corridor)}</span>
+            {n(result.live_index) != null ? (
+              <span className="tnum text-[length:var(--text-sm)]">now {(result.live_index as number).toFixed(2)}</span>
+            ) : null}
+            {verdict ? (
+              <span
+                className="rounded px-1.5 py-0.5 text-[length:var(--text-2xs)] font-semibold"
+                style={{
+                  background: worse ? "var(--color-sev-weak, var(--color-sunken))" : "var(--color-sunken)",
+                  color: worse ? "var(--color-sev)" : better ? "var(--color-navy)" : "var(--color-ink-2)",
+                }}
+              >
+                {verdict}
+              </span>
+            ) : null}
+          </div>
+          {vb.baseline ? (
+            <p className="text-[length:var(--text-2xs)] text-ink-3">
+              Typical for {s((vb.when as Row)?.weekday)} {n((vb.when as Row)?.hour)}:00 —{" "}
+              p50 {n((vb.baseline as Row).p50)?.toFixed?.(2) ?? "—"}, p85 {n((vb.baseline as Row).p85)?.toFixed?.(2) ?? "—"}{" "}
+              ({n((vb.baseline as Row).n)} readings)
+            </p>
+          ) : null}
+          {tr.direction ? (
+            <p className="text-[length:var(--text-2xs)] text-ink-3">
+              Recent trend: <span className="font-medium">{s(tr.direction)}</span>
+              {n(tr.drift) != null ? <> ({(tr.drift as number) > 0 ? "+" : ""}{(tr.drift as number).toFixed(2)} index over {n(tr.days)}d)</> : null}
+            </p>
+          ) : null}
+          {s(vb.caveat) ? <p className="text-[length:var(--text-2xs)] leading-relaxed text-ink-3">{s(vb.caveat)}</p> : null}
+        </div>
+      );
+    }
+
+    case "corridor_forecast": {
+      if (result.error) return <p className="text-[length:var(--text-sm)] text-ink-3">{s(result.error)}</p>;
+      const steps = rows(result.steps);
+      if (!steps.length) return null;
+      return (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex gap-2">
+            {steps.map((st, i) => (
+              <div key={i} className="flex-1 rounded-md border border-line bg-surface px-2 py-1.5 text-center">
+                <div className="label">{s(st.weekday)} {n(st.hour)}:00</div>
+                <div className="tnum text-[length:var(--text-lg)] font-semibold leading-none">
+                  {n(st.expected) != null ? (st.expected as number).toFixed(2) : "—"}
+                </div>
+                {Array.isArray(st.band) && n(st.band[1]) != null ? (
+                  <div className="tnum text-[length:var(--text-2xs)] text-ink-3">to {(st.band[1] as number).toFixed(2)}</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <p className="text-[length:var(--text-2xs)] leading-relaxed text-ink-3">{s(result.caveat)}</p>
+        </div>
+      );
+    }
+
     case "historical_day_shape": {
       const hrs = rows(result.hours);
       if (!hrs.length) return null;
@@ -218,6 +341,9 @@ const TOOL_LABEL: Record<string, string> = {
   recent_changes: "Recent changes",
   junction_reference: "Junctions",
   historical_day_shape: "Typical day (2019)",
+  suggest_interventions: "Interventions to test",
+  corridor_history: "This corridor's own history",
+  corridor_forecast: "Next few hours (baseline)",
 };
 
 export function CopilotResult({

@@ -23,6 +23,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
+from packages.history.model import ObservationHistory
+from packages.history.store import HistoryStore, MemoryHistoryStore
 from packages.incidents.cluster import ChokeCluster, cluster_chokes, metres
 from packages.incidents.model import (
     Incident,
@@ -34,6 +36,11 @@ from packages.incidents.model import (
 from packages.incidents.store import IncidentStore, MemoryStore
 from packages.network.model import Network
 from packages.network.probe import CorridorReading, RoutesProbe
+
+# The corridor memory learns on every cycle but matters over weeks; flushing the
+# touched corridors this often trades minutes of at-most-lost aggregation for a
+# fraction of the write cost of persisting on every poll.
+HISTORY_FLUSH_EVERY = int(os.environ.get("HISTORY_FLUSH_EVERY", "10"))
 
 
 @dataclass(frozen=True)
@@ -215,10 +222,20 @@ class CommandCentre:
     alert_budget: int = ALERT_BUDGET
     confirm_after: timedelta = CONFIRM_AFTER
     store: IncidentStore = field(default_factory=MemoryStore)
+    history_store: HistoryStore = field(default_factory=MemoryHistoryStore)
     status: dict[str, CorridorStatus] = field(default_factory=dict)
     incidents: dict[str, Incident] = field(default_factory=dict)
+    history: ObservationHistory = field(default_factory=ObservationHistory)
+    _history_dirty: set[str] = field(default_factory=set)
     cycles: int = 0
     last_poll: datetime | None = None
+    # Freshness signals, so a dead Google feed can never sit behind a green
+    # "LIVE" badge. last_poll only records that the LOOP ran; last_read_ok
+    # records that DATA actually arrived, and the two diverge exactly when the
+    # feed fails — which is the moment an officer must be told, not reassured.
+    last_read_ok: datetime | None = None
+    reads_last_cycle: int = 0
+    _read_failures: int = 0  # consecutive cycles where everything due failed to read
     suppressed: dict[str, int] = field(
         default_factory=lambda: {"holding": 0, "below_threshold": 0, "quiet_hours": 0, "budget": 0}
     )
@@ -247,9 +264,33 @@ class CommandCentre:
         for incident in self.store.load_open():
             self.incidents[incident.incident_id] = incident
 
+        # Resume the corridor memory where the last instance left it, so a deploy
+        # does not throw away weeks of learned baselines.
+        loaded = self.history_store.load_all()
+        if loaded.corridors:
+            self.history = loaded
+
     def remember(self, incident: Incident) -> None:
         """Persist one incident. Called after every change an officer makes."""
         self.store.save(incident)
+
+    def _flush_history(self, force: bool = False) -> None:
+        """Persist the corridors whose memory changed, on a cadence. A failed
+        write must never take down the poll loop — the aggregates are still held
+        in memory and will be written on the next successful flush."""
+        if not self._history_dirty:
+            return
+        if not force and self.cycles % HISTORY_FLUSH_EVERY != 0:
+            return
+        for cid in list(self._history_dirty):
+            ch = self.history.corridors.get(cid)
+            if ch is None:
+                continue
+            try:
+                self.history_store.save(ch)
+            except Exception:  # persistence must not break polling
+                continue
+            self._history_dirty.discard(cid)
 
     def worst_corridor_state(self, incident: Incident) -> tuple[float | None, str]:
         """The worst live index across an incident's corridors, and its band.
@@ -382,6 +423,7 @@ class CommandCentre:
 
         chokes: dict[str, list] = {}
         read = 0
+        due = 0
         skipped = 0
         for cid, corridor in self.network.corridors.items():
             status = self.status[cid]
@@ -394,6 +436,7 @@ class CommandCentre:
                     chokes[cid] = list(status.latest.choke_points)
                 continue
 
+            due += 1
             reading = self.probe.read(
                 corridor,
                 self.network.junctions[corridor.from_junction],
@@ -406,8 +449,35 @@ class CommandCentre:
             read += 1
             status.observe(reading, self.thresholds)
             status.schedule(now)
+            # Fold this corridor's fresh index into its own memory. Only the
+            # derived index is remembered — never the reading — so the board
+            # learns "typical for this corridor at this hour" without storing a
+            # single Google travel-time. band == NORMAL/UNKNOWN counts as uncongested.
+            if status.index is not None:
+                self.history.fold(
+                    cid,
+                    status.name,
+                    now,
+                    status.index,
+                    status.band not in ("NORMAL", "UNKNOWN"),
+                )
+                self._history_dirty.add(cid)
             if reading.choke_points:
                 chokes[cid] = list(reading.choke_points)
+
+        self._flush_history()
+
+        # Freshness bookkeeping. A cycle where corridors were due but NOTHING read
+        # is the feed failing (quota, key, 403/429, outage) — count it. A cycle
+        # where at least one read arrived is proof the feed is alive; reset. A
+        # cycle where nothing was due (overnight cadence) is neither, and must not
+        # be mistaken for a failure — leave the counter untouched.
+        self.reads_last_cycle = read
+        if read > 0:
+            self.last_read_ok = now
+            self._read_failures = 0
+        elif due > 0:
+            self._read_failures += 1
 
         clusters = cluster_chokes(chokes)
         # Everything past here mutates incidents, which an officer action may be
@@ -435,7 +505,10 @@ class CommandCentre:
             "at": now.isoformat(timespec="seconds"),
             "cycle": self.cycles,
             "corridors_read": read,
+            "corridors_due": due,
             "corridors_skipped": skipped,
+            "data_state": self.feed_health(now)["state"],
+            "read_failures": self._read_failures,
             "quiet_hours": _is_quiet(now),
             "choke_clusters": len(clusters),
             "suppressed": dict(self.suppressed),
@@ -714,8 +787,46 @@ class CommandCentre:
         return lapsed
 
     # ── views ────────────────────────────────────────────────────────────────
+    def feed_health(self, now: datetime | None = None) -> dict:
+        """Is the board showing live data, or the last good data over a dead feed?
+
+        Three honest states, never a bare green light:
+          WARMING — no successful read yet (a cold or just-deployed instance)
+          STALE   — the feed has failed every due read for two cycles running
+          LIVE    — data actually arrived recently
+        The distinction the founder's fear turns on: last_poll advances even when
+        every read fails, so it can NEVER be the source of "live"; last_read_ok can.
+        """
+        moment = now or self._now_ref()
+        observed = sum(1 for s in self.status.values() if s.latest is not None)
+        total = len(self.status)
+        if self.last_read_ok is None:
+            state = "WARMING"
+        elif self._read_failures >= 2:
+            state = "STALE"
+        else:
+            state = "LIVE"
+        return {
+            "state": state,
+            "is_live": state == "LIVE",
+            "last_read_ok": self.last_read_ok.isoformat(timespec="seconds")
+            if self.last_read_ok
+            else None,
+            "read_age_seconds": round((moment - self.last_read_ok).total_seconds())
+            if self.last_read_ok
+            else None,
+            "reads_last_cycle": self.reads_last_cycle,
+            "consecutive_read_failures": self._read_failures,
+            "corridors_observed": observed,
+            "corridors_total": total,
+        }
+
+    def _now_ref(self) -> datetime:
+        return self.last_poll or datetime.now()
+
     def board(self, now: datetime | None = None) -> dict:
         moment = now or self.last_poll or datetime.now()
+        health = self.feed_health(moment)
         bands: dict[str, int] = {}
         for s in self.status.values():
             bands[s.band] = bands.get(s.band, 0) + 1
@@ -730,9 +841,17 @@ class CommandCentre:
         return {
             "at": moment.isoformat(timespec="seconds"),
             "cycle": self.cycles,
-            "is_live": True,
+            "is_live": health["is_live"],
+            "data_state": health["state"],
+            "feed": health,
             "bands": bands,
-            "headline": self._headline(bands, open_incidents),
+            "headline": self._headline(
+                bands,
+                open_incidents,
+                health["state"],
+                health["corridors_observed"],
+                total=len(self.status),
+            ),
             "alert_budget": self.alert_budget,
             "over_budget": sum(1 for i in self.incidents.values() if i.needs_attention)
             > self.alert_budget,
@@ -774,7 +893,13 @@ class CommandCentre:
         }
 
     @staticmethod
-    def _headline(bands: dict[str, int], open_incidents: list[Incident]) -> str:
+    def _headline(
+        bands: dict[str, int],
+        open_incidents: list[Incident],
+        data_state: str = "LIVE",
+        observed: int = 1,
+        total: int = 1,
+    ) -> str:
         severe = bands.get("SEVERE", 0)
         high = bands.get("HIGH", 0)
         elevated = bands.get("ELEVATED", 0)
@@ -792,9 +917,22 @@ class CommandCentre:
             )
         if waiting:
             return f"{waiting} incident{'s' if waiting > 1 else ''} waiting for an officer."
+        # Below the incident queue, a stale feed must lead. The band counts are
+        # frozen at the last good cycle, so "N corridors well above typical" would
+        # read as a live claim about data that has stopped arriving. Real waiting
+        # incidents (above) are records and still win; the road picture does not.
+        if data_state == "STALE":
+            return "Live feed interrupted — showing the last readings that arrived. Treat with caution."
         if severe or high:
             n = severe + high
             return f"{n} corridor{'s' if n > 1 else ''} well above typical travel time."
         if elevated:
             return f"{elevated} corridor{'s' if elevated > 1 else ''} slower than typical."
+        # Nothing above typical and no queue — but the all-clear is only honest if
+        # the data behind it is real. A cold instance's silence is "not seen", not
+        # "clear" (STALE was already handled above, before the band claims).
+        if data_state == "WARMING" or observed == 0:
+            return "Warming up — reading the network; no corridor data yet."
+        if observed < max(1, total // 2):
+            return f"Reading the network — {observed} of {total} corridors seen so far; nothing above typical yet."
         return "Siliguri is moving at close to typical travel times."

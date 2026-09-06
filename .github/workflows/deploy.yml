@@ -35,8 +35,12 @@ env:
   # list silently deletes everything it omits: one deploy dropped CORS_ORIGINS
   # and the control room could no longer reach its own API. Declarative also
   # means a service rebuilt from scratch comes up correct.
+  # HISTORY_STORE=firestore persists the learned per-corridor baselines so a
+  # deploy does not throw them away. GOOGLE_CLOUD_LOCATION=asia-south1 keeps the
+  # copilot's Vertex calls — which carry live incident text and officer context —
+  # in the Mumbai region rather than shipping Indian police data to a US region.
   RUNTIME_ENV: >-
-    INCIDENT_STORE=firestore,GOOGLE_CLOUD_PROJECT=sargvision-traffic-intel,CORS_ORIGINS=https://siliguri-command-937908328857.asia-south1.run.app,POLL_SECONDS=180,CONFIRM_MINUTES=8,LAPSE_MINUTES=20
+    INCIDENT_STORE=firestore,HISTORY_STORE=firestore,GOOGLE_CLOUD_PROJECT=sargvision-traffic-intel,GOOGLE_CLOUD_LOCATION=asia-south1,CORS_ORIGINS=https://siliguri-command-937908328857.asia-south1.run.app,POLL_SECONDS=180,CONFIRM_MINUTES=8,LAPSE_MINUTES=20
 
   # Reads are open; recording an action is not. Without this the API refuses
   # every write with a 503 that says so, which is the safe failure — an
@@ -161,10 +165,29 @@ jobs:
           # instance runs its own poll loop over its own in-process corridor
           # state, so two of them double the Routes bill and an assignment can
           # land on the instance that never saw the incident.
+          #
+          # The rest of these flags are what make one instance serve a whole
+          # control room around the clock, per the production-readiness audit:
+          #   --min-instances=1      keep the one instance warm so the poll loop
+          #                          runs 24/7, not only while a browser is open.
+          #   --no-cpu-throttling    give it CPU between requests, or the poll
+          #                          loop stalls whenever no request is in flight.
+          #   --concurrency=250      each console holds one long-lived SSE stream;
+          #                          the Cloud Run default of 80 would be exhausted
+          #                          by ~80 officers before any board/write got in.
+          #   --timeout=3600         let that SSE stream stay open up to an hour
+          #                          instead of being cut every 5 minutes.
+          #   --cpu=2 --memory=1Gi   headroom for 250 concurrent requests.
           gcloud run deploy traffic-api \
             --image="$REGISTRY/traffic-api:${{ needs.guard.outputs.sha }}" \
             --project="$PROJECT_ID" --region="$REGION" \
             --max-instances=1 \
+            --min-instances=1 \
+            --no-cpu-throttling \
+            --concurrency=250 \
+            --timeout=3600 \
+            --cpu=2 \
+            --memory=1Gi \
             --set-env-vars="^@^${RUNTIME_ENV//,/@}@WRITE_TOKEN=${WRITE_TOKEN}@OFFICER_TOKENS=${OFFICER_TOKENS}" \
             --quiet
           # A previous rollback pins traffic to a named revision, and Cloud Run

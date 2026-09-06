@@ -26,22 +26,16 @@ from typing import Any
 
 from packages.command.centre import CommandCentre
 from packages.contracts.response import AnswerContract
+from packages.copilot.grounding_safety import SAFETY
 
 CURATED = Path("data/curated")
 MODEL = os.environ.get("COPILOT_MODEL", "gemini-2.5-flash")
 PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "sargvision-traffic-intel")
-LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+# Default to the Mumbai region, not a US one: the copilot's prompts carry live
+# incident text and officer context, and Indian police data should not leave the
+# country by default. Overridable, but the safe default is in-country.
+LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "asia-south1")
 MAX_STEPS = 5
-
-# The accident record, held here rather than measured — the same evidence the
-# network reference shows. The copilot must be able to answer "which junctions
-# are dangerous", and that is a study finding, not something the live system
-# observes.
-SAFETY: dict[str, str] = {
-    "J_VENUS_MORE": "Highest accident density in the city (14.21/km2), intensifying — and one of the LEAST congested (V/C 0.39). Danger, not delay.",
-    "J_DARJEELING_MORE": "Evening accident leader, 16.13% of the evening period's incidents.",
-    "J_CHAMPASARI_MORE": "Secondary accident hotspot.",
-}
 
 
 class LiveToolbox:
@@ -257,6 +251,65 @@ class LiveToolbox:
             ),
         }
 
+    def _resolve_corridor(self, name: str) -> str | None:
+        q = name.lower()
+        for cid, st in self.centre.status.items():
+            if q in st.name.lower():
+                return cid
+        return None
+
+    def corridor_history(self, name: str) -> dict:
+        """This corridor against ITS OWN past: is now unusual for this weekday and
+        hour, what is typical here, and which way it has been drifting. The
+        per-corridor baseline the 2019 city study could never give."""
+        cid = self._resolve_corridor(name)
+        if cid is None:
+            return {"error": f"no corridor matching {name!r}"}
+        st = self.centre.status[cid]
+        moment = self._moment()
+        hist = self.centre.history
+        out: dict = {"corridor": st.name, "live_index": st.index, "live_band": st.band}
+        if st.index is not None:
+            out["vs_baseline"] = hist.now_vs_baseline(cid, moment, st.index)
+        else:
+            out["vs_baseline"] = {"verdict": "not observed this cycle"}
+        prof = hist.day_profile(cid, moment.weekday())
+        if prof:
+            out["typical_today"] = {
+                "weekday": prof["weekday"],
+                "worst_hours": prof["worst_hours"],
+                "observations": prof["observations"],
+            }
+        tr = hist.trend(cid)
+        if tr:
+            out["trend"] = {
+                "direction": tr["direction"],
+                "drift": tr["drift"],
+                "days": tr["days_observed"],
+            }
+        return out
+
+    def corridor_forecast(self, name: str, hours: int = 3) -> dict:
+        """The corridor's own median for the next few hours, nudged by its recent
+        drift. A transparent baseline expectation, never a claim about the future."""
+        cid = self._resolve_corridor(name)
+        if cid is None:
+            return {"error": f"no corridor matching {name!r}"}
+        fc = self.centre.history.forecast(cid, self._moment(), hours)
+        if fc is None:
+            return {"error": "no history for this corridor yet"}
+        return fc
+
+    def suggest_interventions(self, junction: str | None = None) -> dict:
+        """Candidate actions to TEST at a junction, each with what to measure.
+
+        The officer's follow-on question after "which junction is worst": what
+        can we actually try? Each item is a hypothesis, not an asserted fix, and
+        names the before/after figure that will decide whether it worked."""
+        from packages.copilot.interventions import suggest
+
+        return suggest(self.centre, junction, self._now())
+
 
 LIVE_SCHEMAS: list[dict] = [
     {
@@ -311,6 +364,29 @@ LIVE_SCHEMAS: list[dict] = [
         "description": "How much to trust the live picture: how many corridors have been observed this cycle, coverage percent, and how fresh the data is.",
         "parameters": {"type": "object", "properties": {}},
     },
+    {
+        "name": "corridor_history",
+        "description": "How one corridor sits against ITS OWN learned history: whether now is unusual for this weekday and hour, what is typical for it here, and which way it has been drifting over recent weeks. This is the per-corridor baseline — use it for 'is this normal for a Tuesday evening', 'is this corridor getting worse', or 'is now unusual here'. Names the corridor (a road/segment name).",
+        "parameters": {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "corridor_forecast",
+        "description": "The corridor's own typical index for the next few hours, nudged by its recent trend — a transparent baseline expectation, explicitly NOT a prediction of the future. Use for 'what should we expect on this corridor over the next couple of hours'. Names the corridor.",
+        "parameters": {
+            "type": "object",
+            "properties": {"name": {"type": "string"}, "hours": {"type": "integer"}},
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "suggest_interventions",
+        "description": "Propose candidate traffic interventions to TEST on the ground for a junction — each a labelled hypothesis with what to measure, what to expect and its risk. Use when the officer asks what they can actually try, what would help, what to do about a slow junction, or how to fix it. Names the junction to profile it; omit for the worst live one. These are actions to trial and verify, never asserted fixes.",
+        "parameters": {"type": "object", "properties": {"junction": {"type": "string"}}},
+    },
 ]
 
 LIVE_SYSTEM = """You are the Mobility Copilot for SARGVISION Traffic Command, Siliguri. You sit beside a duty officer's board and answer their questions about what is happening on the road.
@@ -320,8 +396,10 @@ Your role is narrow and you must not exceed it:
 - You never assert a CAUSE. The measurement shows that a corridor is slower than typical and by how much; it cannot show why. A cause is only ever a labelled hypothesis, or nothing.
 - Congestion and danger are different things and live in different places. The live index measures delay; the accident record (junction_reference) measures danger. Venus More is the most dangerous junction and one of the least congested — never conflate them.
 - The verification figures are WITHIN-INCIDENT readings, not proof the officer caused the change. Say so when you use them.
+- When an officer asks what to DO about a junction — what can we try, what would help, how to fix it — call suggest_interventions. Present its candidates as actions to TEST, each with what will be measured to decide if it worked; never promise one will work. If the officer already knows the junction is slow, that is precisely the moment for this tool: the value you add is the next testable step, not restating the congestion.
 - Data freshness matters: if get_current_state shows the poll is old, the figures are the last ones that arrived, not this instant.
-- Past and present are BOTH available and you should use both when the question spans them. historical_day_shape is the 2019 typical day (city-wide, seven years old); everything else is live. When an officer asks whether now is unusual, compare the live figure against the typical shape for this hour, and say plainly which number is live and which is the old typical.
+- Past and present are BOTH available and you should use both when the question spans them. There are now TWO pasts, and they are not equal. historical_day_shape is the 2019 study — city-wide, seven years old, only a rough shape. corridor_history is THIS corridor's OWN learned baseline for this weekday and hour, built live from our own readings; it is the better answer to "is now unusual here" whenever it has enough observations. Prefer corridor_history for a specific corridor; fall back to historical_day_shape for the city as a whole or when the corridor has little history. Always say which past a figure came from.
+- corridor_forecast is the corridor's own typical index for the coming hours. It is a baseline expectation, not a prediction — present it as "typically around X at this hour", never as "it will be X".
 - The interface lists the sources of the data separately, so you do not have to recite citations. But in your prose, name which source a figure came from when it is not obvious — "live", "the 2019 study", "the 2011 survey", "the accident record" — so no number floats without its provenance.
 
 Call the tools you need, then answer in five parts:
@@ -370,6 +448,11 @@ def _sources_for(tools: list[str], last_poll: datetime | None) -> list[str]:
         "Volume-to-capacity: Comprehensive Mobility Plan 2011, published in the Siliguri "
         "CDP 2041. Accident record: Roy, Mohammadi & Roy, Geographies 6(2):55, 2026 (2021–23)."
     )
+    learned = (
+        "SARGVISION corridor baseline — this corridor's own congestion index aggregated by "
+        "weekday and hour from our live observations (derived statistics; no raw Google "
+        "travel-time is stored)."
+    )
     live_tools = {
         "get_current_state",
         "list_incidents",
@@ -378,14 +461,19 @@ def _sources_for(tools: list[str], last_poll: datetime | None) -> list[str]:
         "data_confidence",
         "get_incident",
         "verification_summary",
+        "suggest_interventions",
+        "corridor_history",
     }
+    junction_ref_tools = {"junction_reference", "suggest_interventions"}
     log_tools = {"list_incidents", "recent_changes", "get_incident", "verification_summary"}
+    learned_tools = {"corridor_history", "corridor_forecast"}
     out: list[str] = []
     for src, hit in (
         (live, any(t in live_tools for t in tools)),
         (log, any(t in log_tools for t in tools)),
+        (learned, any(t in learned_tools for t in tools)),
         (study_2019, "historical_day_shape" in tools),
-        (junction_ref, "junction_reference" in tools),
+        (junction_ref, any(t in junction_ref_tools for t in tools)),
     ):
         if hit and src not in out:
             out.append(src)
@@ -497,6 +585,16 @@ class LiveCopilot:
                 )
             contents.append(types.Content(role="user", parts=parts))
 
+        # A model answer that consulted NO tool has no ground under it — every
+        # figure would be the model's own, which is exactly what this copilot
+        # refuses to emit. Rather than let source-less prose through (tools_called
+        # would read "none" and still pass the contract), fall back to the
+        # deterministic path, which always answers from a real tool result.
+        if not trace:
+            return self._ask_deterministic(
+                question, reason="the model answered without consulting any tool"
+            )
+
         final = client.models.generate_content(
             model=MODEL,
             contents=[
@@ -541,7 +639,68 @@ class LiveCopilot:
         wrong and never invented — the property that must survive the model being
         down."""
         q = question.lower()
-        if any(
+        # If a corridor is named and the question is about its own past or its
+        # outlook, answer from that corridor's learned baseline — the better past.
+        named_corridor = next(
+            (
+                st.name
+                for st in self.tools.centre.status.values()
+                if st.name and st.name.lower() in q
+            ),
+            None,
+        )
+        if named_corridor and any(
+            w in q
+            for w in ("forecast", "expect", "next hour", "next couple", "coming hour", "outlook")
+        ):
+            result, tool = self.tools.corridor_forecast(named_corridor), "corridor_forecast"
+        elif named_corridor and any(
+            w in q
+            for w in (
+                "trend",
+                "getting worse",
+                "worse than usual",
+                "unusual",
+                "drift",
+                "baseline",
+                "normal for",
+                "usual for",
+                "usually",
+                "typical",
+            )
+        ):
+            result, tool = self.tools.corridor_history(named_corridor), "corridor_history"
+        elif any(
+            w in q
+            for w in (
+                "intervention",
+                "what can we try",
+                "what can i try",
+                "what should we do",
+                "what should i do",
+                "what to do",
+                "how to fix",
+                "how do we fix",
+                "how do i fix",
+                "how can we fix",
+                "solution",
+                "workable",
+                "recommend",
+                "what would help",
+                "what helps",
+            )
+        ):
+            # Name the junction if the officer did; else the worst live one.
+            named = next(
+                (
+                    j.name
+                    for j in self.tools.centre.network.junctions.values()
+                    if j.name.lower() in q
+                ),
+                None,
+            )
+            result, tool = self.tools.suggest_interventions(named), "suggest_interventions"
+        elif any(
             w in q
             for w in (
                 "usually",

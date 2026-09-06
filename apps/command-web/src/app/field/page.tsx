@@ -121,7 +121,7 @@ export default function Field() {
               >
                 {o.name}
                 <span className="block text-[length:var(--text-sm)] font-normal text-ink-2">
-                  {o.rank} · {o.unit} {o.on_duty ? "" : "· off duty"}
+                  {o.rank} · {o.unit} {o.on_duty === false ? "· off duty" : ""}
                 </span>
               </button>
             </li>

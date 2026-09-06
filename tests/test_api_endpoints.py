@@ -185,12 +185,16 @@ class TestReadEndpoints:
 
     def test_roster_masks_names_and_duty(self, client):
         """Real names and live duty state are operational security in a border
-        city. The endpoint masks both: name is the unit, and on_duty is always
-        true — never the officer's real deployment state."""
+        city. The endpoint masks both: name is the unit, and duty state is not
+        served at all — off-duty units are omitted rather than flagged, so an
+        off-shift guard is never offered as assignable."""
         body = client.get("/api/roster").json()
         for o in body["officers"]:
             assert o["name"] == o["unit"], "a real name leaked instead of the unit"
-            assert o["on_duty"] is True, "real duty state leaked"
+            assert "on_duty" not in o, "duty state leaked"
+        assert all(o["officer_id"] != "TG-4" for o in body["officers"]), (
+            "TG-4 is off-duty in the roster and must not be assignable"
+        )
         assert "not served here" in body["note"]
 
     def test_handover_hours_out_of_range_is_422(self, client):

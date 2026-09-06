@@ -91,7 +91,7 @@ export default function Handover() {
 
   return (
     <>
-      <Chrome at={board?.at} connected={connected} cycle={board?.cycle} officer="Duty Officer" pollSeconds={board?.poll_seconds} />
+      <Chrome at={board?.at} connected={connected} cycle={board?.cycle} officer="Duty Officer" pollSeconds={board?.poll_seconds} dataState={board?.data_state} readAgeSeconds={board?.feed?.read_age_seconds} />
 
       <main id="main" className="mx-auto w-full max-w-[62rem] px-4 py-5 lg:px-6">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">

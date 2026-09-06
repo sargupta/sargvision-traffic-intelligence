@@ -91,6 +91,8 @@ export default function CopilotPage() {
         cycle={board?.cycle}
         officer="Duty Officer"
         pollSeconds={board?.poll_seconds}
+        dataState={board?.data_state}
+        readAgeSeconds={board?.feed?.read_age_seconds}
       />
 
       <main id="main" className="mx-auto w-full max-w-[56rem] px-4 py-5 lg:px-6">
