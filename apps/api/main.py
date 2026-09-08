@@ -526,6 +526,21 @@ def history_coverage() -> dict:
     }
 
 
+@app.get("/api/coverage")
+def coverage() -> dict:
+    """What the console watches, what it does not, and — right now — the slow
+    corridors with no officer on them. The honest expression of the thesis:
+    surface the roads police do not cover, not the junctions they already man."""
+    from packages.coverage.gaps import SIGNIFICANT_GAPS, coverage_summary, unwatched_slow
+
+    c = centre()
+    return {
+        "summary": coverage_summary(c),
+        "unwatched_slow": unwatched_slow(c, c.last_poll or now()),
+        "gaps": SIGNIFICANT_GAPS,
+    }
+
+
 # ── deployments (verification) ─────────────────────────────────────────────────
 class DeployRequest(BaseModel):
     corridor_ids: list[str] = Field(default_factory=list)

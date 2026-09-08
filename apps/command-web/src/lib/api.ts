@@ -317,6 +317,42 @@ export interface Deployment {
   effect: DeploymentEffect;
 }
 
+/** What the console watches, what it does not, and — now — the slow roads with
+ *  no officer on them. The honest expression of "surface the roads police don't
+ *  cover". */
+export interface Coverage {
+  summary: {
+    corridors_instrumented: number;
+    junctions_instrumented: number;
+    known_gaps: number;
+    note: string;
+  };
+  unwatched_slow: {
+    count: number;
+    acute: number;
+    chronic: number;
+    corridors: {
+      corridor_id: string;
+      name: string;
+      condition: Condition;
+      speed_kmh: number | null;
+      band: Band;
+      held_minutes: number | null;
+    }[];
+    note: string;
+  };
+  gaps: {
+    name: string;
+    kind: string;
+    significance: string;
+    evidence: string;
+    grade: string;
+    why_not_watched: string;
+  }[];
+}
+
+export const getCoverage = () => get<Coverage>("/api/coverage");
+
 export const getDeployments = (active?: boolean) =>
   get<{ count: number; deployments: Deployment[]; store: Record<string, unknown> }>(
     `/api/deployments${active === undefined ? "" : `?active=${active}`}`,
