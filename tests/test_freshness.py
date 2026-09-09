@@ -10,13 +10,17 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from packages.command.centre import CommandCentre
+from packages.command.centre import CADENCE, CommandCentre
 from packages.history.store import MemoryHistoryStore
 from packages.incidents.model import Incident, IncidentKind, Priority
 from packages.network.model import load_network
 from packages.network.probe import CorridorReading
 
 NOW = datetime(2026, 9, 1, 12, 0)
+# The probe below reads NORMAL, so a corridor comes due one NORMAL cadence after
+# each read. Step just past it to force the next (failing) read — cadence-relative
+# so tuning the interval never breaks these.
+STEP = CADENCE["NORMAL"] + timedelta(minutes=1)
 
 
 class LiveProbe:
@@ -65,7 +69,7 @@ class TestFeedState:
         assert c.last_read_ok == NOW
 
     def test_a_dead_feed_goes_stale_not_live(self):
-        # Steps are >= the 15-min NORMAL cadence so corridors are actually DUE on
+        # Steps are one NORMAL cadence apart so corridors are actually DUE on
         # each failing cycle — that is when a dead feed reveals itself.
         probe = LiveProbe()
         c = _centre(probe)
@@ -73,13 +77,13 @@ class TestFeedState:
         assert c.board(NOW)["is_live"] is True
         # feed dies: every due read now returns None
         probe.fail = True
-        c.poll(NOW + timedelta(minutes=16))
-        c.poll(NOW + timedelta(minutes=32))  # second consecutive full failure
-        b = c.board(NOW + timedelta(minutes=32))
+        c.poll(NOW + STEP)
+        c.poll(NOW + 2 * STEP)  # second consecutive full failure
+        b = c.board(NOW + 2 * STEP)
         assert b["data_state"] == "STALE"
         assert b["is_live"] is False, "a dead feed must never read as live"
         # last_poll advanced, but last_read_ok did NOT — the whole point
-        assert c.last_poll == NOW + timedelta(minutes=32)
+        assert c.last_poll == NOW + 2 * STEP
         assert c.last_read_ok == NOW
 
     def test_stale_board_headline_warns_not_reassures(self):
@@ -87,21 +91,21 @@ class TestFeedState:
         c = _centre(probe)
         c.poll(NOW)
         probe.fail = True
-        c.poll(NOW + timedelta(minutes=16))
-        c.poll(NOW + timedelta(minutes=32))
-        assert "interrupted" in c.board(NOW + timedelta(minutes=32))["headline"].lower()
+        c.poll(NOW + STEP)
+        c.poll(NOW + 2 * STEP)
+        assert "interrupted" in c.board(NOW + 2 * STEP)["headline"].lower()
 
     def test_feed_recovers_back_to_live(self):
         probe = LiveProbe()
         c = _centre(probe)
         c.poll(NOW)
         probe.fail = True
-        c.poll(NOW + timedelta(minutes=16))
-        c.poll(NOW + timedelta(minutes=32))
-        assert c.board(NOW + timedelta(minutes=32))["is_live"] is False
+        c.poll(NOW + STEP)
+        c.poll(NOW + 2 * STEP)
+        assert c.board(NOW + 2 * STEP)["is_live"] is False
         probe.fail = False
-        c.poll(NOW + timedelta(minutes=48))  # a good read arrives
-        assert c.board(NOW + timedelta(minutes=48))["is_live"] is True
+        c.poll(NOW + 3 * STEP)  # a good read arrives
+        assert c.board(NOW + 3 * STEP)["is_live"] is True
 
 
 class TestHeadlinePriority:

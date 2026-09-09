@@ -153,6 +153,7 @@ def condition_of(grade: str, band: str) -> str:
 # clicks, and nobody deploys twenty times a shift.
 ALERT_BUDGET = 5
 
+
 # Not every corridor deserves the same attention.
 #
 # Polling all 68 segments on a fixed three-minute clock is 980,000 requests a
@@ -160,23 +161,38 @@ ALERT_BUDGET = 5
 # Cadence follows condition instead: a corridor that is quiet is asked rarely,
 # one that is deteriorating is watched closely. This costs less AND resolves
 # the thing that matters better, which is the rare case where those agree.
+#
+# The cadences were lengthened (Sep 2026) to halve the Routes API bill after a
+# billing investigation: each read is a premium traffic-on-polyline call
+# (~$15/1000), and measured volume was ~9,000/day. These intervals cut that ~50%
+# with no loss of feature — a NORMAL road read every 30 min instead of 15 is
+# still fresh enough to act on, and the worst corridors are still watched at 5.
+# Overridable per-band via env (CADENCE_<BAND>_MINUTES) for tuning without a
+# redeploy of code.
+def _cadence_minutes(band: str, default: int) -> timedelta:
+    return timedelta(minutes=int(os.environ.get(f"CADENCE_{band}_MINUTES", str(default))))
+
+
 CADENCE = {
-    "SEVERE": timedelta(minutes=3),
-    "HIGH": timedelta(minutes=3),
-    "ELEVATED": timedelta(minutes=6),
-    "NORMAL": timedelta(minutes=15),
-    "UNKNOWN": timedelta(minutes=2),  # never seen: get a first reading soon
+    "SEVERE": _cadence_minutes("SEVERE", 5),
+    "HIGH": _cadence_minutes("HIGH", 5),
+    "ELEVATED": _cadence_minutes("ELEVATED", 12),
+    "NORMAL": _cadence_minutes("NORMAL", 30),
+    "UNKNOWN": _cadence_minutes("UNKNOWN", 6),  # never seen: get a first reading soon-ish
 }
 
 # Overnight there is no sergeant to send. Conditions are still recorded so the
 # morning shift inherits them, but the network is asked far less often because
-# nothing turns on the answer until there is someone to act on it.
-QUIET_HOURS = range(23, 24), range(0, 5)
-QUIET_CADENCE = timedelta(minutes=30)
+# nothing turns on the answer until there is someone to act on it. Widened to an
+# hour (Sep 2026 cost cut): nights are a safety window, not a congestion one
+# (accidents peak at night, congestion by day), so a coarse overnight picture is
+# the honest and cheap choice. Quiet hours also widened to cover the deep night.
+QUIET_HOURS = range(22, 24), range(0, 6)
+QUIET_CADENCE = timedelta(minutes=int(os.environ.get("QUIET_CADENCE_MINUTES", "60")))
 
 
 def _is_quiet(at: datetime) -> bool:
-    return at.hour >= 23 or at.hour < 5
+    return at.hour >= 22 or at.hour < 6
 
 
 # A condition must hold this long before it becomes an incident. Traffic

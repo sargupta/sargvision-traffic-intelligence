@@ -184,7 +184,8 @@ jobs:
           #                          by ~80 officers before any board/write got in.
           #   --timeout=3600         let that SSE stream stay open up to an hour
           #                          instead of being cut every 5 minutes.
-          #   --cpu=2 --memory=1Gi   headroom for 250 concurrent requests.
+          #   --cpu=1 --memory=1Gi   1 vCPU is ample for the poll loop + reads;
+          #                          dropped from 2 to halve the always-on cost.
           gcloud run deploy traffic-api \
             --image="$REGISTRY/traffic-api:${{ needs.guard.outputs.sha }}" \
             --project="$PROJECT_ID" --region="$REGION" \
@@ -193,7 +194,7 @@ jobs:
             --no-cpu-throttling \
             --concurrency=250 \
             --timeout=3600 \
-            --cpu=2 \
+            --cpu=1 \
             --memory=1Gi \
             --set-env-vars="^@^${RUNTIME_ENV//,/@}@CORS_ORIGINS=${CORS_ORIGINS}@WRITE_TOKEN=${WRITE_TOKEN}@OFFICER_TOKENS=${OFFICER_TOKENS}" \
             --quiet

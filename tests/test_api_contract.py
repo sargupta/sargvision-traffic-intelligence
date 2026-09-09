@@ -198,26 +198,29 @@ class TestPollingEconomy:
     def test_a_corridor_is_not_polled_before_it_is_due(self):
         from datetime import datetime, timedelta
 
-        from packages.command.centre import CorridorStatus
+        from packages.command.centre import CADENCE, CorridorStatus
 
         s = CorridorStatus(corridor_id="C_X", name="x")
         now = datetime(2026, 8, 30, 12, 0)
         assert s.is_due(now), "never-read corridors must be due immediately"
         s.band = "NORMAL"
         s.schedule(now)
-        assert not s.is_due(now + timedelta(minutes=5))
-        assert s.is_due(now + timedelta(minutes=16))
+        # cadence-relative so tuning the interval does not break the contract
+        assert not s.is_due(now + CADENCE["NORMAL"] - timedelta(minutes=1))
+        assert s.is_due(now + CADENCE["NORMAL"] + timedelta(minutes=1))
 
     def test_a_failing_corridor_comes_due_quickly(self):
         from datetime import datetime, timedelta
 
-        from packages.command.centre import CorridorStatus
+        from packages.command.centre import CADENCE, CorridorStatus
 
+        # the worst bands are still watched far more often than a normal road
+        assert CADENCE["HIGH"] <= timedelta(minutes=6)
         s = CorridorStatus(corridor_id="C_X", name="x")
         now = datetime(2026, 8, 30, 12, 0)
         s.band = "HIGH"
         s.schedule(now)
-        assert s.is_due(now + timedelta(minutes=4))
+        assert s.is_due(now + CADENCE["HIGH"] + timedelta(minutes=1))
 
     def test_night_conditions_do_not_become_incidents(self):
         """There is no sergeant to send at 02:00. Alerting into an empty control
