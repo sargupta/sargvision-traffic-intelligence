@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from packages.copilot.canon import seat as _seat_lookup
 from packages.copilot.grounding_safety import (
     JUNCTION_EVIDENCE,
     MEASUREMENT_PROTOCOL,
@@ -73,7 +74,14 @@ def _profile(centre, junction, now: datetime) -> dict:
     }
 
 
-def _candidate(action, grade, rationale, where_when, measure, expected, caveat, do_not_claim, fit):
+def _candidate(
+    action, grade, rationale, where_when, measure, expected, caveat, do_not_claim, fit, seat=""
+):
+    # `seat` names the discipline this move belongs to; the canon resolves it to
+    # the checkable standard/source behind it (packages.copilot.canon). This is
+    # what lets the review board say WHICH body of knowledge a recommendation
+    # rests on, instead of asserting authority it does not have.
+    s = _seat_lookup(seat)
     return {
         "action": action,
         "grade": grade,
@@ -84,6 +92,9 @@ def _candidate(action, grade, rationale, where_when, measure, expected, caveat, 
         "caveat": caveat,
         "do_not_claim": do_not_claim,
         "fit": fit,
+        "seat": seat,
+        "discipline": s["discipline"],
+        "source": s["source"],
     }
 
 
@@ -98,6 +109,7 @@ def _watch(p: dict) -> dict:
         caveat="Acting on a junction behaving normally spends an officer for no measurable gain — and a car-probe spike may be the two-wheeler-blind instrument, not a real jam.",
         do_not_claim="Do not trigger an intervention off a single-day probe spike.",
         fit=1,
+        seat="measurement",
     )
 
 
@@ -134,6 +146,7 @@ def _candidates(p: dict) -> list[dict]:
                 ),
                 do_not_claim="Do not judge this by the congestion index. Do not claim it 'cleared' anything without re-measuring the accident record over months.",
                 fit=5,
+                seat="road_safety",
             )
         )
         out.append(_watch(p))
@@ -163,6 +176,7 @@ def _candidates(p: dict) -> list[dict]:
                 ),
                 do_not_claim="Do not claim a clearance fixed a corridor that was volume-bound, not blocked.",
                 fit=5,
+                seat="incident_management",
             )
         )
 
@@ -188,6 +202,7 @@ def _candidates(p: dict) -> list[dict]:
                 ),
                 do_not_claim="Do not claim the officer beat a re-optimised signal — a fresh signal plan beats manual control. Do not measure the gain with the car probe (it misses the two-wheelers the officer is clearing).",
                 fit=4,
+                seat="junction_operations",
             )
         )
 
@@ -209,6 +224,7 @@ def _candidates(p: dict) -> list[dict]:
                 caveat="Not something a duty officer resolves in a shift. Point-duty is the interim, not the fix.",
                 do_not_claim="Do not imply this can be optimised remotely; it needs physical signalisation/geometry work.",
                 fit=3,
+                seat="junction_geometry",
             )
         )
 
@@ -230,6 +246,7 @@ def _candidates(p: dict) -> list[dict]:
                 caveat="Green Light's own metric is stops, not travel time, and its climate model does not fit a two-wheeler city. It also cannot reach non-signalised junctions.",
                 do_not_claim="Do not claim a 25%+ signal gain (that figure is vendor-reported and uncontrolled). Do not present stops-saved as travel-time saved.",
                 fit=3,
+                seat="adaptive_signal",
             )
         )
 
@@ -250,6 +267,7 @@ def _candidates(p: dict) -> list[dict]:
                 caveat="Persistence is the whole problem: drivers revert, and relocating a stand just moves the friction. Pilot 3–5 nodes with sustained enforcement, not a city edict.",
                 do_not_claim="NEVER claim 'totos cause X% of congestion' — no evidence isolates paratransit from the side-friction bundle. Do not claim a clearance persists without a 1–4 week re-measure.",
                 fit=4 if not p["is_night"] else 2,
+                seat="access_management",
             )
         )
 
@@ -270,6 +288,7 @@ def _candidates(p: dict) -> list[dict]:
                 caveat="Diverting NE-bound freight onto local roads imports the corridor's problem into the city. Freight BANS are contraindicated — use off-hour delivery incentives, not curfews.",
                 do_not_claim="Do not claim a diversion cut congestion on the strength of the treated link alone — measure the displacement corridor; expect the jam to move, not vanish.",
                 fit=2,
+                seat="network_assignment",
             )
         )
 

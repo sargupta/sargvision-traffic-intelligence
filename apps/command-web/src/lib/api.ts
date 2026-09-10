@@ -469,6 +469,55 @@ export interface Recommendation {
 export const getAdvice = () =>
   get<{ at: string; recommendations: Recommendation[] }>("/api/advice");
 
+/** The review board — the live expert layer. Each item is the immediate move
+ *  for one junction, attributed to the discipline and the published standard it
+ *  rests on (the honest "council"), with what to measure and what it must not
+ *  claim. The deterministic engine always answers; when the AI council (Google
+ *  ADK, Gemini on Vertex) is on and in budget it adds `synthesis` across the
+ *  board and per-item `expert_note` — never a new figure. */
+export interface BoardItem {
+  junction: string;
+  urgency: "NOW" | "THIS_SHIFT" | "ADVISORY";
+  score: number;
+  live: {
+    speed_kmh: number | null;
+    band: string | null;
+    condition: string | null;
+    loaded_corridor: string | null;
+    has_choke_point: boolean;
+  };
+  seat: string; // the discipline (e.g. "Traffic incident management")
+  source: string; // the checkable standard behind it
+  grade: string;
+  move: string;
+  rationale: string;
+  where_when: string;
+  measure: string;
+  expected: string;
+  caveat: string;
+  do_not_claim: string;
+  expert_note?: string; // added by the AI council when it is on
+}
+
+export interface BoardReview {
+  at: string;
+  count: number;
+  items: BoardItem[];
+  seats_consulted: string[];
+  board: string;
+  doctrine: string;
+  probe_caveat: string;
+  measurement_protocol: string;
+  generated_by: "deterministic" | "adk-council";
+  synthesis?: string | null; // the reviewer's cross-item read (AI council only)
+  seats?: string[];
+  model?: string;
+  council_status?: string;
+  stand_down?: string;
+}
+
+export const getBoard = () => get<BoardReview>("/api/board");
+
 export const getNetwork = () => get<NetworkPayload>("/api/network");
 export const getRoster = () => get<{ officers: Officer[] }>("/api/roster");
 export const getIncident = (id: string) => get<Incident>(`/api/incidents/${id}`);

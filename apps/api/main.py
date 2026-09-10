@@ -412,6 +412,23 @@ def advice() -> dict:
     }
 
 
+@app.get("/api/board")
+def review_board() -> dict:
+    """The review board: the immediate move for every junction that warrants one
+    right now, each grounded in the discipline and the published standard it
+    rests on, with what to measure and what it must not claim.
+
+    A read, not a write — no officer token. The deterministic board (arithmetic,
+    instant, offline-safe) always answers; when the AI council is switched on and
+    in budget, a multi-agent panel on Google ADK (Gemini on Vertex) reasons over
+    that grounded brief and adds the cross-item judgement — never a new figure.
+    Any failure degrades to the deterministic board rather than failing.
+    """
+    from packages.copilot.council import review
+
+    return review(centre())
+
+
 @app.get("/api/network")
 def network() -> dict:
     net = centre().network

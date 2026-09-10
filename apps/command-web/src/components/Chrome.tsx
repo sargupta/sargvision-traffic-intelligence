@@ -8,6 +8,7 @@ import { clearToken, getToken, onTokenChange, setToken } from "@/lib/auth";
 
 const NAV = [
   { href: "/", label: "Board" },
+  { href: "/review", label: "Review board" },
   { href: "/coverage", label: "Coverage" },
   { href: "/verify", label: "Verify" },
   { href: "/copilot", label: "Copilot" },
