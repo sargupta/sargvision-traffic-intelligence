@@ -95,7 +95,7 @@ _REVIEWER = (
     '{"synthesis": "<=3 sentences: what the duty officer should prioritise THIS shift and '
     'how the items relate — the cross-item judgement a checklist cannot give>", '
     '"notes": [{"junction": "<exact junction name from the brief>", "expert_note": "<=2 '
-    'sentences from the relevant seat that sharpen THIS item\'s move>"}]}\n\n'
+    "sentences from the relevant seat that sharpen THIS item's move>\"}]}\n\n"
     "Only include a note where a seat genuinely adds something; do not pad. " + _CONTRACT
 )
 
