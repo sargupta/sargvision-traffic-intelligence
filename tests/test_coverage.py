@@ -64,6 +64,13 @@ class TestUnwatchedSlow:
         assert u["count"] > 0
         assert all(r["condition"] in ("ACUTE", "CHRONIC") for r in u["corridors"])
 
+    def test_each_row_carries_how_slow_vs_usual(self):
+        # not just "slow" — the deviation an officer reads: speed, its usual, excess
+        for r in unwatched_slow(_centre(), NOW)["corridors"]:
+            assert r["speed_kmh"] is not None
+            assert r["typical_speed_kmh"] is not None
+            assert "excess_minutes" in r and "index" in r
+
     def test_a_posting_removes_a_corridor_from_the_list(self):
         c = _centre()
         first = unwatched_slow(c, NOW)["corridors"][0]["corridor_id"]

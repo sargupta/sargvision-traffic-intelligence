@@ -336,6 +336,11 @@ export interface Coverage {
       name: string;
       condition: Condition;
       speed_kmh: number | null;
+      typical_speed_kmh: number | null;
+      excess_minutes: number | null;
+      index: number | null;
+      duration_minutes: number | null;
+      typical_minutes: number | null;
       band: Band;
       held_minutes: number | null;
     }[];

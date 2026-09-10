@@ -7,15 +7,28 @@ import { ConditionTag, Empty } from "@/components/Bits";
 import { getCoverage, useBoard, type Coverage } from "@/lib/api";
 
 function UnwatchedRow({ c }: { c: Coverage["unwatched_slow"]["corridors"][number] }) {
+  const excess = c.excess_minutes ?? 0;
+  const lateOnUsual = excess >= 0.5; // meaningfully slower than its own usual (acute)
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line bg-surface px-3 py-2">
       <ConditionTag condition={c.condition} />
-      <span className="tnum text-[length:var(--text-sm)] font-semibold">
-        {c.speed_kmh != null ? `${c.speed_kmh.toFixed(0)} km/h` : "—"}
+      <span className="tnum whitespace-nowrap text-[length:var(--text-sm)]">
+        <span className="font-semibold">{c.speed_kmh != null ? `${c.speed_kmh.toFixed(0)} km/h` : "—"}</span>
+        {c.typical_speed_kmh != null && (
+          <span className="text-ink-3"> · usually {c.typical_speed_kmh.toFixed(0)}</span>
+        )}
+        {lateOnUsual && (
+          <span className="ml-1.5 font-semibold" style={{ color: "var(--color-sev)" }}>
+            +{excess.toFixed(0)} min
+          </span>
+        )}
       </span>
       <Link href={`/corridor?id=${c.corridor_id}`} className="text-[length:var(--text-sm)] font-medium underline decoration-line-firm underline-offset-2 hover:decoration-ink">
         {c.name}
       </Link>
+      {!lateOnUsual && c.condition === "CHRONIC" ? (
+        <span className="text-[length:var(--text-2xs)] text-ink-3">structural — normal for this road</span>
+      ) : null}
       {c.held_minutes != null && c.held_minutes > 0 ? (
         <span className="text-[length:var(--text-2xs)] text-ink-3">held {Math.round(c.held_minutes)}m</span>
       ) : null}

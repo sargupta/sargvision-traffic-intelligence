@@ -130,12 +130,25 @@ def unwatched_slow(centre, now=None) -> dict:
             continue
         if cid in covered:
             continue
+        r = st.latest
+        # How slow against the road's OWN usual — the deviation an officer needs,
+        # not just "slow". typical_speed is Google's modelled typical for the same
+        # route; excess is minutes over that. For a CHRONIC road the two speeds sit
+        # close (it is always this slow); for an ACUTE one the gap is the story.
+        typical_speed = None
+        if r is not None and r.static_duration_s:
+            typical_speed = round((r.distance_m / 1000) / (r.static_duration_s / 3600), 1)
         rows.append(
             {
                 "corridor_id": cid,
                 "name": st.name,
                 "condition": st.condition,
                 "speed_kmh": round(st.speed_kmh, 1) if st.speed_kmh is not None else None,
+                "typical_speed_kmh": typical_speed,
+                "excess_minutes": round(r.excess_minutes, 1) if r is not None else None,
+                "index": round(st.index, 2) if st.index is not None else None,
+                "duration_minutes": round(r.duration_s / 60, 1) if r is not None else None,
+                "typical_minutes": round(r.static_duration_s / 60, 1) if r is not None else None,
                 "band": st.band,
                 "held_minutes": round(st.held_for(moment).total_seconds() / 60, 1)
                 if moment
