@@ -57,10 +57,12 @@ export default function CoveragePage() {
 
   const unwatched = cov?.unwatched_slow;
 
-  // Officers triage on DELAY (minutes lost), not raw speed — so that leads, and
-  // the list can be filtered to the acute dispatch set or the chronic backlog.
+  // An officer already knows which roads are always slow — the chronic list is
+  // not information to them. The dispatch signal is ACUTE: a road normally fine,
+  // slow right now, nobody on it. So acute leads by default; the always-slow
+  // roads fold under "known", shown only so the acute ones stand out.
   const [sort, setSort] = useState<"delay" | "speed">("delay");
-  const [filter, setFilter] = useState<"all" | "acute" | "chronic">("all");
+  const [filter, setFilter] = useState<"all" | "acute" | "chronic">("acute");
 
   const rows = useMemo(() => {
     const all = unwatched?.corridors ?? [];
@@ -91,19 +93,20 @@ export default function CoveragePage() {
           <Link href="/" className="text-[length:var(--text-sm)] text-ink-2 underline">← Board</Link>
         </div>
         <p className="mt-1 max-w-[74ch] text-[length:var(--text-sm)] leading-relaxed text-ink-2">
-          The value isn&rsquo;t mirroring the junctions officers already man — it&rsquo;s the roads
-          they don&rsquo;t. Below: the corridors slow right now with no officer posted (the Ghogomali
-          pattern), and — because we deliberately don&rsquo;t watch every road — the significant roads
-          we don&rsquo;t instrument at all, and why.
+          Officers already know which roads are always slow — that list tells them nothing. What a
+          duty officer can&rsquo;t get by looking is two things: a road that&rsquo;s <strong>usually fine but is
+          slow right now</strong>, with no one posted on it (acute, below — the Ghogomali pattern), and,
+          once someone is posted, <strong>whether it actually eased</strong>. The always-slow roads are folded
+          under &ldquo;known&rdquo; only so the acute ones stand out against them.
         </p>
 
         {/* Slow now, nobody on it. */}
         <section className="mt-5">
           <h2 className="text-[length:var(--text-md)] font-semibold">
-            Slow now, no officer on it
+            Slow now &amp; worse than usual — no officer on it
             {unwatched ? (
               <span className="ml-2 text-[length:var(--text-sm)] font-normal text-ink-3">
-                · {unwatched.acute} acute · {unwatched.chronic} chronic
+                · {unwatched.acute} acute · {unwatched.chronic} always-slow
               </span>
             ) : null}
           </h2>
@@ -130,7 +133,7 @@ export default function CoveragePage() {
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="label">Show</span>
-                  {([["all", `all ${unwatched.count}`], ["acute", `acute ${unwatched.acute}`], ["chronic", `chronic ${unwatched.chronic}`]] as const).map(([k, lbl]) => (
+                  {([["acute", `acute ${unwatched.acute}`], ["chronic", `always-slow ${unwatched.chronic}`], ["all", `all ${unwatched.count}`]] as const).map(([k, lbl]) => (
                     <button
                       key={k}
                       type="button"
@@ -142,9 +145,17 @@ export default function CoveragePage() {
                   ))}
                 </span>
               </div>
-              <ul className="mt-2 flex flex-col gap-1.5">
-                {rows.map((c) => <UnwatchedRow key={c.corridor_id} c={c} />)}
-              </ul>
+              {rows.length === 0 ? (
+                <p className="mt-2 rounded-md border border-line bg-surface px-3 py-2 text-[length:var(--text-sm)] text-ink-2">
+                  {filter === "acute"
+                    ? `Nothing usually-fine is slow right now with no one on it. ${unwatched.chronic} always-slow road${unwatched.chronic === 1 ? "" : "s"} sit under “always-slow” — but those are known, not a dispatch.`
+                    : "None in this view."}
+                </p>
+              ) : (
+                <ul className="mt-2 flex flex-col gap-1.5">
+                  {rows.map((c) => <UnwatchedRow key={c.corridor_id} c={c} />)}
+                </ul>
+              )}
             </>
           ) : (
             <p className="mt-2 text-[length:var(--text-sm)] text-ink-3">Loading…</p>
