@@ -412,7 +412,7 @@ def advice() -> dict:
     }
 
 
-@app.get("/api/board")
+@app.get("/api/review")
 def review_board() -> dict:
     """The review board: the immediate move for every junction that warrants one
     right now, each grounded in the discipline and the published standard it

@@ -516,7 +516,7 @@ export interface BoardReview {
   stand_down?: string;
 }
 
-export const getBoard = () => get<BoardReview>("/api/board");
+export const getReview = () => get<BoardReview>("/api/review");
 
 export const getNetwork = () => get<NetworkPayload>("/api/network");
 export const getRoster = () => get<{ officers: Officer[] }>("/api/roster");

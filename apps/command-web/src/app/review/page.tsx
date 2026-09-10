@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Chrome } from "@/components/Chrome";
 import { ConditionTag, Empty } from "@/components/Bits";
-import { getBoard, useBoard, type BoardItem, type BoardReview } from "@/lib/api";
+import { getReview, useBoard, type BoardItem, type BoardReview } from "@/lib/api";
 
 const URGENCY: Record<BoardItem["urgency"], { label: string; fg: string; tint: string }> = {
   NOW: { label: "Now", fg: "var(--color-sev)", tint: "var(--color-sev-tint)" },
@@ -129,7 +129,7 @@ export default function ReviewPage() {
   const [rev, setRev] = useState<BoardReview | null>(null);
 
   const load = useCallback(() => {
-    getBoard()
+    getReview()
       .then(setRev)
       .catch(() => setRev(null));
   }, []);

@@ -129,6 +129,7 @@ class TestReadEndpoints:
         [
             "/health",
             "/api/board",
+            "/api/review",
             "/api/advice",
             "/api/network",
             "/api/roster",
@@ -144,6 +145,15 @@ class TestReadEndpoints:
     def test_returns_200(self, client, path):
         r = client.get(path)
         assert r.status_code == 200, f"{path} → {r.status_code}: {r.text[:200]}"
+
+    def test_review_and_board_are_distinct_routes(self, client):
+        # /api/board is the command board; /api/review is the expert layer. They
+        # must not collide (they did once — both were registered at /api/board).
+        board = client.get("/api/board").json()
+        review = client.get("/api/review").json()
+        assert "conditions" in board and "review" not in str(board.get("generated_by"))
+        assert review.get("generated_by") in ("deterministic", "adk-council")
+        assert "doctrine" in review and "seats_consulted" in review
 
     def test_health_advertises_the_write_posture(self, client):
         h = client.get("/health").json()
