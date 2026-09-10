@@ -181,18 +181,23 @@ CADENCE = {
     "UNKNOWN": _cadence_minutes("UNKNOWN", 6),  # never seen: get a first reading soon-ish
 }
 
-# Overnight there is no sergeant to send. Conditions are still recorded so the
-# morning shift inherits them, but the network is asked far less often because
-# nothing turns on the answer until there is someone to act on it. Widened to an
-# hour (Sep 2026 cost cut): nights are a safety window, not a congestion one
-# (accidents peak at night, congestion by day), so a coarse overnight picture is
-# the honest and cheap choice. Quiet hours also widened to cover the deep night.
-QUIET_HOURS = range(22, 24), range(0, 6)
+# The console's operating window is 09:30–20:30 — the hours a duty officer is on
+# and something turns on the answer. Outside it, conditions are still recorded so
+# the next shift inherits them, but the network is asked far less often
+# (QUIET_CADENCE) and congestion incidents are not raised: off-hours are a safety
+# window, not a congestion one (accidents peak at night, congestion by day), so a
+# coarse off-hours picture is the honest and cheap choice — and a narrower active
+# window is a smaller Routes bill. Half-hour boundaries, so minutes matter.
+# Overridable per deployment via ACTIVE_START_MINUTES / ACTIVE_END_MINUTES.
+ACTIVE_START_MINUTES = int(os.environ.get("ACTIVE_START_MINUTES", str(9 * 60 + 30)))  # 09:30
+ACTIVE_END_MINUTES = int(os.environ.get("ACTIVE_END_MINUTES", str(20 * 60 + 30)))  # 20:30
 QUIET_CADENCE = timedelta(minutes=int(os.environ.get("QUIET_CADENCE_MINUTES", "60")))
 
 
 def _is_quiet(at: datetime) -> bool:
-    return at.hour >= 22 or at.hour < 6
+    """True outside the operating window — before 09:30 or from 20:30 onward."""
+    minutes = at.hour * 60 + at.minute
+    return minutes < ACTIVE_START_MINUTES or minutes >= ACTIVE_END_MINUTES
 
 
 # A condition must hold this long before it becomes an incident. Traffic

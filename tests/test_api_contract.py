@@ -180,15 +180,21 @@ class TestIncidentActions:
 class TestPollingEconomy:
     """Cadence follows condition. This is both the API bill and the signal quality."""
 
-    def test_quiet_hours_are_the_night(self):
+    def test_quiet_is_outside_the_0930_2030_operating_window(self):
         from datetime import datetime
 
         from packages.command.centre import _is_quiet
 
+        # off-hours (quiet): deep night, and the shoulders now outside the window
         assert _is_quiet(datetime(2026, 8, 30, 2, 0))
         assert _is_quiet(datetime(2026, 8, 30, 23, 30))
-        assert not _is_quiet(datetime(2026, 8, 30, 9, 0))
+        assert _is_quiet(datetime(2026, 8, 30, 9, 0))  # before 09:30
+        assert _is_quiet(datetime(2026, 8, 30, 21, 0))  # after 20:30
+        # operating window (active), inclusive of the half-hour boundaries
+        assert not _is_quiet(datetime(2026, 8, 30, 9, 30))
         assert not _is_quiet(datetime(2026, 8, 30, 19, 0))
+        assert not _is_quiet(datetime(2026, 8, 30, 20, 29))
+        assert _is_quiet(datetime(2026, 8, 30, 20, 30))  # window is [09:30, 20:30)
 
     def test_a_quiet_corridor_is_asked_less_often_than_a_failing_one(self):
         from packages.command.centre import CADENCE
