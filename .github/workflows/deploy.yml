@@ -46,8 +46,14 @@ env:
   # deploy does not throw them away. GOOGLE_CLOUD_LOCATION=asia-south1 keeps the
   # copilot's Vertex calls — which carry live incident text and officer context —
   # in the Mumbai region rather than shipping Indian police data to a US region.
+  # COUNCIL_ENABLE_ADK=1 switches on the AI review board (packages/copilot/council.py):
+  # a multi-agent panel on Google ADK (Gemini on Vertex, the startup credits) that
+  # reasons over the deterministic board and adds cross-item judgement. It is on-demand,
+  # cached per situation and hard-budgeted (COUNCIL_DAILY_BUDGET), and degrades to the
+  # deterministic board on any failure — so this flag can only add, never break, the
+  # advice. The value ('1') carries no comma, so it rides RUNTIME_ENV safely.
   RUNTIME_ENV: >-
-    INCIDENT_STORE=firestore,HISTORY_STORE=firestore,GOOGLE_CLOUD_PROJECT=sargvision-traffic-intel,GOOGLE_CLOUD_LOCATION=asia-south1,POLL_SECONDS=180,CONFIRM_MINUTES=8,LAPSE_MINUTES=20
+    INCIDENT_STORE=firestore,HISTORY_STORE=firestore,GOOGLE_CLOUD_PROJECT=sargvision-traffic-intel,GOOGLE_CLOUD_LOCATION=asia-south1,POLL_SECONDS=180,CONFIRM_MINUTES=8,LAPSE_MINUTES=20,COUNCIL_ENABLE_ADK=1
 
   # Reads are open; recording an action is not. Without this the API refuses
   # every write with a 503 that says so, which is the safe failure — an

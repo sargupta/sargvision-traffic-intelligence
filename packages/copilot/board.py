@@ -116,7 +116,15 @@ def live_board(centre, now: datetime | None = None, max_items: int = MAX_ITEMS) 
             continue
         items.append(_item(profile, candidates[0], score))
 
-    items.sort(key=lambda x: -x["score"])
+    # Most urgent first; within the same urgency, the slowest road leads — when
+    # six junctions all show a located block, the officer should see the 7 km/h
+    # one above the 14 km/h one.
+    items.sort(
+        key=lambda x: (
+            -x["score"],
+            x["live"]["speed_kmh"] if x["live"]["speed_kmh"] is not None else 999.0,
+        )
+    )
     items = items[:max_items]
     seats = sorted({i["seat"] for i in items if i["seat"]})
 
