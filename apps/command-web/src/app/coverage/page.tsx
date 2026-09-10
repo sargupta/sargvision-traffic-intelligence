@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Chrome } from "@/components/Chrome";
 import { ConditionTag, Empty } from "@/components/Bits";
@@ -57,6 +57,23 @@ export default function CoveragePage() {
 
   const unwatched = cov?.unwatched_slow;
 
+  // Officers triage on DELAY (minutes lost), not raw speed — so that leads, and
+  // the list can be filtered to the acute dispatch set or the chronic backlog.
+  const [sort, setSort] = useState<"delay" | "speed">("delay");
+  const [filter, setFilter] = useState<"all" | "acute" | "chronic">("all");
+
+  const rows = useMemo(() => {
+    const all = unwatched?.corridors ?? [];
+    const filtered = all.filter((c) =>
+      filter === "all" ? true : c.condition === filter.toUpperCase(),
+    );
+    return [...filtered].sort((a, b) => {
+      if (sort === "speed") return (a.speed_kmh ?? 999) - (b.speed_kmh ?? 999);
+      // delay: most minutes lost first; tie-break slower speed
+      return (b.excess_minutes ?? 0) - (a.excess_minutes ?? 0) || (a.speed_kmh ?? 999) - (b.speed_kmh ?? 999);
+    });
+  }, [unwatched, sort, filter]);
+
   return (
     <>
       <Chrome
@@ -95,9 +112,40 @@ export default function CoveragePage() {
               <Empty title="Every slow corridor has an officer on it." detail="Nothing is crawling without a posting right now. This is a result, not an empty screen." />
             </div>
           ) : unwatched ? (
-            <ul className="mt-2 flex flex-col gap-1.5">
-              {unwatched.corridors.map((c) => <UnwatchedRow key={c.corridor_id} c={c} />)}
-            </ul>
+            <>
+              {/* Triage controls — sort on delay by default, filter to acute/chronic. */}
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[length:var(--text-2xs)] no-print">
+                <span className="flex items-center gap-1">
+                  <span className="label">Sort</span>
+                  {([["delay", "by delay"], ["speed", "by speed"]] as const).map(([k, lbl]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setSort(k)}
+                      className={`rounded-full px-2 py-0.5 font-medium ${sort === k ? "bg-navy text-white" : "bg-sunken text-ink-2 hover:bg-surface"}`}
+                    >
+                      {lbl}
+                    </button>
+                  ))}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="label">Show</span>
+                  {([["all", `all ${unwatched.count}`], ["acute", `acute ${unwatched.acute}`], ["chronic", `chronic ${unwatched.chronic}`]] as const).map(([k, lbl]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setFilter(k)}
+                      className={`rounded-full px-2 py-0.5 font-medium ${filter === k ? "bg-navy text-white" : "bg-sunken text-ink-2 hover:bg-surface"}`}
+                    >
+                      {lbl}
+                    </button>
+                  ))}
+                </span>
+              </div>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {rows.map((c) => <UnwatchedRow key={c.corridor_id} c={c} />)}
+              </ul>
+            </>
           ) : (
             <p className="mt-2 text-[length:var(--text-sm)] text-ink-3">Loading…</p>
           )}
